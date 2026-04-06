@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="FundRaisingAssignment.Application/FundRaisingAssignment.Application.csproj" />
+  <Project Path="FundRaisingAssignment.Test/FundRaisingAssignment.Test.csproj" />
+</Solution>
