@@ -37,7 +37,7 @@ Permission includes:
 
 ### **Normal Flow**
 
-1. **Access management:** The FR selects "Manage Delegates" from their Campaign Dashboard.
+1. **Access management:** The FR selects "Manage Delegates" from their Campaign Dashboard. FR able to view existing delegates and permission granted
 2. **Identify delegate:** The FR enters the Delegate's email address.
 3. **Fetch permissions:** The system retrieves a list of permissions
 4. **Set permission:** The FR checks the boxes for permissions they want to allow.
@@ -48,7 +48,7 @@ Permission includes:
 
 ### **Sub-flows**
 
-- **S1: Update existubg deletgates**
+- **Update existubg deletgates**
   - The DR unchecks a permission for an existing Delegate
   - The system deletes that specific record from the database
   - The next time the Delegate attempts that action, its actions will be blocked
@@ -57,8 +57,14 @@ Permission includes:
 
 ### **Alternative / Exception Flows**
 
-- **E1: Email / User doesn't exists in system**
+- **Email / User doesn't exists in system**
   - If a email that FR tries add doesn't exist, the UI should show that the user doesn't exists and prevent delegation
+
+### **Post-conditions**
+
+- **Data Integrity:** The `CampaignDelegatePermission` table accurately reflects the current allowed actions.
+- **Access Control:** The Delegate is restricted to the specific resource (Campaign ID) and specific actions (Permissions) granted by the owner.
+- **Audit Trail:** An entry is logged show what & when the the permissions was updated
 
 ## Use case diagram
 
