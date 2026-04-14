@@ -2,7 +2,7 @@
 
 ## User story
 
-As a fundraiser, I want to create or authorize additional user accounts (delegates) with limited permissions so that I can delegate tasks like posting updates and responding to inquiries without sharing my account, while preventing them from performing restricted actions such as modifying or closing campaigns.
+As a fundraiser, I want to authorize user accounts (delegates) with limited permissions so that I can delegate tasks like posting updates and responding to inquiries without sharing my account, while preventing them from performing restricted actions such as modifying or closing campaigns.
 
 ## Use case description
 
@@ -24,6 +24,41 @@ Permission includes:
 - Detail
   - CanUpdateBanner
   - CanEditDescription
+
+---
+
+### **Pre-conditions**
+
+- **Authentication:** The FR is logged in.
+- **Ownership:** The FR is the creator / owner of the campaign resource
+- **Delegate:** The person being invited must have a valid email and an existing account
+
+---
+
+### **Normal Flow**
+
+1. **Access management:** The FR selects "Manage Delegates" from their Campaign Dashboard.
+2. **Identify delegate:** The FR enters the Delegate's email address.
+3. **Fetch permissions:** The system retrieves a list of permissions
+4. **Set permission:** The FR checks the boxes for permissions they want to allow.
+5. **Save & Commit:** The FR clicks "Save Changes"
+6. **Database update:** The system writes entries into the `CampaignDelegatePermission` table, mapping the `UserID`, `CampaignID`, `PermissionString`, `StartDate`, `EndDate`.
+
+---
+
+### **Sub-flows**
+
+- **S1: Update existubg deletgates**
+  - The DR unchecks a permission for an existing Delegate
+  - The system deletes that specific record from the database
+  - The next time the Delegate attempts that action, its actions will be blocked
+
+---
+
+### **Alternative / Exception Flows**
+
+- **E1: Email / User doesn't exists in system**
+  - If a email that FR tries add doesn't exist, the UI should show that the user doesn't exists and prevent delegation
 
 ## Use case diagram
 
