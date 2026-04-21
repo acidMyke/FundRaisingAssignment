@@ -1,0 +1,60 @@
+@startuml Campaign Access Delegation
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+class CampaignManageDelegateController {
+  <<Boundary>>
+  + GetCurrentDelegatesAsync(campaignId) : Task<IActionResult>
+  + SearchNewMemberAsync(email) : Task<IActionResult>
+  + AddNewMemberAsync(email) : Task<IActionResult>
+  + UpdatePermissionAsync(dto) : Task<IActionResult>
+}
+
+interface IAuthorizationService {
+  <<.NET Built-in>>
+  + AuthorizeAsync(user, resource, requirement): Task<AuthorizationResult>
+}
+class CampaignAuthorizationHandler implements AuthorizationHandler {
+  <<AuthorizationHandler>>
+  + HandleRequirementAsync(context, requirement, resource)
+}
+class CampaignDelegateRepository {
+  + GetDelegatesAsync(campaignId): Task<IEnumerable<CampaignDelegatePermission>>
+  + AddDelegatePermissionAsync(campaignId, userId, permissionType): void
+  + RemoveDelegatePermissionAsync(campaignId, userId, permissionType): void
+}
+class CampaignRepository {
+  + GetCampaign(campaignId): Task<Campaign?>
+}
+class UserRepository {
+  + GetUserByEmailAsync(email): Task<User?>
+}
+
+CampaignManageDelegateController --> CampaignRepository: fetch campaigns
+CampaignManageDelegateController --> IAuthorizationService: check auth
+IAuthorizationService --> CampaignAuthorizationHandler: checks OwnerUserId
+CampaignAuthorizationHandler ---> CampaignEntity: checks OwnerUserId
+CampaignManageDelegateController --> UserRepository: get user
+CampaignManageDelegateController --> CampaignDelegateRepository: retrieve delegates
+
+UserRepository --> UserEntity
+CampaignRepository --> CampaignEntity
+CampaignDelegateRepository --> PermissionEntity
+
+
+class "User" as UserEntity {
+  + Guid Id
+  + string email
+}
+class "Campaign" as CampaignEntity {
+  + Guid Id
+  + string OwnerUserId
+}
+class "CampaignDelegatePermission" as PermissionEntity {
+  + string UserId
+  + Guid CampaignId
+  + string PermissionType
+  + bool IsActive
+}
+
+@enduml

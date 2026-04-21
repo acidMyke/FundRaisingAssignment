@@ -1,0 +1,80 @@
+@startuml Campaign Access Delegation Sequence - All Methods
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+actor "Fund Raiser" as User
+boundary "CampaignManageDelegateController" as Boundary
+control "IAuthorizationService" as Auth
+control "CampaignRepository" as CampRepo
+control "UserRepository" as UserRepo
+control "CampaignDelegateRepository" as DelegateRepo
+
+== 1. Get Current Delegates ==
+User -> Boundary : GetCurrentDelegatesAsync(campaignId)
+activate Boundary
+    
+    ' Check if user owns campaign
+    Boundary -> CampRepo : GetCampaign(campaignId)
+    CampRepo --> Boundary : Returns Campaign
+    Boundary -> Auth : AuthorizeAsync(user, campaign)
+    Auth --> Boundary : Success
+    
+    ' Fetch the list
+    Boundary -> DelegateRepo : GetDelegatesAsync(campaignId)
+    DelegateRepo --> Boundary : Returns List of Permissions
+
+Boundary --> User : 200 OK (List of Delegates)
+deactivate Boundary
+
+== 2. Search New Member ==
+User -> Boundary : SearchNewMemberAsync(email)
+activate Boundary
+
+    ' Find the user
+    Boundary -> UserRepo : GetUserByEmailAsync(email)
+    UserRepo --> Boundary : Returns User details
+
+Boundary --> User : 200 OK (User Profile)
+deactivate Boundary
+
+== 3. Add New Member ==
+User -> Boundary : AddNewMemberAsync(email)
+activate Boundary
+
+    ' Check if user owns campaign
+    Boundary -> CampRepo : GetCampaign(campaignId)
+    CampRepo --> Boundary : Returns Campaign
+    Boundary -> Auth : AuthorizeAsync(user, campaign)
+    Auth --> Boundary : Success
+
+    ' Find the user to add
+    Boundary -> UserRepo : GetUserByEmailAsync(email)
+    UserRepo --> Boundary : Returns User details
+
+    ' Add them
+    Boundary -> DelegateRepo : AddDelegatePermissionAsync(...)
+    DelegateRepo --> Boundary : Done
+
+Boundary --> User : 200 OK (Success)
+deactivate Boundary
+
+== 4. Update Permission ==
+User -> Boundary : UpdatePermissionAsync(dto)
+activate Boundary
+
+    ' Check if user owns campaign
+    Boundary -> CampRepo : GetCampaign(dto.campaignId)
+    CampRepo --> Boundary : Returns Campaign
+    Boundary -> Auth : AuthorizeAsync(user, campaign)
+    Auth --> Boundary : Success
+
+    ' Swap the old permission for the new one
+    Boundary -> DelegateRepo : RemoveDelegatePermissionAsync(...)
+    DelegateRepo --> Boundary : Done
+    Boundary -> DelegateRepo : AddDelegatePermissionAsync(...)
+    DelegateRepo --> Boundary : Done
+
+Boundary --> User : 200 OK (Success)
+deactivate Boundary
+
+@enduml
