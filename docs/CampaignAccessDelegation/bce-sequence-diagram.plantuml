@@ -1,80 +1,113 @@
-@startuml Campaign Access Delegation Sequence - All Methods
-skinparam style strictuml
-skinparam sequenceMessageAlign center
+@startuml Campaign Delegate Flows
+skinparam actorStyle awesome
 
-actor "Fund Raiser" as User
-boundary "CampaignManageDelegateController" as Boundary
-control "IAuthorizationService" as Auth
-control "CampaignRepository" as CampRepo
-control "UserRepository" as UserRepo
-control "CampaignDelegateRepository" as DelegateRepo
+actor User as Client
+participant "CampaignManageDelegateController" as Controller
+participant "CampaignDelegateService" as Service
+participant "IAuthorizationService" as Auth
+participant "CampaignRepository" as CampaignRepo
+participant "CampaignDelegateRepository" as DelegateRepo
+participant "UserRepository" as UserRepo
 
-== 1. Get Current Delegates ==
-User -> Boundary : GetCurrentDelegatesAsync(campaignId)
-activate Boundary
+== Get Current Delegates (GET) ==
+Client -> Controller: GetCurrentDelegatesAsync(campaignId)
+activate Controller
+Controller -> Service: GetDelegatesAsync(campaignId)
+activate Service
+
+Service -> Auth: AuthorizeAsync(user, resource, "Read")
+activate Auth
+alt Unauthorized
+    Auth --> Service: Forbidden
+    deactivate Auth
+    Service --> Controller: Lacks permission
+    Controller --> Client: View("AccessDenied")
+else Authorized
+    activate Auth
+    Auth --> Service: Authorized
+    deactivate Auth
+    Service -> DelegateRepo: GetDelegatesAsync(campaignId)
+    activate DelegateRepo
+    DelegateRepo --> Service: List<CampaignDelegatePermission>
+    deactivate DelegateRepo
+    Service --> Controller: List<CampaignDelegatePermission>
+    deactivate Service
+    Controller --> Client: View("DelegatesList", List)
+    deactivate Controller
+end
+
+== Add New Member (POST) ==
+Client -> Controller: AddNewMemberAsync(campaignId, email, permission)
+activate Controller
+Controller -> Service: AddDelegateAsync(campaignId, email, permission)
+activate Service
+
+Service -> Auth: AuthorizeAsync(user, resource, "Write")
+activate Auth
+alt Unauthorized
+    Auth --> Service: Forbidden
+    deactivate Auth
+    Service --> Controller: Lacks permission
+    Controller --> Client: View("AccessDenied")
+else Authorized
+    activate Auth
+    Auth --> Service: Authorized
+    deactivate Auth
+    Service -> UserRepo: GetUserByEmailAsync(email)
+    activate UserRepo
+    alt User Not Found
+        UserRepo --> Service: null
+        deactivate UserRepo
+        Service --> Controller: User not found
+        Controller -> Controller: Add Model Error
+        Controller --> Client: View("AddMember", dtoWithError)
+    else User Found
+        activate UserRepo
+        UserRepo --> Service: User
+        deactivate UserRepo
+        Service -> DelegateRepo: AddDelegatePermissionAsync(campaignId, userId, permission)
+        activate DelegateRepo
+        DelegateRepo --> Service: Success
+        deactivate DelegateRepo
+        Service --> Controller: Success
+        deactivate Service
+        Controller --> Client: RedirectToAction("GetCurrentDelegates")
+        deactivate Controller
+    end
+end
+
+== Update Permission (POST) ==
+Client -> Controller: UpdatePermissionAsync(dto)
+activate Controller
+Controller -> Service: UpdateDelegatePermissionAsync(dto)
+activate Service
+
+Service -> Auth: AuthorizeAsync(user, resource, "Write")
+activate Auth
+alt Unauthorized
+    Auth --> Service: Forbidden
+    deactivate Auth
+    Service --> Controller: Lacks permission
+    Controller --> Client: View("AccessDenied")
+else Authorized
+    activate Auth
+    Auth --> Service: Authorized
+    deactivate Auth
     
-    ' Check if user owns campaign
-    Boundary -> CampRepo : GetCampaign(campaignId)
-    CampRepo --> Boundary : Returns Campaign
-    Boundary -> Auth : AuthorizeAsync(user, campaign)
-    Auth --> Boundary : Success
+    Service -> DelegateRepo: RemoveDelegatePermissionAsync(...)
+    activate DelegateRepo
+    DelegateRepo --> Service: Removed
+    deactivate DelegateRepo
     
-    ' Fetch the list
-    Boundary -> DelegateRepo : GetDelegatesAsync(campaignId)
-    DelegateRepo --> Boundary : Returns List of Permissions
-
-Boundary --> User : 200 OK (List of Delegates)
-deactivate Boundary
-
-== 2. Search New Member ==
-User -> Boundary : SearchNewMemberAsync(email)
-activate Boundary
-
-    ' Find the user
-    Boundary -> UserRepo : GetUserByEmailAsync(email)
-    UserRepo --> Boundary : Returns User details
-
-Boundary --> User : 200 OK (User Profile)
-deactivate Boundary
-
-== 3. Add New Member ==
-User -> Boundary : AddNewMemberAsync(email)
-activate Boundary
-
-    ' Check if user owns campaign
-    Boundary -> CampRepo : GetCampaign(campaignId)
-    CampRepo --> Boundary : Returns Campaign
-    Boundary -> Auth : AuthorizeAsync(user, campaign)
-    Auth --> Boundary : Success
-
-    ' Find the user to add
-    Boundary -> UserRepo : GetUserByEmailAsync(email)
-    UserRepo --> Boundary : Returns User details
-
-    ' Add them
-    Boundary -> DelegateRepo : AddDelegatePermissionAsync(...)
-    DelegateRepo --> Boundary : Done
-
-Boundary --> User : 200 OK (Success)
-deactivate Boundary
-
-== 4. Update Permission ==
-User -> Boundary : UpdatePermissionAsync(dto)
-activate Boundary
-
-    ' Check if user owns campaign
-    Boundary -> CampRepo : GetCampaign(dto.campaignId)
-    CampRepo --> Boundary : Returns Campaign
-    Boundary -> Auth : AuthorizeAsync(user, campaign)
-    Auth --> Boundary : Success
-
-    ' Swap the old permission for the new one
-    Boundary -> DelegateRepo : RemoveDelegatePermissionAsync(...)
-    DelegateRepo --> Boundary : Done
-    Boundary -> DelegateRepo : AddDelegatePermissionAsync(...)
-    DelegateRepo --> Boundary : Done
-
-Boundary --> User : 200 OK (Success)
-deactivate Boundary
+    Service -> DelegateRepo: AddDelegatePermissionAsync(...)
+    activate DelegateRepo
+    DelegateRepo --> Service: Added
+    deactivate DelegateRepo
+    
+    Service --> Controller: Success
+    deactivate Service
+    Controller --> Client: RedirectToAction("GetCurrentDelegates")
+    deactivate Controller
+end
 
 @enduml

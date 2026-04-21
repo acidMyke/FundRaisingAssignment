@@ -5,42 +5,54 @@ skinparam packageStyle rectangle
 class CampaignManageDelegateController {
   <<Boundary>>
   + GetCurrentDelegatesAsync(campaignId) : Task<IActionResult>
-  + SearchNewMemberAsync(email) : Task<IActionResult>
   + AddNewMemberAsync(email) : Task<IActionResult>
   + UpdatePermissionAsync(dto) : Task<IActionResult>
+}
+
+class CampaignDelegateService {
+  <<Control>>
+  + GetDelegatesAsync(campaignId): Task<IEnumerable<CampaignDelegatePermission>>
+  + AddDelegateAsync(campaignId, email, permission): Task
+  + UpdateDelegatePermissionAsync(dto): Task
 }
 
 interface IAuthorizationService {
   <<.NET Built-in>>
   + AuthorizeAsync(user, resource, requirement): Task<AuthorizationResult>
 }
+
 class CampaignAuthorizationHandler implements AuthorizationHandler {
   <<AuthorizationHandler>>
   + HandleRequirementAsync(context, requirement, resource)
 }
+
 class CampaignDelegateRepository {
   + GetDelegatesAsync(campaignId): Task<IEnumerable<CampaignDelegatePermission>>
   + AddDelegatePermissionAsync(campaignId, userId, permissionType): void
   + RemoveDelegatePermissionAsync(campaignId, userId, permissionType): void
 }
+
 class CampaignRepository {
   + GetCampaign(campaignId): Task<Campaign?>
 }
+
 class UserRepository {
   + GetUserByEmailAsync(email): Task<User?>
 }
 
-CampaignManageDelegateController --> CampaignRepository: fetch campaigns
-CampaignManageDelegateController --> IAuthorizationService: check auth
+' Relationships
+CampaignManageDelegateController --> CampaignDelegateService: delegates business logic
+CampaignDelegateService --> CampaignRepository: fetch campaigns
+CampaignDelegateService --> IAuthorizationService: check auth
+CampaignDelegateService --> UserRepository: get user
+CampaignDelegateService --> CampaignDelegateRepository: retrieve/update delegates
+
 IAuthorizationService --> CampaignAuthorizationHandler: checks OwnerUserId
 CampaignAuthorizationHandler ---> CampaignEntity: checks OwnerUserId
-CampaignManageDelegateController --> UserRepository: get user
-CampaignManageDelegateController --> CampaignDelegateRepository: retrieve delegates
 
 UserRepository --> UserEntity
 CampaignRepository --> CampaignEntity
 CampaignDelegateRepository --> PermissionEntity
-
 
 class "User" as UserEntity {
   + Guid Id
