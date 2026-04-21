@@ -15,7 +15,7 @@ activate Controller
 Controller -> Service: GetDelegatesAsync(campaignId)
 activate Service
 
-Service -> Auth: AuthorizeAsync(user, resource, "Read")
+Service -> Auth: AuthorizeAsync(user, resource, "CampaignOwner")
 activate Auth
 alt Unauthorized
     Auth --> Service: Forbidden
@@ -42,7 +42,7 @@ activate Controller
 Controller -> Service: AddDelegateAsync(campaignId, email, permission)
 activate Service
 
-Service -> Auth: AuthorizeAsync(user, resource, "Write")
+Service -> Auth: AuthorizeAsync(user, resource, "CampaignOwner")
 activate Auth
 alt Unauthorized
     Auth --> Service: Forbidden
@@ -82,7 +82,7 @@ activate Controller
 Controller -> Service: UpdateDelegatePermissionAsync(dto)
 activate Service
 
-Service -> Auth: AuthorizeAsync(user, resource, "Write")
+Service -> Auth: AuthorizeAsync(user, resource, "CampaignOwner")
 activate Auth
 alt Unauthorized
     Auth --> Service: Forbidden
