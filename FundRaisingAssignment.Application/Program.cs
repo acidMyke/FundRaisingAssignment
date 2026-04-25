@@ -1,6 +1,9 @@
+using FundRaisingAssignment.Application.Data;
+using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using FundRaisingAssignment.Application.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,8 +17,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddRoles<ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("RequireThreeDaysJoined", policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(3)));
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
@@ -39,12 +47,22 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-
 app.MapRazorPages()
    .WithStaticAssets();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    foreach (var role in ApplicationRole.All)
+    {
+        if (role.Name != null && !await roleManager.RoleExistsAsync(role.Name))
+        {
+            await roleManager.CreateAsync(new ApplicationRole(role.Name));
+        }
+    }
+}
 
 app.Run();

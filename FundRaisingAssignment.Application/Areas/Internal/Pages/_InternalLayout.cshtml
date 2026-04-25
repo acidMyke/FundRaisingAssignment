@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Internal Portal</title>
+    <!-- Modern Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/internal.css" asp-append-version="true" />
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="internal-sidebar">
+        <a class="brand" asp-area="Internal" asp-controller="InternalPortal" asp-action="Index">Admin</a>
+        <!-- TODO: Navigations for internal functions -->
+        <div class="nav flex-column">
+            <hr class="border-secondary my-3">
+            <a class="nav-link text-warning" asp-area="" asp-controller="Home" asp-action="Index">
+                &larr; Back to Public Site
+            </a>
+            <form class="mt-auto" asp-area="Identity" asp-page="/Account/Logout"
+                  asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                <button type="submit" class="btn btn-outline-danger w-100 text-start border-0">Logout</button>
+            </form>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="internal-content">
+        <div class="internal-topbar">
+            <h1>@ViewData["Title"]</h1>
+            <div class="user-info text-secondary">
+                Admin: @User.Identity?.Name
+            </div>
+        </div>
+        
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+
+</html>
