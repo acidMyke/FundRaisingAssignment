@@ -2,8 +2,16 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FundRaisingAssignment.Application.Models
 {
-    public class ApplicationRole(string roleName) : IdentityRole<Guid>(roleName)
+    public class ApplicationRole : IdentityRole<Guid>
     {
+        public ApplicationRole() : base()
+        {
+        }
+
+        public ApplicationRole(string roleName) : base(roleName)
+        {
+        }
+
         public class Names
         {
             public const string Admin = "Admin";
