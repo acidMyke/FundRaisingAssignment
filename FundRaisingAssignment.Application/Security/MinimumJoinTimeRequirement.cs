@@ -1,6 +1,6 @@
+using FundRaisingAssignment.Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using FundRaisingAssignment.Application.Models;
 
 namespace FundRaisingAssignment.Application.Security
 {

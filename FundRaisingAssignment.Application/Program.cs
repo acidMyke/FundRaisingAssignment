@@ -1,8 +1,9 @@
-using Microsoft.EntityFrameworkCore;
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Security;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,15 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    foreach (var role in ApplicationRole.All)
+    {
+        if (role.Name != null && !await roleManager.RoleExistsAsync(role.Name))
+        {
+            await roleManager.CreateAsync(new ApplicationRole(role.Name));
+        }
+    }
 }
 
 app.Run();

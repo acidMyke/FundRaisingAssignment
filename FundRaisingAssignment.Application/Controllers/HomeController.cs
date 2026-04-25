@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 using FundRaisingAssignment.Application.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FundRaisingAssignment.Application.Controllers;
 
