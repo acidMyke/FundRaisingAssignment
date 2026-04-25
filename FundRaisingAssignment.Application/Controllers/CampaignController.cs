@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FundRaisingAssignment.Application.Controllers
 {
+    [Authorize(Policy = "RequireThreeDaysJoined")]
     public class CampaignController : Controller
     {
         public IActionResult Index()

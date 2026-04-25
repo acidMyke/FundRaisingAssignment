@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
@@ -20,6 +19,10 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddRoles<ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("RequireThreeDaysJoined", policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(3)));
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
