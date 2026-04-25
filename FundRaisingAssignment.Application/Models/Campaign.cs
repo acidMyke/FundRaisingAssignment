@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FundRaisingAssignment.Application.Models
 {
+    [Table("Campaigns")]
     public class Campaign
     {
         public Guid Id { get; set; }
