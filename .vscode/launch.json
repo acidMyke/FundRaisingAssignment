@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "name": "C#: Application Debug",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/FundRaisingAssignment.Application/FundRaisingAssignment.Application.csproj"
+    }
+  ]
+}
