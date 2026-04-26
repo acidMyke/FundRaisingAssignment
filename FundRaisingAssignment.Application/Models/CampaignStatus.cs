@@ -1,8 +1,12 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+
 namespace FundRaisingAssignment.Application.Models
 {
     public enum CampaignStatus
     {
         Draft = 0,
+        [Display(Name = "Pending review")]
         PendingReview = 1,
         Active = 2,
         Inactive = 3,
