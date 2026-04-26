@@ -23,6 +23,15 @@ namespace FundRaisingAssignment.Application.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [StringLength(200)]
+        public string? ShortDescription { get; set; }
+
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
+
+        public DateTime? EndDate { get; set; }
+
+        public CampaignStatus Status { get; set; } = CampaignStatus.Draft;
+
         [Required]
         public Guid OwnerId { get; set; }
         public ApplicationUser? Owner { get; set; }
