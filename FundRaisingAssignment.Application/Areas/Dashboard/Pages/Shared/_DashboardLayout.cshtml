@@ -1,0 +1,29 @@
+@using Microsoft.AspNetCore.Authorization
+@using FundRaisingAssignment.Application.Security
+@inject IAuthorizationService AuthorizationService
+
+@{
+    Layout = "_Layout";
+    var JoinedForThreeDayAuthResult = await AuthorizationService.AuthorizeAsync(User, "RequireThreeDaysJoined");
+    if (!JoinedForThreeDayAuthResult.Succeeded)
+    {
+        IgnoreBody();
+        IgnoreSection("Scripts"); ;
+    }
+}
+
+@* Check authorization policy RequireThreeDaysJoined *@
+@if (JoinedForThreeDayAuthResult.Succeeded)
+{
+    @RenderBody()
+    @section Scripts {
+        @RenderSection("Scripts", required: false)
+    }
+}
+else
+{
+    <div class="text-center">
+        <h1 class="display-4">Access Denied</h1>
+        <p class="lead">You have to be a member of this platform for at least 3 days to access this page.</p>
+    </div>
+}

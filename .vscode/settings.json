@@ -1,0 +1,5 @@
+{
+  "editor.tabSize": 4,
+  "editor.autoIndentOnPasteWithinString": false,
+  "editor.indentSize": "tabSize"
+}
