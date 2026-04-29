@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-check:
-    run-on: ubuntu-latest
+    runs-on: ubuntu-latest
     enviroment: ci
     steps:
       - name: Checkout
