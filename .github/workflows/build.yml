@@ -1,0 +1,32 @@
+name: Build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-check:
+    run-ons: ubuntu-latest
+    enviroment: ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+      - name: Format check
+        run: dotnet format --verify-no-changes --verbosity normal
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Migration check
+        run: dotnet ef migrations has-pending-model-changes
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
