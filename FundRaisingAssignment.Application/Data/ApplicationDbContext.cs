@@ -9,6 +9,7 @@ namespace FundRaisingAssignment.Application.Data;
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
 {
     public DbSet<Campaign> Campaigns { get; set; }
+    public DbSet<DonationRecord> DonationRecords { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -22,6 +23,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<IdentityUserLogin<Guid>>(entity => { entity.ToTable("UserLogins"); });
         builder.Entity<IdentityRoleClaim<Guid>>(entity => { entity.ToTable("RoleClaims"); });
         builder.Entity<IdentityUserToken<Guid>>(entity => { entity.ToTable("UserTokens"); });
+
     }
 
     private static void SetupUtcConverter(ModelBuilder builder)
