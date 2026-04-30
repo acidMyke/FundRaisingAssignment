@@ -27,5 +27,7 @@ jobs:
         run: dotnet build --no-restore
       - name: Migration check
         run: dotnet ef migrations has-pending-model-changes
+        working-directory: ./FundRaisingAssignment.Application
       - name: Test
         run: dotnet test --no-build --verbosity normal
+        working-directory: ./FundRaisingAssignment.Application
