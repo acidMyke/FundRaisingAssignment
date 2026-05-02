@@ -18,6 +18,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     // ✅ ADD THIS (Donee table)
     public DbSet<Donee> Donees { get; set; }
 
+    // + ADD: New DbSets for Donations and Goals
+    public DbSet<Donation> Donations { get; set; }
+    public DbSet<DonationGoal> DonationGoals { get; set; }
+
     // -----------------------------
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,6 +39,37 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<IdentityUserLogin<Guid>>(entity => { entity.ToTable("UserLogins"); });
         builder.Entity<IdentityRoleClaim<Guid>>(entity => { entity.ToTable("RoleClaims"); });
         builder.Entity<IdentityUserToken<Guid>>(entity => { entity.ToTable("UserTokens"); });
+
+        // DonationGoal: One row per user (Donee)
+        builder.Entity<DonationGoal>(b =>
+        {
+            b.HasIndex(g => g.UserId).IsUnique();
+
+            b.HasOne(g => g.User)
+             .WithMany()
+             .HasForeignKey(g => g.UserId)
+             .OnDelete(DeleteBehavior.Cascade); // Delete user -> delete their goal
+        });
+
+        // Donation: Foreign keys and performance indexes
+        builder.Entity<Donation>(b =>
+        {
+            b.HasOne(d => d.User)
+             .WithMany()
+             .HasForeignKey(d => d.UserId)
+             .OnDelete(DeleteBehavior.Restrict); // Prevent user deletion if donations exist
+
+            b.HasOne(d => d.Campaign)
+             .WithMany()
+             .HasForeignKey(d => d.CampaignId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes for high-performance reporting/tracking queries
+            b.HasIndex(d => d.UserId);
+            b.HasIndex(d => new { d.UserId, d.CreatedAt });
+        });
+    
+
 
         // -----------------------------
         // ✅ Donee Configuration

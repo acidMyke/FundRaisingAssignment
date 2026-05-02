@@ -1,0 +1,64 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace FundRaisingAssignment.Application.Models;
+
+
+public class DonationGoal
+{
+
+    public int Id { get; set; }
+
+
+ 
+    [Required]
+    public string UserId { get; set; } = string.Empty;
+
+    public ApplicationUser? User { get; set; }
+
+
+
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? BudgetLimit { get; set; }
+
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? TargetAmount { get; set; }
+
+
+    [Required]
+    public GoalPeriod Period { get; set; } = GoalPeriod.Yearly;
+
+    /// <summary>Set on creation, never updated again.</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Updated each time the goal is changed.</summary>
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+
+public enum GoalPeriod
+{
+    Monthly = 0,
+    Quarterly = 1,
+    Yearly = 2,
+    Lifetime = 3
+}
+
+
+public enum BudgetStatus
+{
+    NotSet = 0,        // No budget configured
+    WithinBudget = 1,  // < 80% of budget used
+    NearLimit = 2,     // 80–99% of budget used
+    Reached = 3,       // exactly equal to budget
+    Exceeded = 4       // over budget — alt-flow 12a
+}
+
+public enum TargetStatus
+{
+    NotSet = 0,
+    FarFromTarget = 1, // < 25% reached
+    InProgress = 2,    // 25–74% reached
+    NearTarget = 3,    // 75–99% reached
+    Achieved = 4       // >= target
+}
