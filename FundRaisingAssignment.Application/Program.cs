@@ -9,6 +9,9 @@ using FundRaisingAssignment.Application.Services;   // CampaignService
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml; 
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,11 +102,16 @@ app.MapRazorPages()
 
 using (var scope = app.Services.CreateScope())
 {
+
+    var services = scope.ServiceProvider;
+
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
     dbContext.Database.Migrate();
 
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    
     foreach (var role in ApplicationRole.All)
     {
         if (role.Name != null && !await roleManager.RoleExistsAsync(role.Name))
@@ -111,6 +119,21 @@ using (var scope = app.Services.CreateScope())
             await roleManager.CreateAsync(new ApplicationRole(role.Name));
         }
     }
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+    {
+        await roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
+    }
+
+    // C) Assign Admin role to a specific user
+    // CHANGE THIS EMAIL to your actual registered account email
+    var adminEmail = "admin@example.com"; 
+    var user = await userManager.FindByEmailAsync(adminEmail);
+    if (user is not null && !await userManager.IsInRoleAsync(user, "Admin"))
+    {
+        await userManager.AddToRoleAsync(user, "Admin");
+    }
+
 }
 
 // -----------------------------
