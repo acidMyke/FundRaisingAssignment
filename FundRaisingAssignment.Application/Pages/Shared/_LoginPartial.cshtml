@@ -7,9 +7,20 @@
     @if (SignInManager.IsSignedIn(User))
     {
 
-        <li class="nav-item">
-             <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/Index">My campaigns</a>
-        </li>
+        @if (User.IsInRole(ApplicationRole.Names.Fundraiser))
+        {
+            <li class="nav-item">
+                <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/Index">My campaigns</a>
+            </li>
+        }
+        else if (User.IsInRole(ApplicationRole.Names.PendingFundraiser))
+        {
+            <li class="nav-item">
+                <span class="nav-link text-warning" title="Awaiting admin approval">
+                    Fundraiser application pending
+                </span>
+            </li>
+        }
         <li class="nav-item">
             <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/DonationHistoryPage">My donations</a>
         </li>

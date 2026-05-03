@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
-    [Authorize]
+    [Authorize(Roles = ApplicationRole.Names.Fundraiser)]
     public class CreateCampaignModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager) : PageModel
     {
         private readonly ApplicationDbContext _context = context;

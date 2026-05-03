@@ -91,6 +91,9 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account
             [Display(Name = "Confirm password")]
             [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
             public string ConfirmPassword { get; set; }
+
+            [Display(Name = "Register as Fundraiser")]
+            public bool IsFundraiser { get; set; }
         }
 
 
@@ -115,6 +118,11 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User created a new account with password.");
+
+                    if (Input.IsFundraiser)
+                    {
+                        await _userManager.AddToRoleAsync(user, ApplicationRole.Names.PendingFundraiser);
+                    }
 
                     var userId = await _userManager.GetUserIdAsync(user);
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
-    [Authorize]
+    [Authorize(Roles = ApplicationRole.Names.Fundraiser)]
     public class IndexModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager) : PageModel
     {
         private readonly ApplicationDbContext _context = context;
