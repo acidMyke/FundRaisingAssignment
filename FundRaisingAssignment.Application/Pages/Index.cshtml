@@ -1,9 +1,157 @@
-﻿@page
+@page
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<!-- ===================== Hero ===================== -->
+<section class="py-5 mb-5 bg-light rounded-3 border">
+    <div class="container py-4">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <small class="text-uppercase text-success fw-semibold">Givvn &middot; Fundraising platform</small>
+                <h1 class="display-5 fw-bold mt-2 mb-3">
+                    Fund the causes you care about.
+                </h1>
+                <p class="lead text-muted mb-4">
+                    Discover live campaigns, donate in seconds, and track every dollar you give.
+                    Run your own fundraiser with budgets, targets, and real-time progress.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-success btn-lg px-4" asp-area="Campaigns" asp-action="Index">
+                        Browse campaigns
+                    </a>
+                    <a class="btn btn-outline-success btn-lg px-4" asp-area="Dashboard" asp-action="Index">
+                        Start a campaign
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="bg-white border rounded-3 shadow-sm p-4">
+                    <small class="text-uppercase text-muted fw-semibold">Platform impact</small>
+                    <div class="row g-3 mt-1">
+                        <div class="col-6">
+                            <div class="border-start border-success border-3 ps-3">
+                                <div class="fs-4 fw-bold">100%</div>
+                                <small class="text-muted">Transparent giving</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border-start border-success border-3 ps-3">
+                                <div class="fs-4 fw-bold">0%</div>
+                                <small class="text-muted">Platform fees</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border-start border-success border-3 ps-3">
+                                <div class="fs-4 fw-bold">Live</div>
+                                <small class="text-muted">Progress tracking</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border-start border-success border-3 ps-3">
+                                <div class="fs-4 fw-bold">Verified</div>
+                                <small class="text-muted">Campaign owners</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== How it works ===================== -->
+<section class="container mb-5">
+    <div class="text-center mb-4">
+        <small class="text-uppercase text-muted fw-semibold">How it works</small>
+        <h2 class="mt-2">Three steps from cause to community</h2>
+    </div>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="rounded-circle bg-success-subtle text-success fw-bold d-inline-flex align-items-center justify-content-center mb-3"
+                         style="width:40px; height:40px;">1</div>
+                    <h5 class="card-title">Discover</h5>
+                    <p class="text-muted mb-0">
+                        Explore active campaigns by status, recency, or amount raised.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="rounded-circle bg-success-subtle text-success fw-bold d-inline-flex align-items-center justify-content-center mb-3"
+                         style="width:40px; height:40px;">2</div>
+                    <h5 class="card-title">Donate</h5>
+                    <p class="text-muted mb-0">
+                        Give to a cause directly &mdash; set a personal budget so your generosity stays sustainable.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="rounded-circle bg-success-subtle text-success fw-bold d-inline-flex align-items-center justify-content-center mb-3"
+                         style="width:40px; height:40px;">3</div>
+                    <h5 class="card-title">Track</h5>
+                    <p class="text-muted mb-0">
+                        Watch your impact grow with live donation totals and progress toward each goal.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== Two-up: donors / fundraisers ===================== -->
+<section class="container mb-5">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <small class="text-uppercase text-success fw-semibold">For donors</small>
+                    <h3 class="mt-2">Give with intention</h3>
+                    <p class="text-muted">
+                        Set a yearly, quarterly, or monthly budget and target. We'll track every donation
+                        you make and show how close you are to your goal.
+                    </p>
+                    <a class="btn btn-success" asp-area="" asp-page="/MyBudget">
+                        Set my donation budget
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <small class="text-uppercase text-success fw-semibold">For fundraisers</small>
+                    <h3 class="mt-2">Launch your campaign</h3>
+                    <p class="text-muted">
+                        Tell your story, set a goal, and share your campaign with the world.
+                        Manage everything from one dashboard.
+                    </p>
+                    <a class="btn btn-outline-success" asp-area="Dashboard" asp-action="Index">
+                        Go to my dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== Closing CTA ===================== -->
+<section class="container mb-5">
+    <div class="bg-success text-white rounded-3 p-5 text-center">
+        <h3 class="mb-2">Ready to make a difference?</h3>
+        <p class="mb-4 opacity-75">Join donors and fundraisers building real impact, one campaign at a time.</p>
+        <a class="btn btn-light btn-lg px-4 me-2" asp-area="Campaigns" asp-action="Index">
+            Browse campaigns
+        </a>
+        <a class="btn btn-outline-light btn-lg px-4" asp-area="Identity" asp-page="/Account/Register">
+            Create an account
+        </a>
+    </div>
+</section>
