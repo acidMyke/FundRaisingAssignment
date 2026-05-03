@@ -59,18 +59,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .OnDelete(DeleteBehavior.Restrict); // Restricted to prevent accidental data loss
 
             // Relationship with Donor (ApplicationUser)
-            b.HasOne(d => d.Donor)
+            b.HasOne(d => d.User)
              .WithMany()
-             .HasForeignKey(d => d.DonorId)
+             .HasForeignKey(d => d.UserId)
              .OnDelete(DeleteBehavior.Restrict);
 
             // Performance Indexes
             b.HasIndex(d => d.CampaignId);
-            b.HasIndex(d => d.DonorId);
-            b.HasIndex(d => d.DonatedAt);
+            b.HasIndex(d => d.UserId);
+            b.HasIndex(d => d.CreatedAt);
             
             // Composite index for reporting: Who donated and when?
-            b.HasIndex(d => new { d.DonorId, d.DonatedAt });
+            b.HasIndex(d => new { d.UserId, d.CreatedAt });
         });
 
         // -----------------------------

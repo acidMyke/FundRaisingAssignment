@@ -43,7 +43,7 @@ namespace FundRaisingAssignment.Application.Controllers
             string? Message,
             bool IsAnonymous,
             string Status,
-            DateTime DonatedAt);
+            DateTime CreatedAt);
 
         [HttpPost]
         [ProducesResponseType(typeof(DonationResponse), StatusCodes.Status201Created)]
@@ -58,8 +58,8 @@ namespace FundRaisingAssignment.Application.Controllers
                 return ValidationProblem(ModelState);
 
             // 1. Resolve donor from authenticated identity
-            var donorIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(donorIdRaw, out var donorId))
+            var userIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdRaw, out var userId))
                 return Unauthorized();
 
             // 2. Load campaign
@@ -84,12 +84,12 @@ namespace FundRaisingAssignment.Application.Controllers
                 {
                     Id = Guid.NewGuid(),
                     CampaignId = campaign.Id,
-                    DonorId = donorId,
+                    UserId = userId,
                     Amount = request.Amount,
                     Message = request.Message,
                     IsAnonymous = request.IsAnonymous,
                     Status = DonationStatus.Completed, // simulate successful payment
-                    DonatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 await _context.Donations.AddAsync(donation, ct);
@@ -111,7 +111,7 @@ namespace FundRaisingAssignment.Application.Controllers
 
                 _logger.LogInformation(
                     "Donation {DonationId} of {Amount} recorded for campaign {CampaignId} by donor {DonorId}.",
-                    donation.Id, donation.Amount, campaign.Id, donorId);
+                    donation.Id, donation.Amount, campaign.Id, userId);
 
                 var response = new DonationResponse(
                     donation.Id,
@@ -121,7 +121,7 @@ namespace FundRaisingAssignment.Application.Controllers
                     donation.Message,
                     donation.IsAnonymous,
                     donation.Status.ToString(),
-                    donation.DonatedAt);
+                    donation.CreatedAt);
 
                 return CreatedAtAction(nameof(GetDonation), new { id = donation.Id }, response);
             }
@@ -129,8 +129,8 @@ namespace FundRaisingAssignment.Application.Controllers
             {
                 await tx.RollbackAsync(ct);
                 _logger.LogError(ex,
-                    "Failed to process donation for campaign {CampaignId} by donor {DonorId}.",
-                    request.CampaignId, donorId);
+                    "Failed to process donation for campaign {CampaignId} by user {UserId}.",
+                    request.CampaignId, userId);
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { error = "An unexpected error occurred while processing the donation." });
             }

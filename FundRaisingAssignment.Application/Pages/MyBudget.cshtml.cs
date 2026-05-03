@@ -42,8 +42,9 @@ public class MyBudgetModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        var userId = _userManager.GetUserId(User);
-        if (userId is null) return Challenge();   // [Authorize] should prevent this, but defence in depth
+        var userIdStr = _userManager.GetUserId(User);
+        if (userIdStr is null) return Challenge();   // [Authorize] should prevent this, but defence in depth
+        var userId = Guid.Parse(userIdStr);
 
         // Pre-fill the form with the donee's currently-saved goal (if any).
         var goal = await _db.DonationGoals
@@ -64,8 +65,9 @@ public class MyBudgetModel : PageModel
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
-        var userId = _userManager.GetUserId(User);
-        if (userId is null) return Challenge();
+        var userIdStr = _userManager.GetUserId(User);
+        if (userIdStr is null) return Challenge();
+        var userId = Guid.Parse(userIdStr);
 
 
         if (Input.BudgetLimit is < 0)
@@ -119,8 +121,9 @@ public class MyBudgetModel : PageModel
 
     public async Task<IActionResult> OnPostClearAsync()
     {
-        var userId = _userManager.GetUserId(User);
-        if (userId is null) return Challenge();
+        var userIdStr = _userManager.GetUserId(User);
+        if (userIdStr is null) return Challenge();
+        var userId = Guid.Parse(userIdStr);
 
         var goal = await _db.DonationGoals
             .FirstOrDefaultAsync(g => g.UserId == userId);
@@ -137,18 +140,17 @@ public class MyBudgetModel : PageModel
     }
 
 
-    private async Task ComputeStatusAsync(string userId)
+    private async Task ComputeStatusAsync(Guid userId)
     {
-        
+
         var goal = await _db.DonationGoals
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId);
 
-      
+
         var period = goal?.Period ?? GoalPeriod.Lifetime;
         var (start, end) = ComputePeriodWindow(period, DateTime.UtcNow);
 
-        
         var query = _db.Donations.AsNoTracking()
             .Where(d => d.UserId == userId);
 

@@ -13,8 +13,8 @@ namespace FundRaisingAssignment.Application.Models
         public Campaign? Campaign { get; set; }
 
         [Required]
-        public Guid DonorId { get; set; }
-        public ApplicationUser? Donor { get; set; }
+        public Guid UserId { get; set; }
+        public ApplicationUser? User { get; set; }
 
         [Required]
         [Column(TypeName = "numeric(18,2)")]
@@ -29,6 +29,6 @@ namespace FundRaisingAssignment.Application.Models
         [Required]
         public DonationStatus Status { get; set; } = DonationStatus.Pending;
 
-        public DateTime DonatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

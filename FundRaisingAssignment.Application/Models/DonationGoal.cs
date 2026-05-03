@@ -12,7 +12,7 @@ public class DonationGoal
 
  
     [Required]
-    public string UserId { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
 
     public ApplicationUser? User { get; set; }
 
