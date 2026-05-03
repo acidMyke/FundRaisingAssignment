@@ -17,8 +17,9 @@
     <!-- Sidebar Navigation -->
     <nav class="internal-sidebar">
         <a class="brand" asp-area="Internal" asp-controller="InternalPortal" asp-action="Index">Admin</a>
-        <!-- TODO: Navigations for internal functions -->
         <div class="nav flex-column">
+            <a class="nav-link" asp-area="Internal" asp-page="/Index">Dashboard</a>
+            <a class="nav-link" asp-area="Internal" asp-page="/Reports">Reports</a>
             <hr class="border-secondary my-3">
             <a class="nav-link text-warning" asp-area="" asp-controller="Home" asp-action="Index">
                 &larr; Back to Public Site

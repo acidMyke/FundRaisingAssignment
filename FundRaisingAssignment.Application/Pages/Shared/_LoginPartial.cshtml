@@ -13,6 +13,9 @@
         <li class="nav-item">
             <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/DonationHistoryPage">My donations</a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="" asp-page="/MyBudget">My budget</a>
+        </li>
         @if (User.IsInRole(ApplicationRole.Names.Admin))
         {
             <li class="nav-item">

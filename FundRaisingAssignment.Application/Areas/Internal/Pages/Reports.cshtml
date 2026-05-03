@@ -1,468 +1,280 @@
-using System.Globalization;
-using System.Reflection;
-using System.Text;
-using FundRaisingAssignment.Application.Data;
-using FundRaisingAssignment.Application.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
-using OfficeOpenXml;
-using OfficeOpenXml.Style;
+@page
+@using FundRaisingAssignment.Application.Models
+@model FundRaisingAssignment.Application.Areas.Internal.Pages.ReportsModel
+@{
+    ViewData["Title"] = "Platform reports";
+}
 
-namespace FundRaisingAssignment.Application.Areas.Internal.Pages;
+@*
+    Page bound to ReportsModel.
+    Three handlers driven from this form:
+        Preview → OnPostPreviewAsync   (renders PreviewReport on screen)
+        Export  → OnPostExportAsync    (returns CSV / XLSX file)
+*@
 
-[Authorize(Roles = AdminRole)]
-public class ReportsModel : PageModel
-{
- constant if your seeded admin role uses a different name.
-    
-    public const string AdminRole = "Admin";
+<div class="container-fluid py-3">
 
-    private readonly ApplicationDbContext _db;
-    private readonly ILogger<ReportsModel> _logger;
+    <!-- ===================== Header ===================== -->
+    <div class="d-flex justify-content-between align-items-end mb-4 pb-3 border-bottom">
+        <div>
+            <small class="text-uppercase text-muted fw-semibold">User Admin</small>
+            <h2 class="mt-2 mb-1">Platform performance &amp; financial reports</h2>
+            <p class="text-muted mb-0">
+                Aggregate campaign and donation activity over a date range, then export as CSV or Excel.
+            </p>
+        </div>
+    </div>
 
-  
-    private static bool _epplusLicenseInitialised;
-    private static readonly object _epplusLock = new();
-
-    public ReportsModel(ApplicationDbContext db, ILogger<ReportsModel> logger)
+    <!-- ===================== Flash message ===================== -->
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
     {
-        _db = db;
-        _logger = logger;
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     }
 
-    // -------- Properties bound to the page --------
+    <div class="row g-4">
 
-    [BindProperty]
-    public ReportInputModel Input { get; set; } = new();
+        <!-- ===================== Left: filters form ===================== -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom-0 pt-3">
+                    <h5 class="mb-0">Report range</h5>
+                </div>
+                <div class="card-body">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
-   
-    public PlatformReport? PreviewReport { get; private set; }
+                    <form method="post">
+                        <!-- Start date -->
+                        <div class="mb-3">
+                            <label asp-for="Input.StartDate" class="form-label fw-medium"></label>
+                            <input asp-for="Input.StartDate" type="date" class="form-control" />
+                            <span asp-validation-for="Input.StartDate" class="text-danger small"></span>
+                        </div>
 
-  
-    [TempData]
-    public string? StatusMessage { get; set; }
+                        <!-- End date -->
+                        <div class="mb-3">
+                            <label asp-for="Input.EndDate" class="form-label fw-medium"></label>
+                            <input asp-for="Input.EndDate" type="date" class="form-control" />
+                            <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
+                            <div class="form-text">End date is inclusive (whole day counted).</div>
+                        </div>
 
-    // ======================================================================
-    //  GET — empty form
-    // ======================================================================
-    public IActionResult OnGet() => Page();
+                        <!-- Format -->
+                        <div class="mb-4">
+                            <label asp-for="Input.Format" class="form-label fw-medium"></label>
+                            <select asp-for="Input.Format"
+                                    asp-items="Html.GetEnumSelectList<ExportFormat>()"
+                                    class="form-select"></select>
+                            <div class="form-text">Used by the Export button only.</div>
+                        </div>
 
-    // ======================================================================
-    //  POST ?handler=Preview
-    // ======================================================================
-    public async Task<IActionResult> OnPostPreviewAsync()
-    {
-        if (!ModelState.IsValid) return Page();
+                        <!-- Action buttons (different page handlers) -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" asp-page-handler="Preview" class="btn btn-primary">
+                                Preview report
+                            </button>
+                            <button type="submit" asp-page-handler="Export" class="btn btn-success">
+                                Export
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
-        try
-        {
-            PreviewReport = await GenerateReportAsync(Input.StartDate, Input.EndDate);
-            return Page();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Report preview failed");
-            StatusMessage = "Couldn't generate the report — please try again.";
-            return Page();
-        }
-    }
-
-    // ======================================================================
-    //  POST ?handler=Export
-    // ======================================================================
-    public async Task<IActionResult> OnPostExportAsync()
-    {
-        if (!ModelState.IsValid) return Page();
-
-        try
-        {
-            var report = await GenerateReportAsync(Input.StartDate, Input.EndDate);
-            var stamp  = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-
-            return Input.Format switch
+        <!-- ===================== Right: preview ===================== -->
+        <div class="col-lg-8">
+            @if (Model.PreviewReport is null)
             {
-                ExportFormat.Csv => File(
-                    fileContents:     ExportToCsv(report),
-                    contentType:      "text/csv",
-                    fileDownloadName: $"platform-report-{stamp}.csv"),
-
-                ExportFormat.Xlsx => File(
-                    fileContents:     ExportToXlsx(report),
-                    contentType:      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    fileDownloadName: $"platform-report-{stamp}.xlsx"),
-
-                _ => BadRequest("Unsupported format."),
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Report export failed");
-            StatusMessage = "Export failed — please try again.";
-            return Page();
-        }
-    }
-
-    // ======================================================================
-    //  AGGREGATION
-    // ======================================================================
-    private async Task<PlatformReport> GenerateReportAsync(DateTime start, DateTime end)
-    {
-        // Treat end-date as inclusive (whole day), so use exclusive next-midnight cutoff.
-        var startUtc = DateTime.SpecifyKind(start.Date,          DateTimeKind.Utc);
-        var endUtc   = DateTime.SpecifyKind(end.Date.AddDays(1), DateTimeKind.Utc);
-
-        var campaignsQ = _db.Campaigns.AsNoTracking();
-        var donationsQ = _db.Donations.AsNoTracking()
-            .Where(d => d.CreatedAt >= startUtc && d.CreatedAt < endUtc);
-
-        // ---- Headline numbers ----
-        var totalCampaigns       = await campaignsQ.CountAsync();
-        var newCampaignsInPeriod = await campaignsQ
-            .CountAsync(c => c.CreatedAt >= startUtc && c.CreatedAt < endUtc);
-
-        var donationCount = await donationsQ.CountAsync();
-        var totalRaised   = await donationsQ.SumAsync(d => (decimal?)d.Amount) ?? 0m;
-        var largest       = await donationsQ.MaxAsync(d => (decimal?)d.Amount) ?? 0m;
-        var uniqueDonors  = await donationsQ.Select(d => d.UserId).Distinct().CountAsync();
-        var avg           = donationCount > 0 ? Math.Round(totalRaised / donationCount, 2) : 0m;
-
-        // ---- By campaign status ----
-        var donationsByStatus = await (
-            from d in donationsQ
-            join c in campaignsQ on d.CampaignId equals c.Id
-            group d by c.Status into g
-            select new
-            {
-                Status        = g.Key,
-                DonationCount = g.Count(),
-                TotalRaised   = g.Sum(x => x.Amount),
+                <div class="card shadow-sm">
+                    <div class="card-body text-center text-muted py-5">
+                        <p class="mb-1">No preview yet.</p>
+                        <p class="small mb-0">Choose a date range and click <strong>Preview report</strong>.</p>
+                    </div>
+                </div>
             }
-        ).ToListAsync();
-
-        var campaignsByStatus = await campaignsQ
-            .GroupBy(c => c.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync();
-
-        var byStatus = campaignsByStatus
-            .Select(cs =>
+            else
             {
-                var dStat = donationsByStatus.FirstOrDefault(x => Equals(x.Status, cs.Status));
-                return new CampaignStatusStat
-                {
-                    Status        = cs.Status.ToString() ?? "Unknown",
-                    CampaignCount = cs.Count,
-                    DonationCount = dStat?.DonationCount ?? 0,
-                    TotalRaised   = dStat?.TotalRaised   ?? 0m,
-                };
-            })
-            .OrderByDescending(s => s.TotalRaised)
-            .ToList();
+                var r = Model.PreviewReport;
 
-        // ---- Daily totals ----
-        var daily = await donationsQ
-            .GroupBy(d => d.CreatedAt.Date)
-            .Select(g => new DailyStat
-            {
-                Date          = g.Key,
-                DonationCount = g.Count(),
-                TotalRaised   = g.Sum(d => d.Amount),
-            })
-            .OrderBy(d => d.Date)
-            .ToListAsync();
+                <!-- Summary -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <small class="text-uppercase text-muted fw-semibold">Summary</small>
+                                <h5 class="mt-1 mb-0">
+                                    @r.StartDate.ToString("d MMM yyyy") &ndash; @r.EndDate.ToString("d MMM yyyy")
+                                </h5>
+                            </div>
+                            <small class="text-muted">
+                                Generated @r.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC
+                            </small>
+                        </div>
 
-        // ---- Top campaigns ----
-        var top = await (
-            from d in donationsQ
-            join c in campaignsQ on d.CampaignId equals c.Id
-            group new { d, c } by new { c.Id, c.Title, c.Status } into g
-            orderby g.Sum(x => x.d.Amount) descending
-            select new TopCampaignStat
-            {
-                CampaignId    = g.Key.Id,
-                Title         = g.Key.Title,
-                Status        = g.Key.Status.ToString() ?? "Unknown",
-                DonationCount = g.Count(),
-                TotalRaised   = g.Sum(x => x.d.Amount),
+                        <div class="row g-3">
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">Total raised</small>
+                                    <strong class="fs-5">@r.TotalRaised.ToString("C")</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">Donations</small>
+                                    <strong class="fs-5">@r.TotalDonations.ToString("N0")</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">Unique donors</small>
+                                    <strong class="fs-5">@r.UniqueDonors.ToString("N0")</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">Avg donation</small>
+                                    <strong class="fs-5">@r.AverageDonation.ToString("C")</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">Largest donation</small>
+                                    <strong class="fs-5">@r.LargestDonation.ToString("C")</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">Total campaigns</small>
+                                    <strong class="fs-5">@r.TotalCampaigns.ToString("N0")</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-3 h-100">
+                                    <small class="text-muted d-block">New in period</small>
+                                    <strong class="fs-5">@r.NewCampaignsInPeriod.ToString("N0")</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- By status -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">By campaign status</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Status</th>
+                                    <th class="text-end">Campaigns</th>
+                                    <th class="text-end">Donations</th>
+                                    <th class="text-end">Total raised</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.ByStatus.Count == 0)
+                                {
+                                    <tr><td colspan="4" class="text-center text-muted">No data.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var s in r.ByStatus)
+                                    {
+                                        <tr>
+                                            <td>@s.Status</td>
+                                            <td class="text-end">@s.CampaignCount.ToString("N0")</td>
+                                            <td class="text-end">@s.DonationCount.ToString("N0")</td>
+                                            <td class="text-end">@s.TotalRaised.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top campaigns -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">Top campaigns (by raised)</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Campaign</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Donations</th>
+                                    <th class="text-end">Total raised</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.TopCampaigns.Count == 0)
+                                {
+                                    <tr><td colspan="4" class="text-center text-muted">No donations in range.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var t in r.TopCampaigns)
+                                    {
+                                        <tr>
+                                            <td>@t.Title</td>
+                                            <td><span class="badge bg-light text-dark">@t.Status</span></td>
+                                            <td class="text-end">@t.DonationCount.ToString("N0")</td>
+                                            <td class="text-end">@t.TotalRaised.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Daily totals -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Daily totals</h6>
+                        <small class="text-muted">@r.DailyTotals.Count day(s) with activity</small>
+                    </div>
+                    <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Date</th>
+                                    <th class="text-end">Donations</th>
+                                    <th class="text-end">Total raised</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.DailyTotals.Count == 0)
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted">No donations in range.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var d in r.DailyTotals)
+                                    {
+                                        <tr>
+                                            <td>@d.Date.ToString("yyyy-MM-dd")</td>
+                                            <td class="text-end">@d.DonationCount.ToString("N0")</td>
+                                            <td class="text-end">@d.TotalRaised.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             }
-        ).Take(20).ToListAsync();
+        </div>
+    </div>
+</div>
 
-        var report = new PlatformReport
-        {
-            StartDate            = start,
-            EndDate              = end,
-            TotalCampaigns       = totalCampaigns,
-            NewCampaignsInPeriod = newCampaignsInPeriod,
-            TotalDonations       = donationCount,
-            TotalRaised          = totalRaised,
-            UniqueDonors         = uniqueDonors,
-            AverageDonation      = avg,
-            LargestDonation      = largest,
-            ByStatus             = byStatus,
-            DailyTotals          = daily,
-            TopCampaigns         = top,
-        };
-
-        _logger.LogInformation(
-            "Generated report {Start:d}–{End:d}: {Donations} donations, total {Total:C}",
-            start, end, donationCount, totalRaised);
-
-        return report;
-    }
-
-    // ======================================================================
-    //  CSV EXPORT  (Karthik's Step 10a)
-    // ======================================================================
-    private static byte[] ExportToCsv(PlatformReport r)
-    {
-        var sb = new StringBuilder();
-        var inv = CultureInfo.InvariantCulture;
-
-        WriteRow(sb, "Givvn Platform Report");
-        WriteRow(sb, $"Period: {r.StartDate:yyyy-MM-dd} to {r.EndDate:yyyy-MM-dd}");
-        WriteRow(sb, $"Generated: {r.GeneratedAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
-        sb.AppendLine();
-
-        WriteRow(sb, "SUMMARY");
-        WriteRow(sb, "Metric", "Value");
-        WriteRow(sb, "Total Campaigns",          r.TotalCampaigns.ToString(inv));
-        WriteRow(sb, "New Campaigns in Period",  r.NewCampaignsInPeriod.ToString(inv));
-        WriteRow(sb, "Total Donations",          r.TotalDonations.ToString(inv));
-        WriteRow(sb, "Total Raised",             r.TotalRaised.ToString("F2", inv));
-        WriteRow(sb, "Unique Donors",            r.UniqueDonors.ToString(inv));
-        WriteRow(sb, "Average Donation",         r.AverageDonation.ToString("F2", inv));
-        WriteRow(sb, "Largest Donation",         r.LargestDonation.ToString("F2", inv));
-        sb.AppendLine();
-
-        WriteRow(sb, "BY STATUS");
-        WriteRow(sb, "Status", "Campaigns", "Donations", "Total Raised");
-        foreach (var s in r.ByStatus)
-            WriteRow(sb, s.Status,
-                          s.CampaignCount.ToString(inv),
-                          s.DonationCount.ToString(inv),
-                          s.TotalRaised.ToString("F2", inv));
-        sb.AppendLine();
-
-        WriteRow(sb, "DAILY TOTALS");
-        WriteRow(sb, "Date", "Donations", "Total Raised");
-        foreach (var d in r.DailyTotals)
-            WriteRow(sb, d.Date.ToString("yyyy-MM-dd"),
-                          d.DonationCount.ToString(inv),
-                          d.TotalRaised.ToString("F2", inv));
-        sb.AppendLine();
-
-        WriteRow(sb, "TOP CAMPAIGNS");
-        WriteRow(sb, "Campaign ID", "Title", "Status", "Donations", "Total Raised");
-        foreach (var t in r.TopCampaigns)
-            WriteRow(sb, t.CampaignId.ToString(inv),
-                          t.Title,
-                          t.Status,
-                          t.DonationCount.ToString(inv),
-                          t.TotalRaised.ToString("F2", inv));
-
-        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(sb.ToString());
-    }
-
-    private static void WriteRow(StringBuilder sb, params string[] cells)
-    {
-        for (int i = 0; i < cells.Length; i++)
-        {
-            if (i > 0) sb.Append(',');
-            sb.Append(EscapeCsv(cells[i]));
-        }
-        sb.Append("\r\n");
-    }
-
-    private static string EscapeCsv(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return "";
-        bool needsQuotes = value.IndexOfAny(new[] { ',', '"', '\r', '\n' }) >= 0;
-        if (!needsQuotes) return value;
-        return "\"" + value.Replace("\"", "\"\"") + "\"";
-    }
-
-    // ======================================================================
-    //  XLSX EXPORT  (Karthik's Step 11a) — uses EPPlus
-    // ======================================================================
-    private static byte[] ExportToXlsx(PlatformReport r)
-    {
-        EnsureEpplusLicense();
-
-        using var pkg = new ExcelPackage();
-
-        // ---- Sheet 1: Summary --------------------------------------------
-        var s1 = pkg.Workbook.Worksheets.Add("Summary");
-
-        s1.Cells["A1"].Value           = "Givvn Platform Report";
-        s1.Cells["A1"].Style.Font.Size = 16;
-        s1.Cells["A1"].Style.Font.Bold = true;
-        s1.Cells["A2"].Value           = $"Period: {r.StartDate:yyyy-MM-dd} -> {r.EndDate:yyyy-MM-dd}";
-        s1.Cells["A3"].Value           = $"Generated: {r.GeneratedAtUtc:yyyy-MM-dd HH:mm} UTC";
-
-        s1.Cells["A5"].Value = "Metric";
-        s1.Cells["B5"].Value = "Value";
-        StyleHeader(s1.Cells["A5:B5"]);
-
-        var rows = new (string Label, object Value, string? Fmt)[]
-        {
-            ("Total Campaigns",         r.TotalCampaigns,        "#,##0"),
-            ("New Campaigns in Period", r.NewCampaignsInPeriod,  "#,##0"),
-            ("Total Donations",         r.TotalDonations,        "#,##0"),
-            ("Total Raised",            r.TotalRaised,           "$#,##0.00"),
-            ("Unique Donors",           r.UniqueDonors,          "#,##0"),
-            ("Average Donation",        r.AverageDonation,       "$#,##0.00"),
-            ("Largest Donation",        r.LargestDonation,       "$#,##0.00"),
-        };
-
-        for (int i = 0; i < rows.Length; i++)
-        {
-            var row = i + 6;
-            s1.Cells[row, 1].Value = rows[i].Label;
-            s1.Cells[row, 2].Value = rows[i].Value;
-            if (rows[i].Fmt is not null)
-                s1.Cells[row, 2].Style.Numberformat.Format = rows[i].Fmt;
-        }
-        s1.Cells.AutoFitColumns();
-
-        // ---- Sheet 2: By Status ------------------------------------------
-        var s2 = pkg.Workbook.Worksheets.Add("By Status");
-        WriteSheetHeader(s2, "Status", "Campaigns", "Donations", "Total Raised");
-
-        for (int i = 0; i < r.ByStatus.Count; i++)
-        {
-            var row = i + 2;
-            var x = r.ByStatus[i];
-            s2.Cells[row, 1].Value = x.Status;
-            s2.Cells[row, 2].Value = x.CampaignCount;
-            s2.Cells[row, 3].Value = x.DonationCount;
-            s2.Cells[row, 4].Value = x.TotalRaised;
-            s2.Cells[row, 4].Style.Numberformat.Format = "$#,##0.00";
-        }
-        s2.Cells.AutoFitColumns();
-
-        // ---- Sheet 3: Daily Totals ---------------------------------------
-        var s3 = pkg.Workbook.Worksheets.Add("Daily Totals");
-        WriteSheetHeader(s3, "Date", "Donations", "Total Raised");
-
-        for (int i = 0; i < r.DailyTotals.Count; i++)
-        {
-            var row = i + 2;
-            var d = r.DailyTotals[i];
-            s3.Cells[row, 1].Value = d.Date;
-            s3.Cells[row, 1].Style.Numberformat.Format = "yyyy-mm-dd";
-            s3.Cells[row, 2].Value = d.DonationCount;
-            s3.Cells[row, 3].Value = d.TotalRaised;
-            s3.Cells[row, 3].Style.Numberformat.Format = "$#,##0.00";
-        }
-        s3.Cells.AutoFitColumns();
-
-        // ---- Sheet 4: Top Campaigns --------------------------------------
-        var s4 = pkg.Workbook.Worksheets.Add("Top Campaigns");
-        WriteSheetHeader(s4, "Campaign ID", "Title", "Status", "Donations", "Total Raised");
-
-        for (int i = 0; i < r.TopCampaigns.Count; i++)
-        {
-            var row = i + 2;
-            var t = r.TopCampaigns[i];
-            s4.Cells[row, 1].Value = t.CampaignId;
-            s4.Cells[row, 2].Value = t.Title;
-            s4.Cells[row, 3].Value = t.Status;
-            s4.Cells[row, 4].Value = t.DonationCount;
-            s4.Cells[row, 5].Value = t.TotalRaised;
-            s4.Cells[row, 5].Style.Numberformat.Format = "$#,##0.00";
-        }
-        s4.Cells.AutoFitColumns();
-
-        return pkg.GetAsByteArray();
-    }
-
-    private static void WriteSheetHeader(ExcelWorksheet sheet, params string[] headers)
-    {
-        for (int i = 0; i < headers.Length; i++)
-            sheet.Cells[1, i + 1].Value = headers[i];
-
-        StyleHeader(sheet.Cells[1, 1, 1, headers.Length]);
-        sheet.View.FreezePanes(2, 1);
-    }
-
-    private static void StyleHeader(ExcelRange range)
-    {
-        range.Style.Font.Bold = true;
-        range.Style.Fill.PatternType = ExcelFillStyle.Solid;
-        range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(230, 237, 233));
-    }
-
-    // ======================================================================
-    //  EPPlus license — works on EPPlus 5/6/7 AND 8+
-    // ======================================================================
-    /// <summary>
-    /// EPPlus 5–7 used a static enum property: ExcelPackage.LicenseContext
-    /// EPPlus 8+ replaced it with a static License object that has methods
-    /// like SetNonCommercialPersonal(name) / SetNonCommercialOrganization(name).
-    ///
-    /// To stay compatible with whichever version is installed without changing
-    /// any project file, we use reflection to find whichever API exists and
-    /// call it. Runs once per app lifetime (guarded by a flag).
-    /// </summary>
-    private static void EnsureEpplusLicense()
-    {
-        if (_epplusLicenseInitialised) return;
-
-        lock (_epplusLock)
-        {
-            if (_epplusLicenseInitialised) return;
-
-            var packageType = typeof(ExcelPackage);
-
-            // ---- Try EPPlus 8+ style first: ExcelPackage.License.SetNonCommercialPersonal("...") ----
-            var licenseProp = packageType.GetProperty("License",
-                BindingFlags.Public | BindingFlags.Static);
-
-            if (licenseProp is not null)
-            {
-                var licenseObj = licenseProp.GetValue(null);
-                if (licenseObj is not null)
-                {
-                    // Try the personal variant first, then organisation.
-                    var setPersonal = licenseObj.GetType().GetMethod("SetNonCommercialPersonal",
-                        new[] { typeof(string) });
-                    if (setPersonal is not null)
-                    {
-                        setPersonal.Invoke(licenseObj, new object[] { "FundRaisingAssignment" });
-                        _epplusLicenseInitialised = true;
-                        return;
-                    }
-
-                    var setOrg = licenseObj.GetType().GetMethod("SetNonCommercialOrganization",
-                        new[] { typeof(string) });
-                    if (setOrg is not null)
-                    {
-                        setOrg.Invoke(licenseObj, new object[] { "FundRaisingAssignment" });
-                        _epplusLicenseInitialised = true;
-                        return;
-                    }
-                }
-            }
-
-            // ---- Fall back to EPPlus 5–7 style: ExcelPackage.LicenseContext = LicenseContext.NonCommercial ----
-            var ctxProp = packageType.GetProperty("LicenseContext",
-                BindingFlags.Public | BindingFlags.Static);
-
-            if (ctxProp is not null && ctxProp.PropertyType.IsEnum)
-            {
-                // Look up the "NonCommercial" enum value at runtime.
-                var noncommercialValue = Enum.Parse(ctxProp.PropertyType, "NonCommercial");
-                ctxProp.SetValue(null, noncommercialValue);
-                _epplusLicenseInitialised = true;
-                return;
-            }
-
-            // If neither API exists, EPPlus is broken or a brand-new version.
-            // Mark initialised to avoid retry storms; ExcelPackage construction
-            // will surface its own error if one is needed.
-            _epplusLicenseInitialised = true;
-        }
-    }
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 }
