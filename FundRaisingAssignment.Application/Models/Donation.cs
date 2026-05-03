@@ -1,24 +1,34 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace FundRaisingAssignment.Application.Models;
-
-
-public class Donation
+namespace FundRaisingAssignment.Application.Models
 {
-    public int Id { get; set; }
+    [Table("Donations")]
+    public class Donation
+    {
+        public Guid Id { get; set; }
 
-    [Required]
-    public string UserId { get; set; } = string.Empty;
+        [Required]
+        public Guid CampaignId { get; set; }
+        public Campaign? Campaign { get; set; }
 
-    public ApplicationUser? User { get; set; }
+        [Required]
+        public Guid DonorId { get; set; }
+        public ApplicationUser? Donor { get; set; }
 
-    public int CampaignId { get; set; }
+        [Required]
+        [Column(TypeName = "numeric(18,2)")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0.")]
+        public decimal Amount { get; set; }
 
-    public Campaign? Campaign { get; set; }
+        [StringLength(500)]
+        public string? Message { get; set; }
 
-    [Column(TypeName = "numeric(12,2)")]
-    public decimal Amount { get; set; }
+        public bool IsAnonymous { get; set; } = false;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Required]
+        public DonationStatus Status { get; set; } = DonationStatus.Pending;
+
+        public DateTime DonatedAt { get; set; } = DateTime.UtcNow;
+    }
 }

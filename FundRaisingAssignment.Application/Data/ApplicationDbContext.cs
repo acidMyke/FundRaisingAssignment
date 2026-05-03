@@ -17,8 +17,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     // ✅ ADD THIS (Donee table)
     public DbSet<Donee> Donees { get; set; }
-
-    // + ADD: New DbSets for Donations and Goals
     public DbSet<Donation> Donations { get; set; }
     public DbSet<DonationGoal> DonationGoals { get; set; }
 
@@ -54,22 +52,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // Donation: Foreign keys and performance indexes
         builder.Entity<Donation>(b =>
         {
-            b.HasOne(d => d.User)
-             .WithMany()
-             .HasForeignKey(d => d.UserId)
-             .OnDelete(DeleteBehavior.Restrict); // Prevent user deletion if donations exist
-
+            // Relationship with Campaign
             b.HasOne(d => d.Campaign)
              .WithMany()
              .HasForeignKey(d => d.CampaignId)
-             .OnDelete(DeleteBehavior.Cascade);
+             .OnDelete(DeleteBehavior.Restrict); // Restricted to prevent accidental data loss
 
-            // Indexes for high-performance reporting/tracking queries
-            b.HasIndex(d => d.UserId);
-            b.HasIndex(d => new { d.UserId, d.CreatedAt });
+            // Relationship with Donor (ApplicationUser)
+            b.HasOne(d => d.Donor)
+             .WithMany()
+             .HasForeignKey(d => d.DonorId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Performance Indexes
+            b.HasIndex(d => d.CampaignId);
+            b.HasIndex(d => d.DonorId);
+            b.HasIndex(d => d.DonatedAt);
+            
+            // Composite index for reporting: Who donated and when?
+            b.HasIndex(d => new { d.DonorId, d.DonatedAt });
         });
-    
-
 
         // -----------------------------
         // ✅ Donee Configuration
