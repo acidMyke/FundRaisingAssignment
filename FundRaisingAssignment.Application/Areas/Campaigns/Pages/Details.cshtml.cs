@@ -3,8 +3,6 @@ using FundRaisingAssignment.Application.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Threading.Tasks;
 
 namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages
 {

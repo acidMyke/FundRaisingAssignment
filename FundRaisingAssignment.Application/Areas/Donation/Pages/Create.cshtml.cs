@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System;
-using System.Threading.Tasks;
 
 namespace FundRaisingAssignment.Application.Areas.Donation.Pages
 {
@@ -30,7 +28,8 @@ namespace FundRaisingAssignment.Application.Areas.Donation.Pages
             Campaign = await _context.Campaigns.FindAsync(campaignId);
             if (Campaign == null)
                 return NotFound();
-            Donation = new DonationRecord {
+            Donation = new DonationRecord
+            {
                 CampaignId = campaignId,
                 ReceiptNumber = Guid.NewGuid().ToString().Substring(0, 8).ToUpper() // Temporary value for model binding
             };

@@ -1,5 +1,3 @@
-using System;
-
 namespace FundRaisingAssignment.Application.Models
 {
     public class DonationRecord
