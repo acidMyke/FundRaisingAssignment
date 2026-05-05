@@ -29,28 +29,27 @@
                 @foreach (var campaign in Model.Campaigns)
                 {
                     <tr>
+                        <td>@campaign.Title</td>
                         <td>
-                            @campaign.Title
-                            <td>
-                                <span class="badge bg-secondary">@campaign.Status.GetDisplayName()</span>
-                            </td>
-                            <td>@campaign.TargetAmount.ToString("C")</td>
-                            <td>@campaign.CurrentAmount.ToString("C")</td>
-                            <td>@campaign.StartDate.ToShortDateString()</td>
-                            <td>@(campaign.EndDate?.ToShortDateString() ?? "-")</td>
-                            <td>
-                                <a asp-page="./UpdateCampaign" asp-route-id="@campaign.Id"
-                                   class="btn btn-sm btn-outline-primary">Edit</a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
+                            <span class="badge bg-secondary">@campaign.Status.GetDisplayName()</span>
+                        </td>
+                        <td>@campaign.TargetAmount.ToString("C")</td>
+                        <td>@campaign.CurrentAmount.ToString("C")</td>
+                        <td>@campaign.StartDate.ToShortDateString()</td>
+                        <td>@(campaign.EndDate?.ToShortDateString() ?? "-")</td>
+                        <td>
+                            <a asp-page="./UpdateCampaign" asp-route-id="@campaign.Id"
+                               class="btn btn-sm btn-outline-primary">Edit</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
 else
-    {
-        <div class="alert alert-info">
-            You have not created any campaigns yet.
-        </div>
-    }
+{
+    <div class="alert alert-info">
+        You have not created any campaigns yet.
+    </div>
+}

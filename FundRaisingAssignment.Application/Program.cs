@@ -52,7 +52,7 @@ builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
 
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("RequireThreeDaysJoined", policy =>
-        policy.Requirements.Add(new MinimumJoinTimeRequirement(3)));
+        policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10))));
 
 // -----------------------------
 // MVC / RAZOR

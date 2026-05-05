@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FundRaisingAssignment.Application.Security
 {
-    public class MinimumJoinTimeRequirement(int minimumDays) : IAuthorizationRequirement
+    public class MinimumJoinTimeRequirement(TimeSpan minimumJoinTime) : IAuthorizationRequirement
     {
-        public int MinimumDays { get; } = minimumDays;
+        public TimeSpan MinimumJoinTime { get; } = minimumJoinTime;
     }
 
     public class MinimumJoinTimeHandler(UserManager<ApplicationUser> userManager) : AuthorizationHandler<MinimumJoinTimeRequirement>
@@ -21,8 +21,7 @@ namespace FundRaisingAssignment.Application.Security
                 return;
             }
 
-            var timeSinceJoin = DateTime.UtcNow - user.JoinDate;
-            if (timeSinceJoin.TotalDays >= requirement.MinimumDays)
+            if (DateTime.UtcNow - user.JoinDate >= requirement.MinimumJoinTime)
             {
                 context.Succeed(requirement);
             }
