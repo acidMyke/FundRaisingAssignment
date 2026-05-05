@@ -1,0 +1,87 @@
+@page
+@model FundRaisingAssignment.Application.Areas.Dashboard.Pages.DonationHistoryPageModel
+@{
+    ViewData["Title"] = "Donation History";
+}
+
+<h1>Donation History</h1>
+<hr />
+<div class="row">
+    <div class="col-md-10">
+        @if (Model.ErrorMessage != null)
+        {
+            <div class="alert alert-danger">@Model.ErrorMessage</div>
+        }
+        else if (Model.DonationRecords == null || !Model.DonationRecords.Any())
+        {
+            <div>No donation records available.</div>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Campaign</th>
+                        <th>Amount</th>
+                        <th>Receipt Number</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var record in Model.DonationRecords)
+                {
+                    <tr>
+                        <td>@record.Date.ToShortDateString()</td>
+                        <td>
+                            @if (record.Campaign != null)
+                            {
+                                <a asp-area="Campaigns" asp-page="/Details" asp-route-id="@record.Campaign.Id">
+                                    @record.Campaign.Title
+                                </a>
+                            }
+                        </td>
+                        <td>@record.Amount.ToString("C")</td>
+                        <td>@record.ReceiptNumber</td>
+                        <td>
+                            <form method="post">
+                                <input type="hidden" name="SelectedDonationId" value="@record.Id" />
+                                <button type="submit" class="btn btn-primary btn-sm">View Receipt</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+
+        @if (Model.SelectedDonation != null)
+        {
+            <div class="card mt-4">
+                <div class="card-header">
+                    <strong>Donation Receipt</strong>
+                </div>
+                <div class="card-body">
+                    <p><strong>Date:</strong> @Model.SelectedDonation.Date.ToShortDateString()</p>
+                    <p><strong>Campaign:</strong> @Model.SelectedDonation.Campaign?.Title</p>
+                    <p><strong>Amount:</strong> @Model.SelectedDonation.Amount.ToString("C")</p>
+                    <p><strong>Receipt Number:</strong> @Model.SelectedDonation.ReceiptNumber</p>
+                    <p><strong>Payment Method:</strong> @Model.SelectedDonation.PaymentMethod</p>
+                    @if (!string.IsNullOrEmpty(Model.SelectedDonation.Notes))
+                    {
+                        <p><strong>Notes:</strong> @Model.SelectedDonation.Notes</p>
+                    }
+                    <form method="post">
+                        <input type="hidden" name="PrintOrDownloadId" value="@Model.SelectedDonation.Id" />
+                        <button type="submit" name="action" value="print" class="btn btn-secondary">Print</button>
+                        <button type="submit" name="action" value="download" class="btn btn-success">Download</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

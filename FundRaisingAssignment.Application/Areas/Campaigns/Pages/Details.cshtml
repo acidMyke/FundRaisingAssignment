@@ -1,0 +1,95 @@
+@page "{id:guid}"
+@model FundRaisingAssignment.Application.Areas.Campaigns.Pages.DetailsModel
+@{
+    ViewData["Title"] = "Campaign Details";
+}
+
+<div>
+    <h1>@Model.Campaign.Title</h1>
+    <dl class="row">
+        <dt class="col-sm-3">Description</dt>
+        <dd class="col-sm-9">@Model.Campaign.Description</dd>
+        <dt class="col-sm-3">Target Amount</dt>
+        <dd class="col-sm-9">@("$" + Model.Campaign.TargetAmount.ToString("N2"))</dd>
+        <dt class="col-sm-3">Current Amount</dt>
+        <dd class="col-sm-9">@("$" + Model.Campaign.CurrentAmount.ToString("N2"))</dd>
+        <dt class="col-sm-3">Start Date</dt>
+        <dd class="col-sm-9">@Model.Campaign.StartDate.ToShortDateString()</dd>
+        <dt class="col-sm-3">End Date</dt>
+        <dd class="col-sm-9">@(Model.Campaign.EndDate?.ToShortDateString() ?? "Ongoing")</dd>
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">@Model.Campaign.Status</dd>
+        <dt class="col-sm-3">Owner</dt>
+        <dd class="col-sm-9">@Model.Campaign.OwnerId</dd>
+    </dl>
+
+    <hr />
+    <h3>Leaderboard</h3>
+    <ul class="nav nav-tabs" id="leaderboardTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="amount-tab" data-bs-toggle="tab" data-bs-target="#amount" type="button" role="tab" aria-controls="amount" aria-selected="true">Highest Single Donation</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="frequency-tab" data-bs-toggle="tab" data-bs-target="#frequency" type="button" role="tab" aria-controls="frequency" aria-selected="false">Most Frequent Donors</button>
+        </li>
+    </ul>
+    <div class="tab-content mt-3" id="leaderboardTabContent">
+        <div class="tab-pane fade show active" id="amount" role="tabpanel" aria-labelledby="amount-tab">
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>User</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (int i = 0; i < Model.TopDonorsByAmount.Count; i++)
+                {
+                    var entry = Model.TopDonorsByAmount[i];
+                    <tr>
+                        <td>@(i + 1)</td>
+                        <td>@(entry.UserName ?? entry.DoneeId.ToString())</td>
+                        <td>@entry.Amount.ToString("C")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="tab-pane fade" id="frequency" role="tabpanel" aria-labelledby="frequency-tab">
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>User</th>
+                        <th>Donations</th>
+                        <th>Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (int i = 0; i < Model.TopDonorsByFrequency.Count; i++)
+                {
+                    var entry = Model.TopDonorsByFrequency[i];
+                    <tr>
+                        <td>@(i + 1)</td>
+                        <td>@(entry.UserName ?? entry.DoneeId.ToString())</td>
+                        <td>@entry.Count</td>
+                        <td>@entry.Amount.ToString("C")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (User.Identity.IsAuthenticated)
+    {
+        <form method="post">
+            <button type="submit" class="btn btn-primary">Donate</button>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-info">Please log in to donate.</div>
+    }
+</div>
