@@ -1,67 +1,60 @@
 @page
+@using FundRaisingAssignment.Application.Extensions
 @model FundRaisingAssignment.Application.Areas.Campaigns.Pages.IndexModel
 @{
-    ViewData["Title"] = "Campaign list";
+    ViewData["Title"] = "Browse campaigns";
 }
 
-<h1>Campaign List</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Browse campaigns</h1>
+</div>
 
-<!-- 🔍 Search Form -->
-<form method="get" class="mb-3">
-    <div>
-        <label>Keyword:</label>
-        <input name="Keyword" class="form-control" placeholder="Search Title or Description" />
-    </div>
-
-    <div>
-        <label>Category:</label>
-        <input name="Category" class="form-control" placeholder="e.g. Education, Environment" />
-    </div>
-
-    <div>
-        <label>Location:</label>
-        <input name="Location" class="form-control" placeholder="e.g. Singapore" />
-    </div>
-
-    <br />
-    <button type="submit" class="btn btn-primary">Search</button>
-    <a href="/Campaigns/Index" class="btn btn-secondary">Reset</a>
-</form>
-
-<hr />
-
-<!-- 📋 Results -->
-@if (Model.Campaigns != null && Model.Campaigns.Count > 0)
+@if (!Model.Campaigns.Any())
 {
-    <h3>Results</h3>
-
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Location</th>
-                <th>Target</th>
-                <th>Raised</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in Model.Campaigns)
-            {
-                <tr>
-                    <td>@c.Title</td>
-                    <td>@c.Category</td>
-                    <td>@c.Location</td>
-                    <td>@c.TargetAmount</td>
-                    <td>@c.CurrentAmount</td>
-                    <td>@c.Status</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="alert alert-info">
+        There are no active campaigns to donate to right now. Please check back soon.
+    </div>
 }
-else if (Model.HasSearched)
+else
 {
-    <p>No campaigns found.</p>
+    <div class="row g-4">
+        @foreach (var campaign in Model.Campaigns)
+        {
+            var pct = campaign.TargetAmount > 0
+                ? (int)Math.Min(100, Math.Round((double)(campaign.CurrentAmount / campaign.TargetAmount) * 100))
+                : 0;
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body d-flex flex-column">
+                        <span class="badge bg-success-subtle text-success align-self-start mb-2">
+                            @campaign.Status.GetDisplayName()
+                        </span>
+                        <h5 class="card-title">@campaign.Title</h5>
+                        <p class="text-muted small">
+                            @(string.IsNullOrWhiteSpace(campaign.ShortDescription)
+                                ? (campaign.Description.Length > 140
+                                    ? campaign.Description[..140] + "…"
+                                    : campaign.Description)
+                                : campaign.ShortDescription)
+                        </p>
+                        <div class="mt-auto">
+                            <div class="progress mb-2" style="height: 6px;">
+                                <div class="progress-bar bg-success" role="progressbar"
+                                     style="width: @pct%"
+                                     aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="d-flex justify-content-between small text-muted mb-3">
+                                <span><strong>@campaign.CurrentAmount.ToString("C")</strong> raised</span>
+                                <span>of @campaign.TargetAmount.ToString("C")</span>
+                            </div>
+                            <a class="btn btn-success w-100"
+                               asp-area="Campaigns" asp-page="./Details" asp-route-id="@campaign.Id">
+                                View &amp; donate
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }

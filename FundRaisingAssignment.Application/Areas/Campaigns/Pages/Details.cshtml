@@ -1,95 +1,119 @@
 @page "{id:guid}"
+@using FundRaisingAssignment.Application.Extensions
 @model FundRaisingAssignment.Application.Areas.Campaigns.Pages.DetailsModel
 @{
-    ViewData["Title"] = "Campaign Details";
+    ViewData["Title"] = Model.Campaign.Title;
+    var pct = Model.Campaign.TargetAmount > 0
+        ? (int)Math.Min(100, Math.Round((double)(Model.Campaign.CurrentAmount / Model.Campaign.TargetAmount) * 100))
+        : 0;
 }
 
-<div>
-    <h1>@Model.Campaign.Title</h1>
-    <dl class="row">
-        <dt class="col-sm-3">Description</dt>
-        <dd class="col-sm-9">@Model.Campaign.Description</dd>
-        <dt class="col-sm-3">Target Amount</dt>
-        <dd class="col-sm-9">@("$" + Model.Campaign.TargetAmount.ToString("N2"))</dd>
-        <dt class="col-sm-3">Current Amount</dt>
-        <dd class="col-sm-9">@("$" + Model.Campaign.CurrentAmount.ToString("N2"))</dd>
-        <dt class="col-sm-3">Start Date</dt>
-        <dd class="col-sm-9">@Model.Campaign.StartDate.ToShortDateString()</dd>
-        <dt class="col-sm-3">End Date</dt>
-        <dd class="col-sm-9">@(Model.Campaign.EndDate?.ToShortDateString() ?? "Ongoing")</dd>
-        <dt class="col-sm-3">Status</dt>
-        <dd class="col-sm-9">@Model.Campaign.Status</dd>
-        <dt class="col-sm-3">Owner</dt>
-        <dd class="col-sm-9">@Model.Campaign.OwnerId</dd>
-    </dl>
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a asp-area="Campaigns" asp-page="./Index">Campaigns</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Campaign.Title</li>
+    </ol>
+</nav>
 
-    <hr />
-    <h3>Leaderboard</h3>
-    <ul class="nav nav-tabs" id="leaderboardTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="amount-tab" data-bs-toggle="tab" data-bs-target="#amount" type="button" role="tab" aria-controls="amount" aria-selected="true">Highest Single Donation</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="frequency-tab" data-bs-toggle="tab" data-bs-target="#frequency" type="button" role="tab" aria-controls="frequency" aria-selected="false">Most Frequent Donors</button>
-        </li>
-    </ul>
-    <div class="tab-content mt-3" id="leaderboardTabContent">
-        <div class="tab-pane fade show active" id="amount" role="tabpanel" aria-labelledby="amount-tab">
-            <table class="table table-bordered table-sm">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>User</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @for (int i = 0; i < Model.TopDonorsByAmount.Count; i++)
+<div class="row g-4">
+    <div class="col-lg-7">
+        <span class="badge bg-success-subtle text-success mb-2">
+            @Model.Campaign.Status.GetDisplayName()
+        </span>
+        <h1 class="mb-3">@Model.Campaign.Title</h1>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Campaign.ShortDescription))
+        {
+            <p class="lead text-muted">@Model.Campaign.ShortDescription</p>
+        }
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar bg-success" role="progressbar"
+                         style="width: @pct%"
+                         aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="fs-5 fw-bold">@Model.Campaign.CurrentAmount.ToString("C")</div>
+                        <small class="text-muted">raised</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fs-5 fw-bold">@Model.Campaign.TargetAmount.ToString("C")</div>
+                        <small class="text-muted">goal</small>
+                    </div>
+                </div>
+                @if (Model.Campaign.EndDate.HasValue)
                 {
-                    var entry = Model.TopDonorsByAmount[i];
-                    <tr>
-                        <td>@(i + 1)</td>
-                        <td>@(entry.UserName ?? entry.DoneeId.ToString())</td>
-                        <td>@entry.Amount.ToString("C")</td>
-                    </tr>
+                    <div class="small text-muted mt-2">
+                        Deadline: @Model.Campaign.EndDate.Value.ToShortDateString()
+                    </div>
                 }
-                </tbody>
-            </table>
+            </div>
         </div>
-        <div class="tab-pane fade" id="frequency" role="tabpanel" aria-labelledby="frequency-tab">
-            <table class="table table-bordered table-sm">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>User</th>
-                        <th>Donations</th>
-                        <th>Total Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @for (int i = 0; i < Model.TopDonorsByFrequency.Count; i++)
-                {
-                    var entry = Model.TopDonorsByFrequency[i];
-                    <tr>
-                        <td>@(i + 1)</td>
-                        <td>@(entry.UserName ?? entry.DoneeId.ToString())</td>
-                        <td>@entry.Count</td>
-                        <td>@entry.Amount.ToString("C")</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
+
+        <h5>About this campaign</h5>
+        <p style="white-space: pre-wrap;">@Model.Campaign.Description</p>
     </div>
 
-    @if (User.Identity.IsAuthenticated)
-    {
-        <form method="post">
-            <button type="submit" class="btn btn-primary">Donate</button>
-        </form>
-    }
-    else
-    {
-        <div class="alert alert-info">Please log in to donate.</div>
-    }
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Make a donation</h5>
+
+                @if (!Model.CanDonate)
+                {
+                    <div class="alert alert-warning mb-0">
+                        This campaign is not currently accepting donations.
+                    </div>
+                }
+                else if (!User.Identity?.IsAuthenticated ?? true)
+                {
+                    <p class="text-muted small">You need to be signed in to donate.</p>
+                    <a class="btn btn-success w-100"
+                       asp-area="Identity" asp-page="/Account/Login"
+                       asp-route-returnUrl="@Url.Page("./Details", new { id = Model.Campaign.Id })">
+                        Sign in to donate
+                    </a>
+                }
+                else
+                {
+                    <form method="post" asp-route-id="@Model.Campaign.Id">
+                        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Amount" class="form-label"></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="Input.Amount" type="number" step="0.01" min="0.01"
+                                       class="form-control" placeholder="0.00" autocomplete="off" />
+                            </div>
+                            <span asp-validation-for="Input.Amount" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Message" class="form-label"></label>
+                            <textarea asp-for="Input.Message" class="form-control" rows="3"
+                                      maxlength="500" placeholder="Say something kind…"></textarea>
+                            <span asp-validation-for="Input.Message" class="text-danger small"></span>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input asp-for="Input.IsAnonymous" class="form-check-input" />
+                            <label asp-for="Input.IsAnonymous" class="form-check-label"></label>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Donate now</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

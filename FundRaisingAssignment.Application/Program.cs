@@ -1,11 +1,7 @@
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Security;
-
-// ✅ ADD THESE (B-C-E integration)
-using FundRaisingAssignment.Application.Services;   // CampaignService
-//using FundRaisingAssignment.Application.Repositories; // CampaignRepository
-
+using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +58,8 @@ builder.Services.AddAuthorizationBuilder()
 // MVC / RAZOR
 // -----------------------------
 builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
+builder.Services.AddScoped<DonationService>();
 
 // -----------------------------
 // BUILD APP

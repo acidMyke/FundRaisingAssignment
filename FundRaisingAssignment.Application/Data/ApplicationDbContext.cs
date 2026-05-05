@@ -19,6 +19,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Donee> Donees { get; set; }
     public DbSet<Donation> Donations { get; set; }
     public DbSet<DonationGoal> DonationGoals { get; set; }
+    public DbSet<ExportFile> ExportFiles { get; set; }
 
     // -----------------------------
     protected override void OnModelCreating(ModelBuilder builder)
@@ -94,6 +95,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ExportFile: persisted record of each report export
+        builder.Entity<ExportFile>(b =>
+        {
+            b.HasOne(e => e.CreatedByAdmin)
+             .WithMany()
+             .HasForeignKey(e => e.CreatedByAdminId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasIndex(e => e.CreatedByAdminId);
+            b.HasIndex(e => e.CreatedAt);
         });
     }
 

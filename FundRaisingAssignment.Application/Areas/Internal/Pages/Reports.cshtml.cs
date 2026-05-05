@@ -3,6 +3,7 @@ using System.Text;
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -26,15 +27,20 @@ public class ReportsModel : PageModel
     public const string AdminRole = "Admin";
 
     private readonly ApplicationDbContext _db;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ReportsModel> _logger;
 
     /// <summary>True after the EPPlus license has been initialised once.</summary>
     private static bool _epplusLicenseInitialised;
     private static readonly object _epplusLock = new();
 
-    public ReportsModel(ApplicationDbContext db, ILogger<ReportsModel> logger)
+    public ReportsModel(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        ILogger<ReportsModel> logger)
     {
         _db = db;
+        _userManager = userManager;
         _logger = logger;
     }
 
@@ -43,13 +49,36 @@ public class ReportsModel : PageModel
 
     public PlatformReport? PreviewReport { get; private set; }
 
+    /// <summary>Set after a successful export so the page can render file details + download link.</summary>
+    public ExportFile? SuccessFile { get; private set; }
+
     [TempData]
     public string? StatusMessage { get; set; }
 
     // ======================================================================
-    //  GET — empty form
+    //  GET — empty form, or success view if redirected after export
     // ======================================================================
-    public IActionResult OnGet() => Page();
+    public async Task<IActionResult> OnGetAsync(Guid? successId, CancellationToken ct)
+    {
+        if (successId.HasValue)
+        {
+            // 13a — retrieve the generated export file by export ID
+            var file = await _db.ExportFiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(f => f.Id == successId.Value, ct);
+
+            if (file is null)
+            {
+                // 13b — file retrieval failure
+                StatusMessage = "We couldn't retrieve the exported file. Please try again.";
+            }
+            else
+            {
+                SuccessFile = file;
+            }
+        }
+        return Page();
+    }
 
     // ======================================================================
     //  POST ?handler=Preview
@@ -73,37 +102,123 @@ public class ReportsModel : PageModel
 
     // ======================================================================
     //  POST ?handler=Export
+    //
+    //  Persists the generated file as an ExportFile row, then redirects to
+    //  the GET handler with ?successId=… so the admin sees a success card
+    //  with file details and a Download button (use case steps 12–15).
     // ======================================================================
-    public async Task<IActionResult> OnPostExportAsync()
+    public async Task<IActionResult> OnPostExportAsync(CancellationToken ct)
     {
+        // 5a — invalid input
         if (!ModelState.IsValid) return Page();
 
+        // 6a — verify admin identity (role is enforced by [Authorize] above)
+        var admin = await _userManager.GetUserAsync(User);
+        if (admin is null)
+        {
+            StatusMessage = "Authorization failed. Please sign in again.";
+            return Page();
+        }
+
+        // 7 / 7a — generate the report
+        PlatformReport report;
         try
         {
-            var report = await GenerateReportAsync(Input.StartDate, Input.EndDate);
-            var stamp  = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-
-            return Input.Format switch
-            {
-                ExportFormat.Csv => File(
-                    fileContents:     ExportToCsv(report),
-                    contentType:      "text/csv",
-                    fileDownloadName: $"platform-report-{stamp}.csv"),
-
-                ExportFormat.Xlsx => File(
-                    fileContents:     ExportToXlsx(report),
-                    contentType:      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    fileDownloadName: $"platform-report-{stamp}.xlsx"),
-
-                _ => BadRequest("Unsupported format."),
-            };
+            report = await GenerateReportAsync(Input.StartDate, Input.EndDate);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Report export failed");
-            StatusMessage = "Export failed — please try again.";
+            _logger.LogError(ex, "Report generation failed");
+            StatusMessage = "Couldn't generate the report — please try again later.";
             return Page();
         }
+
+        // 9–11 / 10b / 11b — convert to the selected format
+        byte[] bytes;
+        string contentType;
+        string fileName;
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        try
+        {
+            switch (Input.Format)
+            {
+                case ExportFormat.Csv:
+                    bytes       = ExportToCsv(report);
+                    contentType = "text/csv";
+                    fileName    = $"platform-report-{stamp}.csv";
+                    break;
+
+                case ExportFormat.Xlsx:
+                    bytes       = ExportToXlsx(report);
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    fileName    = $"platform-report-{stamp}.xlsx";
+                    break;
+
+                default:
+                    ModelState.AddModelError(nameof(Input.Format), "Unsupported export format.");
+                    return Page();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "{Format} export failed", Input.Format);
+            StatusMessage = $"{Input.Format} export failed — please try again later.";
+            return Page();
+        }
+
+        // 12 — create the export file record
+        var export = new ExportFile
+        {
+            Id               = Guid.NewGuid(),
+            CreatedByAdminId = admin.Id,
+            Format           = Input.Format,
+            FileName         = fileName,
+            ContentType      = contentType,
+            Content          = bytes,
+            Size             = bytes.LongLength,
+            RangeStart       = Input.StartDate,
+            RangeEnd         = Input.EndDate,
+            CreatedAt        = DateTime.UtcNow
+        };
+
+        try
+        {
+            _db.ExportFiles.Add(export);
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            // 15b — system processing failure
+            _logger.LogError(ex, "Failed to persist export file record");
+            StatusMessage = "Export failed — please try again later.";
+            return Page();
+        }
+
+        _logger.LogInformation(
+            "Export {ExportId} ({Format}, {Size} bytes) created by admin {AdminId}",
+            export.Id, export.Format, export.Size, admin.Id);
+
+        // 14–15 — return success and file details to the interface
+        return RedirectToPage(new { successId = export.Id });
+    }
+
+    // ======================================================================
+    //  GET ?handler=Download&id=… — sub-flow 13a / step 16
+    // ======================================================================
+    public async Task<IActionResult> OnGetDownloadAsync(Guid id, CancellationToken ct)
+    {
+        var file = await _db.ExportFiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == id, ct);
+
+        if (file is null)
+        {
+            // 13b — file retrieval failure
+            StatusMessage = "Export file not found.";
+            return RedirectToPage();
+        }
+
+        return File(file.Content, file.ContentType, file.FileName);
     }
 
     // ======================================================================
@@ -227,7 +342,7 @@ public class ReportsModel : PageModel
     // ======================================================================
     //  CSV EXPORT  (Karthik's Step 10a)
     // ======================================================================
-    private static byte[] ExportToCsv(PlatformReport r)
+    internal static byte[] ExportToCsv(PlatformReport r)
     {
         var sb = new StringBuilder();
         var inv = CultureInfo.InvariantCulture;
@@ -298,7 +413,7 @@ public class ReportsModel : PageModel
     // ======================================================================
     //  XLSX EXPORT  (Karthik's Step 11a) — uses EPPlus 8
     // ======================================================================
-    private static byte[] ExportToXlsx(PlatformReport r)
+    internal static byte[] ExportToXlsx(PlatformReport r)
     {
         EnsureEpplusLicense();
 

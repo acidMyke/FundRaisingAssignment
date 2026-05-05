@@ -34,6 +34,32 @@
         </div>
     }
 
+    <!-- ===================== Export success card (sub-flow 15a) ===================== -->
+    @if (Model.SuccessFile is not null)
+    {
+        var f = Model.SuccessFile;
+        var sizeKb = Math.Max(1, (int)Math.Round(f.Size / 1024d));
+        <div class="alert alert-success border-success-subtle mb-4" role="alert">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h6 class="mb-1">Export ready for download</h6>
+                    <div class="small mb-1">
+                        <strong>@f.FileName</strong>
+                        <span class="text-muted">&middot; @f.Format &middot; @sizeKb&nbsp;KB</span>
+                    </div>
+                    <div class="small text-muted">
+                        Range @f.RangeStart.ToString("yyyy-MM-dd") &ndash; @f.RangeEnd.ToString("yyyy-MM-dd")
+                        &middot; created @f.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC
+                        &middot; Export ID <code>@f.Id</code>
+                    </div>
+                </div>
+                <a class="btn btn-success" asp-page-handler="Download" asp-route-id="@f.Id">
+                    Download @f.Format
+                </a>
+            </div>
+        </div>
+    }
+
     <div class="row g-4">
 
         <!-- ===================== Left: filters form ===================== -->

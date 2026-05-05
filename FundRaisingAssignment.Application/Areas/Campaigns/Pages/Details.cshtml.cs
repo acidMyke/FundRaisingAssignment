@@ -1,79 +1,104 @@
+using System.ComponentModel.DataAnnotations;
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
-namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages
+namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
+
+public class DetailsModel(
+    ApplicationDbContext context,
+    DonationService donationService,
+    UserManager<ApplicationUser> userManager) : PageModel
 {
-    public class DetailsModel : PageModel
+    public Campaign Campaign { get; private set; } = default!;
+
+    public bool CanDonate =>
+        Campaign.Status == CampaignStatus.Active &&
+        (!Campaign.EndDate.HasValue || Campaign.EndDate.Value >= DateTime.UtcNow);
+
+    [BindProperty]
+    public DonationInput Input { get; set; } = new();
+
+    public class DonationInput
     {
-        private readonly ApplicationDbContext _context;
+        [Required]
+        [Range(0.01, 1_000_000, ErrorMessage = "Amount must be between 0.01 and 1,000,000.")]
+        [Display(Name = "Amount")]
+        public decimal Amount { get; set; }
 
-        public DetailsModel(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        [StringLength(500)]
+        [Display(Name = "Message to the fund raiser (optional)")]
+        public string? Message { get; set; }
 
-        [BindProperty]
-        public Campaign Campaign { get; set; }
+        [Display(Name = "Donate anonymously")]
+        public bool IsAnonymous { get; set; }
+    }
 
-        public List<LeaderboardEntry> TopDonorsByAmount { get; set; } = new();
-        public List<LeaderboardEntry> TopDonorsByFrequency { get; set; } = new();
+    public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken ct)
+    {
+        var campaign = await context.Campaigns
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
 
-        public class LeaderboardEntry
-        {
-            public Guid DoneeId { get; set; }
-            public string? UserName { get; set; }
-            public decimal Amount { get; set; }
-            public int Count { get; set; }
-        }
+        if (campaign is null)
+            return NotFound();
 
-        public async Task<IActionResult> OnGetAsync(Guid id)
-        {
-            Campaign = await _context.Campaigns.Include(c => c.Owner).FirstOrDefaultAsync(c => c.Id == id);
-            if (Campaign == null)
-            {
-                return NotFound();
-            }
+        Campaign = campaign;
+        return Page();
+    }
 
-            // Top 10 by highest single donation
-            TopDonorsByAmount = await _context.DonationRecords
-                .Where(d => d.CampaignId == id)
-                .OrderByDescending(d => d.Amount)
-                .Take(10)
-                .Select(d => new LeaderboardEntry
-                {
-                    DoneeId = d.DoneeId,
-                    UserName = _context.Users.Where(u => u.Id == d.DoneeId).Select(u => u.UserName).FirstOrDefault(),
-                    Amount = d.Amount,
-                    Count = 1
-                })
-                .ToListAsync();
+    public async Task<IActionResult> OnPostAsync(Guid id, CancellationToken ct)
+    {
+        var campaign = await context.Campaigns
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
 
-            // Top 10 by donation frequency
-            TopDonorsByFrequency = await _context.DonationRecords
-                .Where(d => d.CampaignId == id)
-                .GroupBy(d => d.DoneeId)
-                .Select(g => new LeaderboardEntry
-                {
-                    DoneeId = g.Key,
-                    UserName = _context.Users.Where(u => u.Id == g.Key).Select(u => u.UserName).FirstOrDefault(),
-                    Amount = g.Sum(x => x.Amount),
-                    Count = g.Count()
-                })
-                .OrderByDescending(e => e.Count)
-                .ThenByDescending(e => e.Amount)
-                .Take(10)
-                .ToListAsync();
+        if (campaign is null)
+            return NotFound();
 
+        Campaign = campaign;
+
+        if (!ModelState.IsValid)
             return Page();
-        }
 
-        public async Task<IActionResult> OnPostAsync(Guid id)
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+            return Challenge();
+
+        var result = await donationService.MakeDonationAsync(
+            user.Id,
+            new MakeDonationInput(id, Input.Amount, Input.Message, Input.IsAnonymous),
+            ct);
+
+        switch (result)
         {
-            // Redirect to donation page or handle donation logic here
-            return RedirectToPage("/Create", new { area = "Donation", campaignId = id });
+            case DonationResult.Success s:
+                return RedirectToPage("./DonationConfirmation", new { id = s.Donation.Id });
+
+            case DonationResult.CampaignNotFound:
+                return NotFound();
+
+            case DonationResult.CampaignNotActive na:
+                ModelState.AddModelError(string.Empty,
+                    $"This campaign is currently '{na.CurrentStatus}' and is not accepting donations.");
+                return Page();
+
+            case DonationResult.DeadlinePassed:
+                ModelState.AddModelError(string.Empty, "The campaign deadline has passed.");
+                return Page();
+
+            case DonationResult.TransactionFailed:
+                ModelState.AddModelError(string.Empty,
+                    "An unexpected error occurred while processing your donation. Please try again.");
+                return Page();
+
+            default:
+                ModelState.AddModelError(string.Empty, "Unable to process donation.");
+                return Page();
         }
     }
 }

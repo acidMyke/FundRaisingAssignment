@@ -1,24 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using FundRaisingAssignment.Application.Data;
-using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace FundRaisingAssignment.Application.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class DonationsController(
-        ApplicationDbContext context,
-        ILogger<DonationsController> logger) : ControllerBase
+    public class DonationsController(DonationService donationService) : ControllerBase
     {
-        private readonly ApplicationDbContext _context = context;
-        private readonly ILogger<DonationsController> _logger = logger;
-
-        // --- Request type (nested) ---
         public class MakeDonationRequest
         {
             [Required]
@@ -34,7 +26,6 @@ namespace FundRaisingAssignment.Application.Controllers
             public bool IsAnonymous { get; set; } = false;
         }
 
-        // --- Response shape (nested) ---
         public record DonationResponse(
             Guid Id,
             Guid CampaignId,
@@ -57,83 +48,48 @@ namespace FundRaisingAssignment.Application.Controllers
             if (!ModelState.IsValid)
                 return ValidationProblem(ModelState);
 
-            // 1. Resolve donor from authenticated identity
             var userIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userIdRaw, out var userId))
                 return Unauthorized();
 
-            // 2. Load campaign
-            var campaign = await _context.Campaigns
-                .FirstOrDefaultAsync(c => c.Id == request.CampaignId, ct);
+            var input = new MakeDonationInput(
+                request.CampaignId,
+                request.Amount,
+                request.Message,
+                request.IsAnonymous);
 
-            if (campaign is null)
-                return NotFound(new { error = $"Campaign '{request.CampaignId}' was not found." });
+            var result = await donationService.MakeDonationAsync(userId, input, ct);
 
-            // 3. Validate campaign state
-            if (campaign.Status != CampaignStatus.Active)
-                return Conflict(new { error = $"Campaign is currently '{campaign.Status}' and is not accepting donations." });
-
-            if (campaign.EndDate.HasValue && campaign.EndDate.Value < DateTime.UtcNow)
-                return Conflict(new { error = "Campaign deadline has passed." });
-
-            // 4. Atomic insert + balance bump
-            await using var tx = await _context.Database.BeginTransactionAsync(ct);
-            try
+            return result switch
             {
-                var donation = new Donation
-                {
-                    Id = Guid.NewGuid(),
-                    CampaignId = campaign.Id,
-                    UserId = userId,
-                    Amount = request.Amount,
-                    Message = request.Message,
-                    IsAnonymous = request.IsAnonymous,
-                    Status = DonationStatus.Completed, // simulate successful payment
-                    CreatedAt = DateTime.UtcNow
-                };
+                DonationResult.Success s => CreatedAtAction(
+                    nameof(GetDonation),
+                    new { id = s.Donation.Id },
+                    new DonationResponse(
+                        s.Donation.Id,
+                        s.Campaign.Id,
+                        s.Campaign.Title,
+                        s.Donation.Amount,
+                        s.Donation.Message,
+                        s.Donation.IsAnonymous,
+                        s.Donation.Status.ToString(),
+                        s.Donation.CreatedAt)),
 
-                await _context.Donations.AddAsync(donation, ct);
+                DonationResult.CampaignNotFound nf =>
+                    NotFound(new { error = $"Campaign '{nf.CampaignId}' was not found." }),
 
-                campaign.CurrentAmount += request.Amount;
+                DonationResult.CampaignNotActive na =>
+                    Conflict(new { error = $"Campaign is currently '{na.CurrentStatus}' and is not accepting donations." }),
 
-                // Sub-flow 7a: auto-complete on goal reached
-                if (campaign.CurrentAmount >= campaign.TargetAmount &&
-                    campaign.Status == CampaignStatus.Active)
-                {
-                    campaign.Status = CampaignStatus.Completed;
-                    _logger.LogInformation(
-                        "Campaign {CampaignId} reached its goal and was auto-completed.",
-                        campaign.Id);
-                }
+                DonationResult.DeadlinePassed =>
+                    Conflict(new { error = "Campaign deadline has passed." }),
 
-                await _context.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
+                DonationResult.TransactionFailed =>
+                    StatusCode(StatusCodes.Status500InternalServerError,
+                        new { error = "An unexpected error occurred while processing the donation." }),
 
-                _logger.LogInformation(
-                    "Donation {DonationId} of {Amount} recorded for campaign {CampaignId} by donor {DonorId}.",
-                    donation.Id, donation.Amount, campaign.Id, userId);
-
-                var response = new DonationResponse(
-                    donation.Id,
-                    campaign.Id,
-                    campaign.Title,
-                    donation.Amount,
-                    donation.Message,
-                    donation.IsAnonymous,
-                    donation.Status.ToString(),
-                    donation.CreatedAt);
-
-                return CreatedAtAction(nameof(GetDonation), new { id = donation.Id }, response);
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync(ct);
-                _logger.LogError(ex,
-                    "Failed to process donation for campaign {CampaignId} by user {UserId}.",
-                    request.CampaignId, userId);
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { error = "An unexpected error occurred while processing the donation." });
-            }
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
         }
 
         [HttpGet("{id:guid}")]
