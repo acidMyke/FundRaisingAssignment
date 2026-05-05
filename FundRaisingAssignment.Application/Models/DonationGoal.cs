@@ -28,10 +28,17 @@ public class DonationGoal
     [Required]
     public GoalPeriod Period { get; set; } = GoalPeriod.Yearly;
 
-    /// <summary>Set on creation, never updated again.</summary>
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal TotalDonated { get; set; }
+
+    public BudgetStatus BudgetStatus { get; set; } = BudgetStatus.NotSet;
+
+    public TargetStatus TargetStatus { get; set; } = TargetStatus.NotSet;
+
+    public DateTime? LastEvaluatedAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    /// <summary>Updated each time the goal is changed.</summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
