@@ -1,8 +1,11 @@
 @page
 @{
-    ViewData["Title"] = "User Admin";
+    ViewData["Title"] = "Admin Dashboard";
 }
 
-<div>
-    <h1>User admin</h1>
+<h2>Admin Dashboard</h2>
+<p>Welcome to the Internal Admin Portal.</p>
+
+<div class="mt-4">
+    <a asp-page="/Users/Index" class="btn btn-primary">Manage Users</a>
 </div>

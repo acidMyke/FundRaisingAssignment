@@ -15,6 +15,8 @@ namespace FundRaisingAssignment.Application.Models
         public class Names
         {
             public const string Admin = "Admin";
+            public const string CampaignManager = "CampaignManager";  // ADD
+            public const string Donor = "Donor";                       // ADD
         }
         public static readonly ApplicationRole Admin = new(Names.Admin);
         public static IEnumerable<ApplicationRole> All =>
