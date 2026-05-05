@@ -1,8 +1,67 @@
 @page
+@model FundRaisingAssignment.Application.Areas.Campaigns.Pages.IndexModel
 @{
     ViewData["Title"] = "Campaign list";
 }
 
-<div>
-    <h1>Campaign list</h1>
-</div>
+<h1>Campaign List</h1>
+
+<!-- 🔍 Search Form -->
+<form method="get" class="mb-3">
+    <div>
+        <label>Keyword:</label>
+        <input name="Keyword" class="form-control" placeholder="Search Title or Description" />
+    </div>
+
+    <div>
+        <label>Category:</label>
+        <input name="Category" class="form-control" placeholder="e.g. Education, Environment" />
+    </div>
+
+    <div>
+        <label>Location:</label>
+        <input name="Location" class="form-control" placeholder="e.g. Singapore" />
+    </div>
+
+    <br />
+    <button type="submit" class="btn btn-primary">Search</button>
+    <a href="/Campaigns/Index" class="btn btn-secondary">Reset</a>
+</form>
+
+<hr />
+
+<!-- 📋 Results -->
+@if (Model.Campaigns != null && Model.Campaigns.Count > 0)
+{
+    <h3>Results</h3>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Target</th>
+                <th>Raised</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in Model.Campaigns)
+        {
+            <tr>
+                <td>@c.Title</td>
+                <td>@c.Category</td>
+                <td>@c.Location</td>
+                <td>@c.TargetAmount</td>
+                <td>@c.CurrentAmount</td>
+                <td>@c.Status</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+else if (Model.HasSearched)
+{
+    <p>No campaigns found.</p>
+}

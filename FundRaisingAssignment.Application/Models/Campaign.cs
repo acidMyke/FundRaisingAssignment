@@ -15,6 +15,16 @@ namespace FundRaisingAssignment.Application.Models
         [Required]
         public string Description { get; set; } = string.Empty;
 
+        // ✅ NEW (for category search)
+        [Required]
+        [StringLength(50)]
+        public string Category { get; set; } = string.Empty;
+
+        // ✅ NEW (for location search)
+        [Required]
+        [StringLength(100)]
+        public string Location { get; set; } = string.Empty;
+
         [Required]
         [Range(1, double.MaxValue)]
         public decimal TargetAmount { get; set; }
@@ -34,6 +44,8 @@ namespace FundRaisingAssignment.Application.Models
 
         [Required]
         public Guid OwnerId { get; set; }
+
+        [ForeignKey("OwnerId")]
         public ApplicationUser? Owner { get; set; }
     }
 }

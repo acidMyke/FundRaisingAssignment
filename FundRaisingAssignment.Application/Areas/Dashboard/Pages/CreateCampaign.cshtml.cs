@@ -41,6 +41,15 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 
             [Display(Name = "End Date")]
             public DateTime? EndDate { get; set; }
+
+            [Required]
+            [StringLength(50)]
+            public string Category { get; set; } = string.Empty;
+
+            [Required]
+            [StringLength(100)]
+            public string Location { get; set; } = string.Empty;
+
         }
 
         public IActionResult OnGet()
@@ -74,7 +83,9 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 EndDate = Input.EndDate,
                 Status = CampaignStatus.Draft, // Default status
                 CreatedAt = DateTime.UtcNow,
-                OwnerId = user.Id
+                OwnerId = user.Id,
+                Category = Input.Category,
+                Location = Input.Location 
             };
 
             _context.Campaigns.Add(campaign);
