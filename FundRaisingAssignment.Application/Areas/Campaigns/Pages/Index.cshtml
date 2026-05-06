@@ -9,10 +9,36 @@
     <h1>Browse campaigns</h1>
 </div>
 
+<form method="get" class="row g-2 mb-4">
+    <div class="col-md-5">
+        <input type="text" name="Keyword" value="@Model.Keyword" class="form-control"
+               placeholder="Search title or description" />
+    </div>
+    <div class="col-md-3">
+        <input type="text" name="Category" value="@Model.Category" class="form-control"
+               placeholder="Category" />
+    </div>
+    <div class="col-md-3">
+        <input type="text" name="Location" value="@Model.Location" class="form-control"
+               placeholder="Location" />
+    </div>
+    <div class="col-md-1 d-grid">
+        <button type="submit" class="btn btn-success">Search</button>
+    </div>
+</form>
+
+@{
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.Keyword)
+                     || !string.IsNullOrWhiteSpace(Model.Category)
+                     || !string.IsNullOrWhiteSpace(Model.Location);
+}
+
 @if (!Model.Campaigns.Any())
 {
     <div class="alert alert-info">
-        There are no active campaigns to donate to right now. Please check back soon.
+        @(hasFilters
+            ? "No active campaigns match your search."
+            : "There are no active campaigns to donate to right now. Please check back soon.")
     </div>
 }
 else
