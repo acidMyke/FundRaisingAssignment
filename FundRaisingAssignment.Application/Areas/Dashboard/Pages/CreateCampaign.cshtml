@@ -1,65 +1,91 @@
 @page
+@using FundRaisingAssignment.Application.Models
 @model FundRaisingAssignment.Application.Areas.Dashboard.Pages.CreateCampaignModel
 @{
     ViewData["Title"] = "Create Campaign";
+    var categories = Html.GetEnumSelectList<CampaignCategory>();
 }
 
-<h1>Create Campaign</h1>
+<div class="page-narrow">
+  <div class="page-hero">
+    <h1>Create a New Campaign</h1>
+    <p>Tell donors your story, set a funding goal and deadline, and start raising funds.</p>
+  </div>
 
-<hr />
-<div class="row">
-    <div class="col-md-8">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            
-            <div class="form-group mb-3">
-                <label asp-for="Input.Title" class="control-label"></label>
-                <input asp-for="Input.Title" class="form-control" />
-                <span asp-validation-for="Input.Title" class="text-danger"></span>
-            </div>
+  <div class="card">
+    <form method="post" novalidate>
+      <div asp-validation-summary="ModelOnly" class="alert alert-error"></div>
 
-            <div class="form-group mb-3">
-                <label asp-for="Input.ShortDescription" class="control-label"></label>
-                <input asp-for="Input.ShortDescription" class="form-control" />
-                <span asp-validation-for="Input.ShortDescription" class="text-danger"></span>
-            </div>
+      @* Campaign identity *@
+      <div class="form-group">
+        <label asp-for="Input.Title" class="form-label"></label>
+        <input asp-for="Input.Title" class="form-control" placeholder="e.g. Build a School Library in Bedok" />
+        <span asp-validation-for="Input.Title" class="field-error"></span>
+      </div>
 
-            <div class="form-group mb-3">
-                <label asp-for="Input.Description" class="control-label"></label>
-                <textarea asp-for="Input.Description" class="form-control" rows="5"></textarea>
-                <span asp-validation-for="Input.Description" class="text-danger"></span>
-            </div>
+      <div class="form-group">
+        <label asp-for="Input.ShortDescription" class="form-label"></label>
+        <input asp-for="Input.ShortDescription" class="form-control"
+               placeholder="One sentence that captures your mission (shown in listings)" />
+        <span asp-validation-for="Input.ShortDescription" class="field-error"></span>
+        <p class="form-hint">Displayed in campaign cards and search results.</p>
+      </div>
 
-            <div class="row">
-                <div class="col-md-6 form-group mb-3">
-                    <label asp-for="Input.StartDate" class="control-label"></label>
-                    <input asp-for="Input.StartDate" class="form-control" type="datetime-local" />
-                    <span asp-validation-for="Input.StartDate" class="text-danger"></span>
-                </div>
-                <div class="col-md-6 form-group mb-3">
-                    <label asp-for="Input.EndDate" class="control-label"></label>
-                    <input asp-for="Input.EndDate" class="form-control" type="datetime-local" />
-                    <span asp-validation-for="Input.EndDate" class="text-danger"></span>
-                </div>
-            </div>
+      <div class="form-group">
+        <label asp-for="Input.Category" class="form-label"></label>
+        <select asp-for="Input.Category" asp-items="categories" class="form-control"></select>
+        <span asp-validation-for="Input.Category" class="field-error"></span>
+      </div>
 
-            <div class="form-group mb-3">
-                <label asp-for="Input.TargetAmount" class="control-label"></label>
-                <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input asp-for="Input.TargetAmount" class="form-control" type="number" step="0.01" min="1" />
-                </div>
-                <span asp-validation-for="Input.TargetAmount" class="text-danger"></span>
-            </div>
+      <div class="form-group">
+        <label asp-for="Input.Description" class="form-label"></label>
+        <textarea asp-for="Input.Description" class="form-control" rows="6"
+                  placeholder="Describe your campaign purpose, how funds will be used, and who benefits…"></textarea>
+        <span asp-validation-for="Input.Description" class="field-error"></span>
+      </div>
 
-            <div class="form-group mt-4 mb-5">
-                <input type="submit" value="Create Campaign" class="btn btn-primary" />
-                <a asp-page="./Index" class="btn btn-secondary ms-2">Back to List</a>
-            </div>
-        </form>
-    </div>
+      <div class="form-group">
+        <label asp-for="Input.CoverImageUrl" class="form-label"></label>
+        <input asp-for="Input.CoverImageUrl" class="form-control"
+               placeholder="https://example.com/image.jpg (optional)" />
+        <span asp-validation-for="Input.CoverImageUrl" class="field-error"></span>
+      </div>
+
+      <hr class="divider" />
+
+      @* Financial *@
+      <h3 style="font-size:var(--text-lg); font-weight:600; margin:0 0 var(--space-4);">Funding Details</h3>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+        <div class="form-group" style="margin:0;">
+          <label asp-for="Input.FundingGoal" class="form-label"></label>
+          <div class="input-prefix-group">
+            <span class="input-prefix">USD $</span>
+            <input asp-for="Input.FundingGoal" class="form-control"
+                   type="number" min="1" step="0.01" placeholder="5,000.00" />
+          </div>
+          <span asp-validation-for="Input.FundingGoal" class="field-error"></span>
+          <p class="form-hint">Total amount you need to raise.</p>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label asp-for="Input.EndDate" class="form-label"></label>
+          <input asp-for="Input.EndDate" class="form-control" type="date" />
+          <span asp-validation-for="Input.EndDate" class="field-error"></span>
+          <p class="form-hint">Campaign countdown ends on this date.</p>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary btn-lg">Launch Campaign →</button>
+        <a asp-area="Dashboard" asp-page="/Campaigns" class="btn btn-secondary btn-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+  <partial name="_ValidationScriptsPartial" />
 }

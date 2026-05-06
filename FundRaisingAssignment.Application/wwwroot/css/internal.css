@@ -110,3 +110,13 @@ body {
     color: var(--accent-color);
     margin: 0;
 }
+
+/* ── Flagged Campaign / Badge additions ──────────────────────────────────── */
+.badge-flagged { background:#fef3c7; color:#92400e; border:1px solid #fbbf24; padding:2px 8px; border-radius:999px; font-size:var(--text-xs,.75rem); font-weight:600; }
+.badge-error   { background:#fee2e2; color:#991b1b; border:1px solid #f87171; padding:2px 8px; border-radius:999px; font-size:var(--text-xs,.75rem); font-weight:600; }
+.badge-active  { background:#d1fae5; color:#065f46; border:1px solid #34d399; padding:2px 8px; border-radius:999px; font-size:var(--text-xs,.75rem); font-weight:600; }
+.badge-default { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:2px 8px; border-radius:999px; font-size:var(--text-xs,.75rem); font-weight:600; }
+.btn-warning { background:#d97706; color:#fff; border:none; padding:var(--space-2,.5rem) var(--space-4,1rem); border-radius:var(--radius-md,6px); font-weight:600; cursor:pointer; transition:background .15s; }
+.btn-warning:hover { background:#b45309; }
+.alert-success { background:#d1fae5; color:#065f46; border:1px solid #34d399; padding:var(--space-3,.75rem) var(--space-4,1rem); border-radius:var(--radius-md,6px); margin-bottom:var(--space-4,1rem); }
+.alert-info    { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; padding:var(--space-3,.75rem) var(--space-4,1rem); border-radius:var(--radius-md,6px); margin-bottom:var(--space-4,1rem); }

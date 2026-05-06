@@ -9,109 +9,91 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
-    [Authorize]
-    public class UpdateCampaignModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager) : PageModel
+    /// <summary>
+    /// Full campaign editor – Admin only.
+    /// Fundraisers can only edit Goal and Deadline via the Index (Set Funding Goal) page.
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    public class UpdateCampaignModel(ApplicationDbContext ctx, UserManager<ApplicationUser> um) : PageModel
     {
-        private readonly ApplicationDbContext _context = context;
-        private readonly UserManager<ApplicationUser> _userManager = userManager;
-
-        [BindProperty]
-        public InputModel Input { get; set; } = new InputModel();
+        private readonly ApplicationDbContext _ctx = ctx;
+        private readonly UserManager<ApplicationUser> _um = um;
 
         [BindProperty(SupportsGet = true)]
         public Guid Id { get; set; }
 
+        [BindProperty]
+        public InputModel Input { get; set; } = new();
+
+        public string CampaignTitle { get; private set; } = string.Empty;
+
         public class InputModel
         {
-            [Required]
-            [StringLength(100)]
+            [Required][StringLength(100)][Display(Name = "Campaign Title")]
             public string Title { get; set; } = string.Empty;
 
-            [Required]
+            [Required][StringLength(200)][Display(Name = "Short Description")]
+            public string ShortDescription { get; set; } = string.Empty;
+
+            [Required][Display(Name = "Full Description / Purpose")]
             public string Description { get; set; } = string.Empty;
 
-            [StringLength(200)]
-            [Display(Name = "Short Description")]
-            public string? ShortDescription { get; set; }
+            [Required][Display(Name = "Category")]
+            public CampaignCategory Category { get; set; } = CampaignCategory.Other;
 
-            [Required]
-            [Range(1, double.MaxValue, ErrorMessage = "Target Amount must be greater than 0.")]
-            [Display(Name = "Target Amount")]
-            public decimal TargetAmount { get; set; }
+            [StringLength(500)][Display(Name = "Cover Image URL")]
+            public string? CoverImageUrl { get; set; }
 
-            [Required]
-            [Display(Name = "Start Date")]
-            public DateTime StartDate { get; set; } = DateTime.Now;
+            [Required][Range(1, double.MaxValue)][Display(Name = "Funding Goal (USD)")]
+            public decimal FundingGoal { get; set; }
 
-            [Display(Name = "End Date")]
-            public DateTime? EndDate { get; set; }
+            [Required][Display(Name = "Funding Deadline")]
+            public DateTime EndDate { get; set; }
 
-            [Required]
+            [Required][Display(Name = "Status")]
             public CampaignStatus Status { get; set; }
         }
 
         public async Task<IActionResult> OnGetAsync()
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return Challenge();
-            }
+            var c = await _ctx.Campaigns.FindAsync(Id);
+            if (c is null) return NotFound();
 
-            var campaign = await _context.Campaigns
-                .FirstOrDefaultAsync(c => c.Id == Id && c.OwnerId == user.Id);
-
-            if (campaign == null)
-            {
-                return NotFound();
-            }
-
+            CampaignTitle = c.Title;
             Input = new InputModel
             {
-                Title = campaign.Title,
-                ShortDescription = campaign.ShortDescription,
-                Description = campaign.Description,
-                TargetAmount = campaign.TargetAmount,
-                StartDate = campaign.StartDate,
-                EndDate = campaign.EndDate,
-                Status = campaign.Status
+                Title            = c.Title,
+                ShortDescription = c.ShortDescription,
+                Description      = c.Description,
+                Category         = c.Category,
+                CoverImageUrl    = c.CoverImageUrl,
+                FundingGoal      = c.FundingGoal,
+                EndDate          = c.EndDate,
+                Status           = c.Status
             };
-
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
+            if (!ModelState.IsValid) return Page();
 
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return Challenge();
-            }
+            var c = await _ctx.Campaigns.FindAsync(Id);
+            if (c is null) return NotFound();
 
-            var campaign = await _context.Campaigns
-                .FirstOrDefaultAsync(c => c.Id == Id && c.OwnerId == user.Id);
+            c.Title            = Input.Title;
+            c.ShortDescription = Input.ShortDescription;
+            c.Description      = Input.Description;
+            c.Category         = Input.Category;
+            c.CoverImageUrl    = Input.CoverImageUrl;
+            c.FundingGoal      = Input.FundingGoal;
+            c.TargetAmount     = Input.FundingGoal;
+            c.EndDate          = Input.EndDate;
+            c.Status           = Input.Status;
 
-            if (campaign == null)
-            {
-                return NotFound();
-            }
-
-            campaign.Title = Input.Title;
-            campaign.ShortDescription = Input.ShortDescription;
-            campaign.Description = Input.Description;
-            campaign.TargetAmount = Input.TargetAmount;
-            campaign.StartDate = Input.StartDate;
-            campaign.EndDate = Input.EndDate;
-            campaign.Status = Input.Status;
-
-            await _context.SaveChangesAsync();
-
-            return RedirectToPage("./Index");
+            await _ctx.SaveChangesAsync();
+            TempData["Success"] = "Campaign updated.";
+            return RedirectToPage("./ManageCampaigns");
         }
     }
 }
