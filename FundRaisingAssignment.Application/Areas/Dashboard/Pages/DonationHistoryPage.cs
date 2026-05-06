@@ -20,10 +20,10 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             _userManager = userManager;
         }
 
-        public List<DonationRecord> DonationRecords { get; set; } = new();
+        public List<Donation> DonationRecords { get; set; } = new();
         [BindProperty]
-        public int? SelectedDonationId { get; set; }
-        public DonationRecord? SelectedDonation { get; set; }
+        public Guid? SelectedDonationId { get; set; }
+        public Donation? SelectedDonation { get; set; }
         public string? ErrorMessage { get; set; }
 
 
@@ -37,7 +37,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             await LoadDonationRecordsAsync();
             if (SelectedDonationId.HasValue)
             {
-                SelectedDonation = await _context.DonationRecords.FirstOrDefaultAsync(r => r.Id == SelectedDonationId.Value);
+                SelectedDonation = await _context.Donations.FirstOrDefaultAsync(r => r.Id == SelectedDonationId.Value);
                 if (SelectedDonation == null)
                 {
                     ErrorMessage = "Failed to retrieve donation details. Please try again.";
@@ -54,13 +54,13 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 if (user == null)
                 {
                     ErrorMessage = "User not found.";
-                    DonationRecords = new List<DonationRecord>();
+                    DonationRecords = new List<Donation>();
                     return;
                 }
-                var records = await _context.DonationRecords
-                    .Where(r => r.DoneeId == user.Id)
+                var records = await _context.Donations
+                    .Where(r => r.UserId == user.Id)
                     .Include(r => r.Campaign)
-                    .OrderByDescending(r => r.Date)
+                    .OrderByDescending(r => r.CreatedAt)
                     .ToListAsync();
                 if (records != null && records.Any())
                     DonationRecords = records;

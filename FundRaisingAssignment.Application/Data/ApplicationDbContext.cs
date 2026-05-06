@@ -13,7 +13,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     // DbSets
     // -----------------------------
     public DbSet<Campaign> Campaigns { get; set; }
-    public DbSet<DonationRecord> DonationRecords { get; set; }
 
     // ✅ ADD THIS (Donee table)
     public DbSet<Donee> Donees { get; set; }

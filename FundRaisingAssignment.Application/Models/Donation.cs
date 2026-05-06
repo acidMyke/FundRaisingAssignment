@@ -29,6 +29,14 @@ namespace FundRaisingAssignment.Application.Models
         [Required]
         public DonationStatus Status { get; set; } = DonationStatus.Pending;
 
+        [StringLength(50)]
+        public string? ReceiptNumber { get; set; }
+
+        [StringLength(50)]
+        public string PaymentMethod { get; set; } = "Other";
+
+        public string? Notes { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
