@@ -1,0 +1,312 @@
+@page
+@using FundRaisingAssignment.Application.Areas.Dashboard.Pages
+@using FundRaisingAssignment.Application.Models
+@using FundRaisingAssignment.Application.Extensions
+@model ManageCampaignsModel
+@{
+    ViewData["Title"] = "Manage All Campaigns";
+
+    // Helper: render an action modal trigger
+}
+
+<style>
+  .tbl{width:100%;border-collapse:collapse}
+  .tbl th{background:#f8fafc;padding:8px 12px;text-align:left;font-size:.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+  .tbl td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:.85rem}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl tr:hover td{background:#fafafa}
+  .section-title{font-size:1rem;font-weight:700;padding:10px 0 6px;border-bottom:2px solid #e2e8f0;margin:22px 0 0;}
+  .btn-xs{padding:3px 9px;font-size:.75rem;border-radius:5px;font-weight:500;text-decoration:none;border:1px solid transparent;cursor:pointer;display:inline-block;white-space:nowrap}
+  .b-view{background:#f1f5f9;color:#1e293b;border-color:#e2e8f0}
+  .b-publish{background:#d1fae5;color:#065f46;border-color:#6ee7b7}
+  .b-publish:hover{background:#a7f3d0}
+  .b-flag{background:#fef3c7;color:#92400e;border-color:#fbbf24}
+  .b-flag:hover{background:#fde68a}
+  .b-pause{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+  .b-pause:hover{background:#fecaca}
+  .b-release{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+  .b-release:hover{background:#bfdbfe}
+  .b-terminate{background:#1e293b;color:#fff;border-color:#1e293b}
+  .b-terminate:hover{background:#0f172a;color:#fff}
+  .b-edit{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+  /* Modal */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center;}
+  .modal-card{background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.15);}
+  .alert-s{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;padding:10px 16px;border-radius:8px;margin-bottom:14px;font-size:.88rem}
+  .alert-e{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:10px 16px;border-radius:8px;margin-bottom:14px;font-size:.88rem}
+  .empty{color:#94a3b8;font-style:italic;font-size:.85rem;padding:10px 0;}
+  .cnt-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;background:#4f46e5;color:#fff;border-radius:999px;font-size:.7rem;font-weight:700;margin-left:6px;padding:0 5px;}
+  .cnt-red{background:#dc2626}
+  .cnt-amber{background:#d97706}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <h1 style="margin:0;font-size:1.65rem;font-weight:700;">Platform Management</h1>
+    <p style="color:#64748b;font-size:.88rem;margin:4px 0 0;">Review, publish, flag, pause, or terminate campaigns.</p>
+  </div>
+</div>
+
+@if (TempData["Success"] != null)
+{ <div class="alert-s">✓ @TempData["Success"]</div> }
+@if (TempData["Error"] != null)
+{ <div class="alert-e">⚠ @TempData["Error"]</div> }
+
+@* ── PENDING REVIEW ── *@
+<h2 class="section-title">
+  ⏳ Pending Review
+  @if (Model.Pending.Any())
+  { <span class="cnt-badge">@Model.Pending.Count</span> }
+</h2>
+@if (!Model.Pending.Any())
+{ <p class="empty">No campaigns awaiting review.</p> }
+else
+{
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-top:8px;">
+    <table class="tbl">
+      <thead><tr><th>Campaign</th><th>Owner</th><th>Goal</th><th>Deadline</th><th>Actions</th></tr></thead>
+      <tbody>
+      @foreach (var c in Model.Pending)
+      {
+        <tr>
+          <td><strong>@c.Title</strong><br/><small style="color:#94a3b8;">@c.ShortDescription</small></td>
+          <td style="color:#64748b;font-size:.82rem;">@(c.Owner?.Email ?? "—")</td>
+          <td>$@c.FundingGoal.ToString("N0")</td>
+          <td>@c.EndDate.ToString("MMM d, yyyy")</td>
+          <td>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <a asp-area="Dashboard" asp-page="/CampaignPage" asp-route-id="@c.Id" class="btn-xs b-view">View</a>
+              <form method="post" asp-page-handler="Publish" style="display:inline;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="campaignId" value="@c.Id"/>
+                <button type="submit" class="btn-xs b-publish"
+                        onclick="return confirm('Publish this campaign? It will become visible to all donors.')">
+                  ✓ Publish
+                </button>
+              </form>
+              <button type="button" class="btn-xs b-terminate"
+                      onclick="openModal('terminate','@c.Id','@c.Title.Replace("'","\\'")')">
+                ✗ Reject
+              </button>
+            </div>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
+
+@* ── ACTIVE ── *@
+<h2 class="section-title">
+  ✅ Active (Live)
+  @if (Model.Active.Any())
+  { <span class="cnt-badge" style="background:#059669;">@Model.Active.Count</span> }
+</h2>
+@if (!Model.Active.Any())
+{ <p class="empty">No active campaigns.</p> }
+else
+{
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-top:8px;">
+    <table class="tbl">
+      <thead><tr><th>Campaign</th><th>Owner</th><th>Raised / Goal</th><th>Donors</th><th>Rating</th><th>Actions</th></tr></thead>
+      <tbody>
+      @foreach (var c in Model.Active)
+      {
+        <tr>
+          <td><strong>@c.Title</strong><br/><small style="color:#94a3b8;">@c.ShortDescription</small></td>
+          <td style="color:#64748b;font-size:.82rem;">@(c.Owner?.Email ?? "—")</td>
+          <td>
+            <div>$@c.CurrentAmount.ToString("N0") / $@c.FundingGoal.ToString("N0")</div>
+            <div style="background:#e2e8f0;border-radius:999px;height:4px;overflow:hidden;margin-top:3px;width:80px;">
+              <div style="height:100%;border-radius:999px;background:#4f46e5;width:@(c.FundingGoal>0?Math.Min(100,(double)c.CurrentAmount/(double)c.FundingGoal*100).ToString("F0"):"0")%"></div>
+            </div>
+          </td>
+          <td>@c.ReviewCount</td>
+          <td>
+            @if (c.ReviewCount > 0)
+            { <span style="color:#f59e0b;">★ @c.AverageRating.ToString("F1")</span> }
+            else { <span style="color:#cbd5e1;">—</span> }
+          </td>
+          <td>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <a asp-area="Dashboard" asp-page="/CampaignPage" asp-route-id="@c.Id" class="btn-xs b-view">View</a>
+              <a asp-area="Dashboard" asp-page="/UpdateCampaign" asp-route-id="@c.Id" class="btn-xs b-edit">Edit</a>
+              <button type="button" class="btn-xs b-flag"
+                      onclick="openModal('flag','@c.Id','@c.Title.Replace("'","\\'")')">⚑ Flag</button>
+              <button type="button" class="btn-xs b-pause"
+                      onclick="openModal('pause','@c.Id','@c.Title.Replace("'","\\'")')">⏸ Pause</button>
+              <button type="button" class="btn-xs b-terminate"
+                      onclick="openModal('terminate','@c.Id','@c.Title.Replace("'","\\'")')">✗ Terminate</button>
+            </div>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
+
+@* ── FLAGGED ── *@
+@if (Model.Flagged.Any())
+{
+  <h2 class="section-title">⚑ Flagged <span class="cnt-badge cnt-amber">@Model.Flagged.Count</span></h2>
+  <div style="background:#fff;border:1px solid #fbbf24;border-radius:10px;overflow:hidden;margin-top:8px;">
+    <table class="tbl">
+      <thead><tr><th>Campaign</th><th>Owner</th><th>Flag Reason</th><th>Actions</th></tr></thead>
+      <tbody>
+      @foreach (var c in Model.Flagged)
+      {
+        <tr>
+          <td><strong>@c.Title</strong></td>
+          <td style="color:#64748b;font-size:.82rem;">@(c.Owner?.Email ?? "—")</td>
+          <td style="color:#92400e;font-size:.82rem;">@c.FlagReason</td>
+          <td>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <a asp-area="Dashboard" asp-page="/ReviewCampaign" asp-route-id="@c.Id" class="btn-xs b-view">Review</a>
+              <form method="post" asp-page-handler="Release" style="display:inline;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="campaignId" value="@c.Id"/>
+                <button type="submit" class="btn-xs b-release"
+                        onclick="return confirm('Release this campaign back to Active?')">▶ Release</button>
+              </form>
+              <button type="button" class="btn-xs b-terminate"
+                      onclick="openModal('terminate','@c.Id','@c.Title.Replace("'","\\'")')">✗ Terminate</button>
+            </div>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
+
+@* ── PAUSED ── *@
+@if (Model.Paused.Any())
+{
+  <h2 class="section-title">⏸ Paused <span class="cnt-badge cnt-red">@Model.Paused.Count</span></h2>
+  <div style="background:#fff;border:1px solid #fca5a5;border-radius:10px;overflow:hidden;margin-top:8px;">
+    <table class="tbl">
+      <thead><tr><th>Campaign</th><th>Owner</th><th>Pause Reason</th><th>Actions</th></tr></thead>
+      <tbody>
+      @foreach (var c in Model.Paused)
+      {
+        <tr>
+          <td><strong>@c.Title</strong></td>
+          <td style="color:#64748b;font-size:.82rem;">@(c.Owner?.Email ?? "—")</td>
+          <td style="color:#991b1b;font-size:.82rem;">@c.FlagReason</td>
+          <td>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <a asp-area="Dashboard" asp-page="/CampaignPage" asp-route-id="@c.Id" class="btn-xs b-view">View</a>
+              <form method="post" asp-page-handler="Release" style="display:inline;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="campaignId" value="@c.Id"/>
+                <button type="submit" class="btn-xs b-release"
+                        onclick="return confirm('Release this campaign back to Active?')">▶ Release</button>
+              </form>
+              <button type="button" class="btn-xs b-terminate"
+                      onclick="openModal('terminate','@c.Id','@c.Title.Replace("'","\\'")')">✗ Terminate</button>
+            </div>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
+
+@* ── DRAFTS ── *@
+@if (Model.Drafts.Any())
+{
+  <h2 class="section-title">📝 Drafts (not submitted) <span class="cnt-badge" style="background:#64748b;">@Model.Drafts.Count</span></h2>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-top:8px;">
+    <table class="tbl">
+      <thead><tr><th>Campaign</th><th>Owner</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>
+      @foreach (var c in Model.Drafts)
+      {
+        <tr>
+          <td><strong>@c.Title</strong></td>
+          <td style="color:#64748b;font-size:.82rem;">@(c.Owner?.Email ?? "—")</td>
+          <td style="color:#94a3b8;font-size:.82rem;">@c.CreatedAt.ToString("MMM d, yyyy")</td>
+          <td><a asp-area="Dashboard" asp-page="/CampaignPage" asp-route-id="@c.Id" class="btn-xs b-view">View</a></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
+
+@* ── TERMINATED ── *@
+@if (Model.Terminated.Any())
+{
+  <h2 class="section-title" style="color:#94a3b8;">✗ Terminated</h2>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-top:8px;opacity:.7;">
+    <table class="tbl">
+      <thead><tr><th>Campaign</th><th>Owner</th><th>Reason</th></tr></thead>
+      <tbody>
+      @foreach (var c in Model.Terminated)
+      {
+        <tr>
+          <td><strong style="color:#94a3b8;">@c.Title</strong></td>
+          <td style="color:#cbd5e1;font-size:.82rem;">@(c.Owner?.Email ?? "—")</td>
+          <td style="color:#94a3b8;font-size:.82rem;">@c.FlagReason</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
+
+@* ── Action Modal ── *@
+<div id="actionModal" class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal-card">
+    <h2 id="modalTitle" style="margin:0 0 6px;font-size:1rem;font-weight:700;"></h2>
+    <p id="modalSubtitle" style="color:#64748b;font-size:.85rem;margin:0 0 14px;"></p>
+    <form method="post" id="modalForm">
+      @Html.AntiForgeryToken()
+      <input type="hidden" name="campaignId" id="modalCampaignId"/>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:.82rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">
+          Reason <span style="color:#dc2626;">*</span>
+        </label>
+        <textarea name="actionReason" id="modalReason" rows="3"
+                  style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:7px;font-size:.88rem;box-sizing:border-box;"
+                  placeholder="Explain why you are taking this action…" required></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" id="modalSubmit"
+                style="padding:8px 18px;border:none;border-radius:7px;font-weight:600;font-size:.88rem;cursor:pointer;color:#fff;background:#1e293b;">
+          Confirm
+        </button>
+        <button type="button" onclick="closeModal()"
+                style="padding:8px 18px;border:1px solid #e2e8f0;border-radius:7px;font-size:.88rem;cursor:pointer;background:#f8fafc;">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+var cfg = {
+  flag:      { title:'Flag Campaign',      subtitle:'Campaign will be removed from public listing and fundraiser notified.', handler:'Flag',      color:'#d97706' },
+  pause:     { title:'Pause Campaign',     subtitle:'Campaign removed from public, no donations until released.',            handler:'Pause',     color:'#dc2626' },
+  terminate: { title:'Terminate Campaign', subtitle:'Campaign will be permanently cancelled. This cannot be undone.',        handler:'Terminate', color:'#1e293b' }
+};
+function openModal(action, id, title) {
+  var c = cfg[action];
+  document.getElementById('modalTitle').textContent    = c.title + ': ' + title;
+  document.getElementById('modalSubtitle').textContent = c.subtitle;
+  document.getElementById('modalCampaignId').value     = id;
+  document.getElementById('modalReason').value         = '';
+  document.getElementById('modalSubmit').style.background = c.color;
+  document.getElementById('modalForm').action = '?handler=' + c.handler;
+  document.getElementById('actionModal').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('actionModal').style.display = 'none';
+}
+</script>
+}

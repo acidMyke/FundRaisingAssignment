@@ -1,0 +1,92 @@
+@page
+@using FundRaisingAssignment.Application.Areas.Dashboard.Pages
+@using FundRaisingAssignment.Application.Models
+@using FundRaisingAssignment.Application.Extensions
+@model FlaggedCampaignsModel
+@{
+    ViewData["Title"] = "Flagged Campaigns";
+}
+
+<div class="page">
+  <div class="page-hero" style="display:flex; align-items:flex-start;
+       justify-content:space-between; flex-wrap:wrap; gap:var(--space-4);">
+    <div>
+      <h1>⚑ Flagged Campaigns</h1>
+      <p>@Model.Campaigns.Count campaign@(Model.Campaigns.Count == 1 ? "" : "s") awaiting admin review.</p>
+    </div>
+  </div>
+
+  @if (TempData["ReviewOutcome"] != null)
+  {
+    bool ok = TempData["ReviewSuccess"] as bool? ?? false;
+    <div class="alert @(ok ? "alert-success" : "alert-info")" role="alert">
+      @TempData["ReviewOutcome"]
+    </div>
+  }
+
+  @if (!Model.Campaigns.Any())
+  {
+    <div class="table-wrap">
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3>All clear!</h3>
+        <p>No campaigns are currently flagged for review.</p>
+      </div>
+    </div>
+  }
+  else
+  {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Campaign</th>
+            <th>Owner</th>
+            <th>Goal</th>
+            <th>Rating</th>
+            <th>Flag Reason</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach (var c in Model.Campaigns)
+          {
+            <tr>
+              <td>
+                <strong>@c.Title</strong><br/>
+                <small style="color:var(--color-text-muted);">@c.ShortDescription</small>
+              </td>
+              <td style="color:var(--color-text-muted); font-size:var(--text-sm);">
+                @(c.Owner?.Email ?? "Unknown")
+              </td>
+              <td>$@c.FundingGoal.ToString("N0")</td>
+              <td>
+                @if (c.ReviewCount > 0)
+                {
+                  <span style="color:#f59e0b;">★</span>
+                  <strong>@c.AverageRating.ToString("F1")</strong>
+                  <span style="color:var(--color-text-muted); font-size:var(--text-xs);">
+                    / 5 (@c.ReviewCount review@(c.ReviewCount==1?"":"s"))
+                  </span>
+                }
+                else { <span style="color:var(--color-text-muted);">—</span> }
+              </td>
+              <td style="max-width:280px; font-size:var(--text-sm); color:#92400e;">
+                @(string.IsNullOrEmpty(c.FlagReason) ? "No reason provided" : c.FlagReason)
+              </td>
+              <td>
+                <a asp-area="Dashboard" asp-page="/ReviewCampaign"
+                   asp-route-id="@c.Id" class="btn btn-primary"
+                   style="padding:var(--space-2) var(--space-4); font-size:var(--text-sm);">
+                  Review →
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

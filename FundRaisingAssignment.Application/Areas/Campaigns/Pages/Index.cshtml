@@ -1,86 +1,120 @@
 @page
-@using FundRaisingAssignment.Application.Extensions
-@model FundRaisingAssignment.Application.Areas.Campaigns.Pages.IndexModel
+@using FundRaisingAssignment.Application.Areas.Campaigns.Pages
+@using FundRaisingAssignment.Application.Models
+@model IndexModel
 @{
-    ViewData["Title"] = "Browse campaigns";
+    ViewData["Title"] = "All Campaigns";
+    Layout = "_Layout";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Browse campaigns</h1>
+<style>
+  .search-bar{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;margin-bottom:28px;}
+  .search-grid{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .s-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;}
+  .s-label{font-size:.78rem;font-weight:600;color:#374151;}
+  .s-input{padding:8px 11px;border:1px solid #e2e8f0;border-radius:7px;font-size:.9rem;width:100%;box-sizing:border-box;}
+  .s-btn{padding:8px 20px;background:#4f46e5;color:#fff;border:none;border-radius:7px;font-weight:600;font-size:.88rem;cursor:pointer;white-space:nowrap;}
+  .s-btn:hover{background:#4338ca;}
+  .s-clear{padding:8px 14px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:7px;font-size:.88rem;cursor:pointer;text-decoration:none;display:inline-block;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;padding-bottom:40px;}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .2s;}
+  .card:hover{box-shadow:0 8px 30px rgba(0,0,0,.08);}
+  .card-img{height:160px;background:#f1f5f9;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;}
+  .card-body{padding:18px 18px 14px;flex:1;display:flex;flex-direction:column;}
+  .cat-pill{background:#eff6ff;color:#3b82f6;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;display:inline-block;margin-bottom:8px;}
+  .loc-pill{background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:999px;font-size:.72rem;display:inline-block;margin-bottom:8px;margin-left:4px;}
+  .card-title{font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 5px;line-height:1.35;}
+  .card-sub{color:#64748b;font-size:.82rem;margin:0 0 12px;line-height:1.5;flex:1;}
+  .pb-bg{background:#e2e8f0;border-radius:999px;height:7px;overflow:hidden;margin-bottom:6px;}
+  .pb-fg{height:100%;border-radius:999px;background:#4f46e5;}
+  .fund-row{display:flex;justify-content:space-between;font-size:.78rem;color:#64748b;margin-bottom:12px;}
+  .card-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f1f5f9;padding:12px 18px 14px;}
+  .days-pill{background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:3px 10px;font-size:.75rem;color:#475569;}
+  .btn-donate{background:#4f46e5;color:#fff;padding:7px 16px;border-radius:7px;font-size:.82rem;font-weight:600;text-decoration:none;transition:background .15s;}
+  .btn-donate:hover{background:#4338ca;color:#fff;}
+  .empty{text-align:center;padding:64px 20px;color:#94a3b8;}
+</style>
+
+<div style="text-align:center;padding:36px 20px 24px;">
+  <h1 style="font-size:2rem;font-weight:800;color:#0f172a;margin:0 0 8px;">Browse All Campaigns</h1>
+  <p style="color:#64748b;font-size:1rem;margin:0;">Support a cause you believe in.</p>
 </div>
 
-<form method="get" class="row g-2 mb-4">
-    <div class="col-md-5">
-        <input type="text" name="Keyword" value="@Model.Keyword" class="form-control"
-               placeholder="Search title or description" />
+@* ── Search bar (Karthik) ── *@
+<form method="get" class="search-bar">
+  <div class="search-grid">
+    <div class="s-group">
+      <label class="s-label">Search</label>
+      <input name="Keyword" value="@Model.Keyword" class="s-input" placeholder="Keyword…"/>
     </div>
-    <div class="col-md-3">
-        <input type="text" name="Category" value="@Model.Category" class="form-control"
-               placeholder="Category" />
+    <div class="s-group">
+      <label class="s-label">Category</label>
+      <input name="Category" value="@Model.Category" class="s-input" placeholder="e.g. Education"/>
     </div>
-    <div class="col-md-3">
-        <input type="text" name="Location" value="@Model.Location" class="form-control"
-               placeholder="Location" />
+    <div class="s-group">
+      <label class="s-label">Location</label>
+      <input name="Location" value="@Model.Location" class="s-input" placeholder="e.g. Singapore"/>
     </div>
-    <div class="col-md-1 d-grid">
-        <button type="submit" class="btn btn-success">Search</button>
-    </div>
+    <button type="submit" class="s-btn">Search</button>
+    @if (!string.IsNullOrWhiteSpace(Model.Keyword) || !string.IsNullOrWhiteSpace(Model.Category) || !string.IsNullOrWhiteSpace(Model.Location))
+    {
+      <a asp-page="/Index" asp-area="Campaigns" class="s-clear">Clear</a>
+    }
+  </div>
 </form>
-
-@{
-    var hasFilters = !string.IsNullOrWhiteSpace(Model.Keyword)
-                     || !string.IsNullOrWhiteSpace(Model.Category)
-                     || !string.IsNullOrWhiteSpace(Model.Location);
-}
 
 @if (!Model.Campaigns.Any())
 {
-    <div class="alert alert-info">
-        @(hasFilters
-            ? "No active campaigns match your search."
-            : "There are no active campaigns to donate to right now. Please check back soon.")
-    </div>
+  <div class="empty">
+    <h3 style="color:#475569;">No campaigns found</h3>
+    <p>Try a different search or check back soon.</p>
+  </div>
 }
 else
 {
-    <div class="row g-4">
-        @foreach (var campaign in Model.Campaigns)
+  <div class="grid">
+    @foreach (var c in Model.Campaigns)
+    {
+      int daysLeft = c.EndDate.HasValue ? Math.Max(0, (c.EndDate.Value.Date - DateTime.Today).Days) : 0;
+      double pct   = c.FundingGoal > 0
+                     ? Math.Min(100, (double)c.CurrentAmount / (double)c.FundingGoal * 100) : 0;
+      <div class="card">
+        @if (!string.IsNullOrEmpty(c.CoverImageUrl))
         {
-            var pct = campaign.TargetAmount > 0
-                ? (int)Math.Min(100, Math.Round((double)(campaign.CurrentAmount / campaign.TargetAmount) * 100))
-                : 0;
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 shadow-sm border-0">
-                    <div class="card-body d-flex flex-column">
-                        <span class="badge bg-success-subtle text-success align-self-start mb-2">
-                            @campaign.Status.GetDisplayName()
-                        </span>
-                        <h5 class="card-title">@campaign.Title</h5>
-                        <p class="text-muted small">
-                            @(string.IsNullOrWhiteSpace(campaign.ShortDescription)
-                                ? (campaign.Description.Length > 140
-                                    ? campaign.Description[..140] + "…"
-                                    : campaign.Description)
-                                : campaign.ShortDescription)
-                        </p>
-                        <div class="mt-auto">
-                            <div class="progress mb-2" style="height: 6px;">
-                                <div class="progress-bar bg-success" role="progressbar"
-                                     style="width: @pct%"
-                                     aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <div class="d-flex justify-content-between small text-muted mb-3">
-                                <span><strong>@campaign.CurrentAmount.ToString("C")</strong> raised</span>
-                                <span>of @campaign.TargetAmount.ToString("C")</span>
-                            </div>
-                            <a class="btn btn-success w-100"
-                               asp-area="Campaigns" asp-page="./Details" asp-route-id="@campaign.Id">
-                                View &amp; donate
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          <div class="card-img" style="background-image:url('@c.CoverImageUrl')"></div>
         }
-    </div>
+        else
+        {
+          <div class="card-img">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.3">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          </div>
+        }
+        <div class="card-body">
+          <div>
+            <span class="cat-pill">@c.Category</span>
+            @if (!string.IsNullOrEmpty(c.Location))
+            { <span class="loc-pill">📍 @c.Location</span> }
+          </div>
+          <h3 class="card-title">@c.Title</h3>
+          <p class="card-sub">@(c.ShortDescription ?? c.Description[..Math.Min(c.Description.Length,120)])</p>
+          <div class="pb-bg"><div class="pb-fg" style="width:@pct.ToString("F0")%"></div></div>
+          <div class="fund-row">
+            <span><strong>$@c.CurrentAmount.ToString("N0")</strong> raised</span>
+            <span>of $@c.FundingGoal.ToString("N0")</span>
+          </div>
+          @if (c.ReviewCount > 0)
+          {
+            <div style="color:#f59e0b;font-size:.8rem;">★ @c.AverageRating.ToString("F1") <span style="color:#94a3b8;">(@c.ReviewCount review@(c.ReviewCount==1?"":"s"))</span></div>
+          }
+        </div>
+        <div class="card-footer">
+          <span class="days-pill">@daysLeft day@(daysLeft==1?"":"s") left</span>
+          <a asp-area="Dashboard" asp-page="/CampaignPage" asp-route-id="@c.Id"
+             class="btn-donate">Donate →</a>
+        </div>
+      </div>
+    }
+  </div>
 }

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace FundRaisingAssignment.Application.Areas.Donationss.Pages
+namespace FundRaisingAssignment.Application.Areas.Donation.Pages
 {
     [Authorize]
     public class CreateModel : PageModel

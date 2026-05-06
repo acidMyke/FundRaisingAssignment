@@ -7,72 +7,46 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 
-
-
 var builder = WebApplication.CreateBuilder(args);
 
-// -----------------------------
-// DATABASE CONFIG
-// -----------------------------
+// ── Database ─────────────────────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
 if (connectionString.Contains("__REPLACE_ME__"))
-{
-    throw new InvalidOperationException("DefaultConnection is still using the placeholder value. Set it via environment variables.");
-}
+    throw new InvalidOperationException("DefaultConnection is still using the placeholder. Set it via environment variables.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
-
-// Service (Control Layer)
-builder.Services.AddScoped<CampaignService>();
-
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// -----------------------------
-// IDENTITY CONFIG
-// -----------------------------
+// ── Identity ──────────────────────────────────────────────────────────────────
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     options.SignIn.RequireConfirmedAccount = true)
     .AddRoles<ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-// -----------------------------
-// 🔑 B-C-E LAYER REGISTRATION
-// -----------------------------
-
-// Repository (Data Layer)
-//builder.Services.AddScoped<CampaignRepository>();
-
-// -----------------------------
-// AUTHORIZATION
-// -----------------------------
+// ── Authorization ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
-
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("RequireThreeDaysJoined", policy =>
-        policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10))));
+    .AddPolicy("RequireThreeDaysJoined",
+        policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10))));
 
-// -----------------------------
-// MVC / RAZOR
-// -----------------------------
+// ── Application services ──────────────────────────────────────────────────────
+builder.Services.AddScoped<ICampaignService, CampaignService>();   // Josh's interface
+builder.Services.AddScoped<DonationService>();                     // Karthik's donation service
+
+// ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
-builder.Services.AddScoped<DonationService>();
 
-// -----------------------------
-// BUILD APP
-// -----------------------------
+// ── EPPlus license (Karthik) ──────────────────────────────────────────────────
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
 var app = builder.Build();
 
-// -----------------------------
-// MIDDLEWARE PIPELINE
-// -----------------------------
+// ── HTTP pipeline ─────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
-{
     app.UseMigrationsEndPoint();
-}
 else
 {
     app.UseExceptionHandler("/Home/Error");
@@ -81,63 +55,44 @@ else
 
 app.UseHttpsRedirection();
 app.UseRouting();
-
-// ✅ IMPORTANT (missing in your original)
 app.UseAuthentication();
 app.UseAuthorization();
-
-// -----------------------------
-// ROUTING
-// -----------------------------
 app.MapStaticAssets();
+
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapControllers();
 
 app.MapRazorPages()
    .WithStaticAssets();
 
-app.MapControllers();
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
+// ── Database initialisation & role seeding ────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
+    var dbContext    = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var roleManager  = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    var userManager  = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-    var services = scope.ServiceProvider;
-
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
     dbContext.Database.Migrate();
 
-
+    // Seed all defined roles
     foreach (var role in ApplicationRole.All)
     {
         if (role.Name != null && !await roleManager.RoleExistsAsync(role.Name))
-        {
             await roleManager.CreateAsync(new ApplicationRole(role.Name));
-        }
     }
 
-    if (!await roleManager.RoleExistsAsync("Admin"))
-    {
-        await roleManager.CreateAsync(new ApplicationRole { Name = "Admin" });
-    }
-
-    // C) Assign Admin role to a specific user
-    // CHANGE THIS EMAIL to your actual registered account email
-    var adminEmail = "admin@example.com";
-    var user = await userManager.FindByEmailAsync(adminEmail);
-    if (user is not null && !await userManager.IsInRoleAsync(user, "Admin"))
-    {
-        await userManager.AddToRoleAsync(user, "Admin");
-    }
-
+    // Assign Admin role to the admin seed account (change email in appsettings if needed)
+    var adminEmail = builder.Configuration["AdminSeedEmail"] ?? "admin@example.com";
+    var adminUser  = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser is not null && !await userManager.IsInRoleAsync(adminUser, ApplicationRole.Names.Admin))
+        await userManager.AddToRoleAsync(adminUser, ApplicationRole.Names.Admin);
 }
 
-// -----------------------------
 app.Run();
