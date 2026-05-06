@@ -41,6 +41,6 @@ public class IndexModel : PageModel
         {
             Campaigns = await _service.SearchCampaigns(Keyword, Category, Location);
         }
-        
+
     }
 }

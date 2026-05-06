@@ -8,7 +8,10 @@
     {
 
         <li class="nav-item">
-            <a class="nav-link text-dark" asp-area="Dashboard" asp-action="Index">My campaigns</a>
+             <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/Index">My campaigns</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/DonationHistoryPage">My donations</a>
         </li>
         @if (User.IsInRole(ApplicationRole.Names.Admin))
         {

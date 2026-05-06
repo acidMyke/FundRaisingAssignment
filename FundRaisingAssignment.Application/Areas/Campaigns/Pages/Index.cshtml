@@ -1,5 +1,6 @@
 @page
 @model FundRaisingAssignment.Application.Areas.Campaigns.Pages.IndexModel
+@model FundRaisingAssignment.Application.Areas.Campaigns.Pages.IndexModel
 @{
     ViewData["Title"] = "Campaign list";
 }
@@ -47,17 +48,17 @@
             </tr>
         </thead>
         <tbody>
-        @foreach (var c in Model.Campaigns)
-        {
-            <tr>
-                <td>@c.Title</td>
-                <td>@c.Category</td>
-                <td>@c.Location</td>
-                <td>@c.TargetAmount</td>
-                <td>@c.CurrentAmount</td>
-                <td>@c.Status</td>
-            </tr>
-        }
+            @foreach (var c in Model.Campaigns)
+            {
+                <tr>
+                    <td>@c.Title</td>
+                    <td>@c.Category</td>
+                    <td>@c.Location</td>
+                    <td>@c.TargetAmount</td>
+                    <td>@c.CurrentAmount</td>
+                    <td>@c.Status</td>
+                </tr>
+            }
         </tbody>
     </table>
 }
