@@ -40,6 +40,8 @@ namespace FundRaisingAssignment.Application.Models
 
         public DateTime? EndDate { get; set; }
 
+        public DateTime? LastDigestSent { get; set; }
+
         public CampaignStatus Status { get; set; } = CampaignStatus.Draft;
 
         [Required]

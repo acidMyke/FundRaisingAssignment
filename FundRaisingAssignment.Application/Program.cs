@@ -30,6 +30,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Service (Control Layer)
 builder.Services.AddScoped<CampaignService>();
+builder.Services.AddScoped<ICampaignDigestRepository, FundRaisingAssignment.Application.Repositories.CampaignDigestRepository>();
+builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

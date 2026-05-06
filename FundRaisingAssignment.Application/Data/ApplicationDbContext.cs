@@ -17,6 +17,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     // ✅ ADD THIS (Donee table)
     public DbSet<Donee> Donees { get; set; }
+    public DbSet<CampaignVisit> CampaignVisits { get; set; }
 
     // -----------------------------
     protected override void OnModelCreating(ModelBuilder builder)

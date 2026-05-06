@@ -1,5 +1,6 @@
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -9,10 +10,12 @@ namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages
     public class DetailsModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public DetailsModel(ApplicationDbContext context)
+        public DetailsModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         [BindProperty]
@@ -35,6 +38,21 @@ namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages
             if (Campaign == null)
             {
                 return NotFound();
+            }
+
+            // Track Visit
+            var user = await _userManager.GetUserAsync(User);
+            if (user != null)
+            {
+                var visit = new CampaignVisit
+                {
+                    Id = Guid.NewGuid(),
+                    CampaignId = id,
+                    UserId = user.Id,
+                    VisitDate = DateTime.UtcNow
+                };
+                _context.CampaignVisits.Add(visit);
+                await _context.SaveChangesAsync();
             }
 
             // Top 10 by highest single donation
