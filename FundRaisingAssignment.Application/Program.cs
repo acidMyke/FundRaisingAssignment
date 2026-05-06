@@ -5,7 +5,7 @@ using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using OfficeOpenXml; 
+using OfficeOpenXml;
 
 
 
@@ -98,7 +98,7 @@ app.MapControllerRoute(
 app.MapRazorPages()
    .WithStaticAssets();
 
-app.MapControllers(); 
+app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
@@ -114,7 +114,7 @@ using (var scope = app.Services.CreateScope())
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
     dbContext.Database.Migrate();
 
-    
+
     foreach (var role in ApplicationRole.All)
     {
         if (role.Name != null && !await roleManager.RoleExistsAsync(role.Name))
@@ -130,7 +130,7 @@ using (var scope = app.Services.CreateScope())
 
     // C) Assign Admin role to a specific user
     // CHANGE THIS EMAIL to your actual registered account email
-    var adminEmail = "admin@example.com"; 
+    var adminEmail = "admin@example.com";
     var user = await userManager.FindByEmailAsync(adminEmail);
     if (user is not null && !await userManager.IsInRoleAsync(user, "Admin"))
     {

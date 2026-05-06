@@ -48,9 +48,9 @@ public class MyBudgetModel : PageModel
 
             if (goal is not null)
             {
-                Input.BudgetLimit  = goal.BudgetLimit;
+                Input.BudgetLimit = goal.BudgetLimit;
                 Input.TargetAmount = goal.TargetAmount;
-                Input.Period       = goal.Period;
+                Input.Period = goal.Period;
             }
 
             Status = BuildStatus(goal, donationCount);
@@ -102,9 +102,9 @@ public class MyBudgetModel : PageModel
             }
 
             // sub-flows 4a / 7a: only overwrite a field when the donee actually submitted a value.
-            if (Input.BudgetLimit.HasValue)  goal.BudgetLimit  = Input.BudgetLimit;
+            if (Input.BudgetLimit.HasValue) goal.BudgetLimit = Input.BudgetLimit;
             if (Input.TargetAmount.HasValue) goal.TargetAmount = Input.TargetAmount;
-            goal.Period    = Input.Period;
+            goal.Period = Input.Period;
             goal.UpdatedAt = now;
 
             await _db.SaveChangesAsync();
@@ -171,15 +171,15 @@ public class MyBudgetModel : PageModel
 
         var query = _db.Donations.AsNoTracking().Where(d => d.UserId == userId);
         if (start.HasValue) query = query.Where(d => d.CreatedAt >= start.Value);
-        if (end.HasValue)   query = query.Where(d => d.CreatedAt <  end.Value);
+        if (end.HasValue) query = query.Where(d => d.CreatedAt < end.Value);
 
         // alt-flow 9a: SumAsync over decimal? returns null when no rows; coalesce to 0.
         var count = await query.CountAsync();
         var total = await query.SumAsync(d => (decimal?)d.Amount) ?? 0m;
 
-        goal.TotalDonated    = total;
-        goal.BudgetStatus    = ClassifyBudget(total, goal.BudgetLimit);
-        goal.TargetStatus    = ClassifyTarget(total, goal.TargetAmount);
+        goal.TotalDonated = total;
+        goal.BudgetStatus = ClassifyBudget(total, goal.BudgetLimit);
+        goal.TargetStatus = ClassifyTarget(total, goal.TargetAmount);
         goal.LastEvaluatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -215,16 +215,16 @@ public class MyBudgetModel : PageModel
         var (start, end) = ComputePeriodWindow(goal.Period, DateTime.UtcNow);
         return new StatusViewModel
         {
-            TotalDonated         = goal.TotalDonated,
-            DonationCount        = donationCount,
-            BudgetLimit          = goal.BudgetLimit,
-            TargetAmount         = goal.TargetAmount,
-            Period               = goal.Period,
-            PeriodStart          = start,
-            PeriodEnd            = end,
-            BudgetStatus         = goal.BudgetStatus,
-            TargetStatus         = goal.TargetStatus,
-            BudgetUsedPercent    = SafePercent(goal.TotalDonated, goal.BudgetLimit),
+            TotalDonated = goal.TotalDonated,
+            DonationCount = donationCount,
+            BudgetLimit = goal.BudgetLimit,
+            TargetAmount = goal.TargetAmount,
+            Period = goal.Period,
+            PeriodStart = start,
+            PeriodEnd = end,
+            BudgetStatus = goal.BudgetStatus,
+            TargetStatus = goal.TargetStatus,
+            BudgetUsedPercent = SafePercent(goal.TotalDonated, goal.BudgetLimit),
             TargetReachedPercent = SafePercent(goal.TotalDonated, goal.TargetAmount),
         };
     }
@@ -255,8 +255,8 @@ public class MyBudgetModel : PageModel
     private static BudgetStatus ClassifyBudget(decimal total, decimal? limit)
     {
         if (limit is null or <= 0) return Models.BudgetStatus.NotSet;
-        if (total >  limit.Value)  return Models.BudgetStatus.Exceeded;
-        if (total == limit.Value)  return Models.BudgetStatus.Reached;
+        if (total > limit.Value) return Models.BudgetStatus.Exceeded;
+        if (total == limit.Value) return Models.BudgetStatus.Reached;
         if (total >= limit.Value * 0.80m) return Models.BudgetStatus.NearLimit;
         return Models.BudgetStatus.WithinBudget;
     }
@@ -264,7 +264,7 @@ public class MyBudgetModel : PageModel
     private static TargetStatus ClassifyTarget(decimal total, decimal? target)
     {
         if (target is null or <= 0) return Models.TargetStatus.NotSet;
-        if (total >= target.Value)  return Models.TargetStatus.Achieved;
+        if (total >= target.Value) return Models.TargetStatus.Achieved;
 
         var pct = total / target.Value;
         if (pct >= 0.75m) return Models.TargetStatus.NearTarget;

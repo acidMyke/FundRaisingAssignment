@@ -143,15 +143,15 @@ public class ReportsModel : PageModel
             switch (Input.Format)
             {
                 case ExportFormat.Csv:
-                    bytes       = ExportToCsv(report);
+                    bytes = ExportToCsv(report);
                     contentType = "text/csv";
-                    fileName    = $"platform-report-{stamp}.csv";
+                    fileName = $"platform-report-{stamp}.csv";
                     break;
 
                 case ExportFormat.Xlsx:
-                    bytes       = ExportToXlsx(report);
+                    bytes = ExportToXlsx(report);
                     contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                    fileName    = $"platform-report-{stamp}.xlsx";
+                    fileName = $"platform-report-{stamp}.xlsx";
                     break;
 
                 default:
@@ -169,16 +169,16 @@ public class ReportsModel : PageModel
         // 12 — create the export file record
         var export = new ExportFile
         {
-            Id               = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             CreatedByAdminId = admin.Id,
-            Format           = Input.Format,
-            FileName         = fileName,
-            ContentType      = contentType,
-            Content          = bytes,
-            Size             = bytes.LongLength,
-            RangeStart       = Input.StartDate,
-            RangeEnd         = Input.EndDate,
-            CreatedAt        = DateTime.UtcNow
+            Format = Input.Format,
+            FileName = fileName,
+            ContentType = contentType,
+            Content = bytes,
+            Size = bytes.LongLength,
+            RangeStart = Input.StartDate,
+            RangeEnd = Input.EndDate,
+            CreatedAt = DateTime.UtcNow
         };
 
         try
@@ -233,23 +233,23 @@ public class ReportsModel : PageModel
     {
         // End-of-day handling: include donations made any time on the end date
         // by using exclusive next-midnight as the upper bound.
-        var startUtc = DateTime.SpecifyKind(start.Date,          DateTimeKind.Utc);
-        var endUtc   = DateTime.SpecifyKind(end.Date.AddDays(1), DateTimeKind.Utc);
+        var startUtc = DateTime.SpecifyKind(start.Date, DateTimeKind.Utc);
+        var endUtc = DateTime.SpecifyKind(end.Date.AddDays(1), DateTimeKind.Utc);
 
         var campaignsQ = _db.Campaigns.AsNoTracking();
         var donationsQ = _db.Donations.AsNoTracking()
             .Where(d => d.CreatedAt >= startUtc && d.CreatedAt < endUtc);
 
         // ---- Headline numbers ----
-        var totalCampaigns       = await campaignsQ.CountAsync();
+        var totalCampaigns = await campaignsQ.CountAsync();
         var newCampaignsInPeriod = await campaignsQ
             .CountAsync(c => c.CreatedAt >= startUtc && c.CreatedAt < endUtc);
 
         var donationCount = await donationsQ.CountAsync();
-        var totalRaised   = await donationsQ.SumAsync(d => (decimal?)d.Amount) ?? 0m;
-        var largest       = await donationsQ.MaxAsync(d => (decimal?)d.Amount) ?? 0m;
-        var uniqueDonors  = await donationsQ.Select(d => d.UserId).Distinct().CountAsync();
-        var avg           = donationCount > 0 ? Math.Round(totalRaised / donationCount, 2) : 0m;
+        var totalRaised = await donationsQ.SumAsync(d => (decimal?)d.Amount) ?? 0m;
+        var largest = await donationsQ.MaxAsync(d => (decimal?)d.Amount) ?? 0m;
+        var uniqueDonors = await donationsQ.Select(d => d.UserId).Distinct().CountAsync();
+        var avg = donationCount > 0 ? Math.Round(totalRaised / donationCount, 2) : 0m;
 
         // ---- By campaign status ----
         // Step A: donations per status — use the navigation property d.Campaign
@@ -260,9 +260,9 @@ public class ReportsModel : PageModel
             .GroupBy(d => d.Campaign!.Status)
             .Select(g => new
             {
-                Status        = g.Key,
+                Status = g.Key,
                 DonationCount = g.Count(),
-                TotalRaised   = g.Sum(d => d.Amount),
+                TotalRaised = g.Sum(d => d.Amount),
             })
             .ToListAsync();
 
@@ -279,10 +279,10 @@ public class ReportsModel : PageModel
                 var dStat = donationsByStatus.FirstOrDefault(x => Equals(x.Status, cs.Status));
                 return new CampaignStatusStat
                 {
-                    Status        = cs.Status.ToString() ?? "Unknown",
+                    Status = cs.Status.ToString() ?? "Unknown",
                     CampaignCount = cs.Count,
                     DonationCount = dStat?.DonationCount ?? 0,
-                    TotalRaised   = dStat?.TotalRaised   ?? 0m,
+                    TotalRaised = dStat?.TotalRaised ?? 0m,
                 };
             })
             .OrderByDescending(s => s.TotalRaised)
@@ -293,9 +293,9 @@ public class ReportsModel : PageModel
             .GroupBy(d => d.CreatedAt.Date)
             .Select(g => new DailyStat
             {
-                Date          = g.Key,
+                Date = g.Key,
                 DonationCount = g.Count(),
-                TotalRaised   = g.Sum(d => d.Amount),
+                TotalRaised = g.Sum(d => d.Amount),
             })
             .OrderBy(d => d.Date)
             .ToListAsync();
@@ -306,11 +306,11 @@ public class ReportsModel : PageModel
             .GroupBy(d => new { d.Campaign!.Id, d.Campaign.Title, d.Campaign.Status })
             .Select(g => new TopCampaignStat
             {
-                CampaignId    = g.Key.Id,
-                Title         = g.Key.Title,
-                Status        = g.Key.Status.ToString() ?? "Unknown",
+                CampaignId = g.Key.Id,
+                Title = g.Key.Title,
+                Status = g.Key.Status.ToString() ?? "Unknown",
                 DonationCount = g.Count(),
-                TotalRaised   = g.Sum(d => d.Amount),
+                TotalRaised = g.Sum(d => d.Amount),
             })
             .OrderByDescending(t => t.TotalRaised)
             .Take(20)
@@ -318,18 +318,18 @@ public class ReportsModel : PageModel
 
         var report = new PlatformReport
         {
-            StartDate            = start,
-            EndDate              = end,
-            TotalCampaigns       = totalCampaigns,
+            StartDate = start,
+            EndDate = end,
+            TotalCampaigns = totalCampaigns,
             NewCampaignsInPeriod = newCampaignsInPeriod,
-            TotalDonations       = donationCount,
-            TotalRaised          = totalRaised,
-            UniqueDonors         = uniqueDonors,
-            AverageDonation      = avg,
-            LargestDonation      = largest,
-            ByStatus             = byStatus,
-            DailyTotals          = daily,
-            TopCampaigns         = top,
+            TotalDonations = donationCount,
+            TotalRaised = totalRaised,
+            UniqueDonors = uniqueDonors,
+            AverageDonation = avg,
+            LargestDonation = largest,
+            ByStatus = byStatus,
+            DailyTotals = daily,
+            TopCampaigns = top,
         };
 
         _logger.LogInformation(
@@ -354,13 +354,13 @@ public class ReportsModel : PageModel
 
         WriteRow(sb, "SUMMARY");
         WriteRow(sb, "Metric", "Value");
-        WriteRow(sb, "Total Campaigns",          r.TotalCampaigns.ToString(inv));
-        WriteRow(sb, "New Campaigns in Period",  r.NewCampaignsInPeriod.ToString(inv));
-        WriteRow(sb, "Total Donations",          r.TotalDonations.ToString(inv));
-        WriteRow(sb, "Total Raised",             r.TotalRaised.ToString("F2", inv));
-        WriteRow(sb, "Unique Donors",            r.UniqueDonors.ToString(inv));
-        WriteRow(sb, "Average Donation",         r.AverageDonation.ToString("F2", inv));
-        WriteRow(sb, "Largest Donation",         r.LargestDonation.ToString("F2", inv));
+        WriteRow(sb, "Total Campaigns", r.TotalCampaigns.ToString(inv));
+        WriteRow(sb, "New Campaigns in Period", r.NewCampaignsInPeriod.ToString(inv));
+        WriteRow(sb, "Total Donations", r.TotalDonations.ToString(inv));
+        WriteRow(sb, "Total Raised", r.TotalRaised.ToString("F2", inv));
+        WriteRow(sb, "Unique Donors", r.UniqueDonors.ToString(inv));
+        WriteRow(sb, "Average Donation", r.AverageDonation.ToString("F2", inv));
+        WriteRow(sb, "Largest Donation", r.LargestDonation.ToString("F2", inv));
         sb.AppendLine();
 
         WriteRow(sb, "BY STATUS");
@@ -422,11 +422,11 @@ public class ReportsModel : PageModel
         // ---- Sheet 1: Summary --------------------------------------------
         var s1 = pkg.Workbook.Worksheets.Add("Summary");
 
-        s1.Cells["A1"].Value           = "Givvn Platform Report";
+        s1.Cells["A1"].Value = "Givvn Platform Report";
         s1.Cells["A1"].Style.Font.Size = 16;
         s1.Cells["A1"].Style.Font.Bold = true;
-        s1.Cells["A2"].Value           = $"Period: {r.StartDate:yyyy-MM-dd} -> {r.EndDate:yyyy-MM-dd}";
-        s1.Cells["A3"].Value           = $"Generated: {r.GeneratedAtUtc:yyyy-MM-dd HH:mm} UTC";
+        s1.Cells["A2"].Value = $"Period: {r.StartDate:yyyy-MM-dd} -> {r.EndDate:yyyy-MM-dd}";
+        s1.Cells["A3"].Value = $"Generated: {r.GeneratedAtUtc:yyyy-MM-dd HH:mm} UTC";
 
         s1.Cells["A5"].Value = "Metric";
         s1.Cells["B5"].Value = "Value";

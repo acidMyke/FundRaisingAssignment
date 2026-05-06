@@ -69,7 +69,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             b.HasIndex(d => d.CampaignId);
             b.HasIndex(d => d.UserId);
             b.HasIndex(d => d.CreatedAt);
-            
+
             // Composite index for reporting: Who donated and when?
             b.HasIndex(d => new { d.UserId, d.CreatedAt });
         });

@@ -67,7 +67,7 @@ public class ReportInputModel : IValidatableObject
     [Display(Name = "Format")]
     public ExportFormat Format { get; set; } = ExportFormat.Xlsx;
 
-    
+
     public IEnumerable<ValidationResult> Validate(ValidationContext _)
     {
         if (EndDate < StartDate)
@@ -80,7 +80,7 @@ public class ReportInputModel : IValidatableObject
                 "Start date cannot be in the future.",
                 new[] { nameof(StartDate) });
 
-  
+
         if ((EndDate - StartDate).TotalDays > 366 * 5)
             yield return new ValidationResult(
                 "Date range cannot exceed 5 years.",
