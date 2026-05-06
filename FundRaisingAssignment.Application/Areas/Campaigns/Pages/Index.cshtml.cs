@@ -1,24 +1,46 @@
-using FundRaisingAssignment.Application.Data;
+namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
+
+using FundRaisingAssignment.Application.Services;
 using FundRaisingAssignment.Application.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
-namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages
+public class IndexModel : PageModel
 {
-    public class IndexModel : PageModel
+    private readonly CampaignService _service;
+
+    public IndexModel(CampaignService service)
     {
-        private readonly ApplicationDbContext _context;
+        _service = service;
+    }
 
-        public IndexModel(ApplicationDbContext context)
+    public List<Campaign> Campaigns { get; set; } = new();
+
+    [BindProperty(SupportsGet = true)]
+    public string? Keyword { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? Category { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? Location { get; set; }
+
+    public bool HasSearched { get; set; }
+
+    public async Task OnGetAsync()
+    {
+        Keyword = Keyword?.Trim();
+        Category = Category?.Trim();
+        Location = Location?.Trim();
+
+        HasSearched = !string.IsNullOrWhiteSpace(Keyword)
+                || !string.IsNullOrWhiteSpace(Category)
+                || !string.IsNullOrWhiteSpace(Location);
+
+        if (HasSearched)
         {
-            _context = context;
+            Campaigns = await _service.SearchCampaigns(Keyword, Category, Location);
         }
 
-        public IList<Campaign> Campaigns { get; set; } = new List<Campaign>();
-
-        public async Task OnGetAsync()
-        {
-            Campaigns = await _context.Campaigns.ToListAsync();
-        }
     }
 }

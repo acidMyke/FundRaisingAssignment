@@ -52,10 +52,23 @@
                 <span asp-validation-for="Input.TargetAmount" class="text-danger"></span>
             </div>
 
+            <div class="form-group mb-3">
+                <label asp-for="Input.Category" class="control-label"></label>
+                <input asp-for="Input.Category" class="form-control" />
+                <span asp-validation-for="Input.Category" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Input.Location" class="control-label"></label>
+                <input asp-for="Input.Location" class="form-control" />
+                <span asp-validation-for="Input.Location" class="text-danger"></span>
+            </div>
+
             <div class="form-group mt-4 mb-5">
                 <input type="submit" value="Create Campaign" class="btn btn-primary" />
                 <a asp-page="./Index" class="btn btn-secondary ms-2">Back to List</a>
             </div>
+
         </form>
     </div>
 </div>
