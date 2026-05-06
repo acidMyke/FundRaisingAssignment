@@ -13,7 +13,7 @@ public class DonationConfirmationModel(
     ApplicationDbContext context,
     UserManager<ApplicationUser> userManager) : PageModel
 {
-    public Donation Donation { get; private set; } = default!;
+    public Models.Donation Donation { get; private set; } = default!;
     public Campaign Campaign { get; private set; } = default!;
     public bool GoalReached => Campaign.Status == CampaignStatus.Completed;
 
