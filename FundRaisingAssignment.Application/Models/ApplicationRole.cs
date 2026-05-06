@@ -17,6 +17,8 @@ namespace FundRaisingAssignment.Application.Models
             public const string Admin = "Admin";
             public const string Fundraiser = "Fundraiser";
             public const string PendingFundraiser = "PendingFundraiser";
+            public const string CampaignManager = "CampaignManager";
+            public const string Donor = "Donor";
         }
         public static readonly ApplicationRole Admin = new(Names.Admin);
         public static readonly ApplicationRole Fundraiser = new(Names.Fundraiser);

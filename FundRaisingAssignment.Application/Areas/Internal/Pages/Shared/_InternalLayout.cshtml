@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+@* <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -29,6 +29,10 @@
                   asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
                 <button type="submit" class="btn btn-outline-danger w-100 text-start border-0">Logout</button>
             </form>
+            <!-- Nich -->
+            <a class="nav-link text-white" asp-area="Internal" asp-page="/Users/Index">
+                👥 User Management
+            </a>
         </div>
     </nav>
 
@@ -50,3 +54,14 @@
 </body>
 
 </html>
+ *@
+
+@{
+    Layout = "_Layout";
+}
+
+@RenderBody()
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}
