@@ -46,7 +46,7 @@ namespace FundRaisingAssignment.Application.Services
                     (c.Location ?? "").Contains(location)
                 );
             }
-            
+
             return await query.ToListAsync();
         }
     }

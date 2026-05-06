@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 // -----------------------------
 // DATABASE CONFIG
 // -----------------------------
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 if (connectionString.Contains("__REPLACE_ME__"))
@@ -82,7 +82,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 // ✅ IMPORTANT (missing in your original)
-app.UseAuthentication();  
+app.UseAuthentication();
 app.UseAuthorization();
 
 // -----------------------------

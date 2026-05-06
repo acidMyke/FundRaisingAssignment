@@ -85,7 +85,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 CreatedAt = DateTime.UtcNow,
                 OwnerId = user.Id,
                 Category = Input.Category,
-                Location = Input.Location 
+                Location = Input.Location
             };
 
             _context.Campaigns.Add(campaign);
