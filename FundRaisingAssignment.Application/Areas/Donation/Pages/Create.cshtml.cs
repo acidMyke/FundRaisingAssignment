@@ -20,8 +20,8 @@ namespace FundRaisingAssignment.Application.Areas.Donation.Pages
         }
 
         [BindProperty]
-        public DonationRecord Donation { get; set; }
-        public Campaign Campaign { get; set; }
+        public DonationRecord Donation { get; set; } = default!;
+        public Campaign? Campaign { get; set; }
 
         public async Task<IActionResult> OnGetAsync(Guid campaignId)
         {

@@ -23,8 +23,8 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
         public List<DonationRecord> DonationRecords { get; set; } = new();
         [BindProperty]
         public int? SelectedDonationId { get; set; }
-        public DonationRecord SelectedDonation { get; set; }
-        public string ErrorMessage { get; set; }
+        public DonationRecord? SelectedDonation { get; set; }
+        public string? ErrorMessage { get; set; }
 
 
         public async Task OnGetAsync()

@@ -13,7 +13,7 @@ namespace FundRaisingAssignment.Application.Models
         [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
         public string? ReceiptNumber { get; set; }
         [System.ComponentModel.DataAnnotations.Required]
-        public string PaymentMethod { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty;
         public string? Notes { get; set; }
 
         // Foreign key to Campaign
