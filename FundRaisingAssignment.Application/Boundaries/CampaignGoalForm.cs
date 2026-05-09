@@ -27,6 +27,6 @@ public class CampaignGoalForm
     // ── UML boundary methods ──────────────────────────────────────────────────
     public static string NavigateToCampaignSettings() => "/Dashboard";
     public void EnterFundingGoal(decimal goalAmount) => GoalAmount = goalAmount;
-    public void EnterDeadlineDate(DateTime d)         => DeadlineDate = d;
+    public void EnterDeadlineDate(DateTime d) => DeadlineDate = d;
     public void Submit() { /* handled by IndexModel.OnPost */ }
 }

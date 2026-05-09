@@ -18,11 +18,11 @@ public class ManageCampaignsModel : PageModel
 
     public ManageCampaignsModel(ICampaignService svc) => _svc = svc;
 
-    public IReadOnlyList<Campaign> Pending    { get; private set; } = [];
-    public IReadOnlyList<Campaign> Active     { get; private set; } = [];
-    public IReadOnlyList<Campaign> Flagged    { get; private set; } = [];
-    public IReadOnlyList<Campaign> Paused     { get; private set; } = [];
-    public IReadOnlyList<Campaign> Drafts     { get; private set; } = [];
+    public IReadOnlyList<Campaign> Pending { get; private set; } = [];
+    public IReadOnlyList<Campaign> Active { get; private set; } = [];
+    public IReadOnlyList<Campaign> Flagged { get; private set; } = [];
+    public IReadOnlyList<Campaign> Paused { get; private set; } = [];
+    public IReadOnlyList<Campaign> Drafts { get; private set; } = [];
     public IReadOnlyList<Campaign> Terminated { get; private set; } = [];
 
     [BindProperty]
@@ -34,11 +34,11 @@ public class ManageCampaignsModel : PageModel
     public async Task OnGetAsync()
     {
         var all = await _svc.GetAllCampaignsAsync();
-        Pending    = all.Where(c => c.Status == CampaignStatus.PendingReview).ToList();
-        Active     = all.Where(c => c.Status == CampaignStatus.Active).ToList();
-        Flagged    = all.Where(c => c.Status == CampaignStatus.Flagged).ToList();
-        Paused     = all.Where(c => c.Status == CampaignStatus.Paused).ToList();
-        Drafts     = all.Where(c => c.Status == CampaignStatus.Draft).ToList();
+        Pending = all.Where(c => c.Status == CampaignStatus.PendingReview).ToList();
+        Active = all.Where(c => c.Status == CampaignStatus.Active).ToList();
+        Flagged = all.Where(c => c.Status == CampaignStatus.Flagged).ToList();
+        Paused = all.Where(c => c.Status == CampaignStatus.Paused).ToList();
+        Drafts = all.Where(c => c.Status == CampaignStatus.Draft).ToList();
         Terminated = all.Where(c => c.Status == CampaignStatus.Cancelled).ToList();
     }
 

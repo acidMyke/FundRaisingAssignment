@@ -10,15 +10,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
 {
     // ── Karthik's DbSets ──────────────────────────────────────────────────────
-    public DbSet<Campaign>      Campaigns      { get; set; }
-    public DbSet<Donee>         Donees         { get; set; }
-    public DbSet<Donation>      Donations      { get; set; }
-    public DbSet<DonationGoal>  DonationGoals  { get; set; }
-    public DbSet<ExportFile>    ExportFiles    { get; set; }
-    public DbSet<RefundLog>     RefundLogs     { get; set; }
+    public DbSet<Campaign> Campaigns { get; set; }
+    public DbSet<Donee> Donees { get; set; }
+    public DbSet<Donation> Donations { get; set; }
+    public DbSet<DonationGoal> DonationGoals { get; set; }
+    public DbSet<ExportFile> ExportFiles { get; set; }
+    public DbSet<RefundLog> RefundLogs { get; set; }
 
     // ── Josh's DbSets ─────────────────────────────────────────────────────────
-    public DbSet<CampaignReview>         CampaignReviews         { get; set; }
+    public DbSet<CampaignReview> CampaignReviews { get; set; }
     public DbSet<FundRaiserNotification> FundRaiserNotifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -162,12 +162,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             v => v.ToOffset(sgtZone.BaseUtcOffset));
 
         foreach (var entity in builder.Model.GetEntityTypes())
-        foreach (var prop in entity.GetProperties())
-        {
-            if (prop.ClrType == typeof(DateTime) || prop.ClrType == typeof(DateTime?))
-                prop.SetValueConverter(dtConverter);
-            if (prop.ClrType == typeof(DateTimeOffset) || prop.ClrType == typeof(DateTimeOffset?))
-                prop.SetValueConverter(dtoConverter);
-        }
+            foreach (var prop in entity.GetProperties())
+            {
+                if (prop.ClrType == typeof(DateTime) || prop.ClrType == typeof(DateTime?))
+                    prop.SetValueConverter(dtConverter);
+                if (prop.ClrType == typeof(DateTimeOffset) || prop.ClrType == typeof(DateTimeOffset?))
+                    prop.SetValueConverter(dtoConverter);
+            }
     }
 }

@@ -16,7 +16,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 
         public DonationHistoryPageModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
-            _context     = context;
+            _context = context;
             _userManager = userManager;
         }
 
@@ -56,7 +56,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 var user = await _userManager.GetUserAsync(User);
                 if (user == null)
                 {
-                    ErrorMessage   = "User not found.";
+                    ErrorMessage = "User not found.";
                     DonationRecords = new List<Donation>();
                     return;
                 }

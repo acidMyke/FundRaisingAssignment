@@ -54,15 +54,15 @@ public sealed class DonationService(
         {
             var donation = new Donation
             {
-                Id          = Guid.NewGuid(),          // merged model uses Id as PK
-                CampaignId  = campaign.Id,
-                UserId      = donorUserId,              // merged model uses UserId
-                Amount      = input.Amount,
-                Message     = input.Message,
+                Id = Guid.NewGuid(),          // merged model uses Id as PK
+                CampaignId = campaign.Id,
+                UserId = donorUserId,              // merged model uses UserId
+                Amount = input.Amount,
+                Message = input.Message,
                 IsAnonymous = input.IsAnonymous,
-                DonorEmail  = input.IsAnonymous ? "Anonymous" : string.Empty,
-                Status      = DonationStatus.Completed,
-                CreatedAt   = DateTime.UtcNow
+                DonorEmail = input.IsAnonymous ? "Anonymous" : string.Empty,
+                Status = DonationStatus.Completed,
+                CreatedAt = DateTime.UtcNow
             };
 
             await context.Donations.AddAsync(donation, ct);

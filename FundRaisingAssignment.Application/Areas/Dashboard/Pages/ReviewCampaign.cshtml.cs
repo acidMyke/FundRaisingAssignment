@@ -22,9 +22,9 @@ public class ReviewCampaignModel : PageModel
     [BindProperty(SupportsGet = true)]
     public Guid Id { get; set; }
 
-    public Campaign?                    Campaign { get; private set; }
+    public Campaign? Campaign { get; private set; }
     public IReadOnlyList<CampaignReview> Reviews { get; private set; } = [];
-    public string?                      ErrorMessage { get; private set; }
+    public string? ErrorMessage { get; private set; }
 
     [BindProperty]
     [Required(ErrorMessage = "A removal reason is required.")]
@@ -69,7 +69,7 @@ public class ReviewCampaignModel : PageModel
         {
             ModelState.AddModelError(nameof(RemovalReason), "A removal reason is required.");
             Campaign = await _svc.GetCampaignDetailsAsync(Id);
-            Reviews  = await _svc.GetCampaignReviewsAsync(Id);
+            Reviews = await _svc.GetCampaignReviewsAsync(Id);
             return Page();
         }
 

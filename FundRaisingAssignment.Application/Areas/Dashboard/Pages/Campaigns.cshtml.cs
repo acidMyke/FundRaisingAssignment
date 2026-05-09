@@ -14,7 +14,7 @@ public class CampaignsModel : PageModel
     public CampaignsModel(ICampaignService svc, UserManager<ApplicationUser> um)
     {
         _svc = svc;
-        _um  = um;
+        _um = um;
     }
 
     public IReadOnlyList<Campaign> Campaigns { get; private set; } = [];

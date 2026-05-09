@@ -9,16 +9,16 @@ public class ReportExporterTests
 {
     private static PlatformReport SampleReport() => new()
     {
-        StartDate            = new DateTime(2026, 4, 1),
-        EndDate              = new DateTime(2026, 4, 30),
-        GeneratedAtUtc       = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc),
-        TotalCampaigns       = 5,
+        StartDate = new DateTime(2026, 4, 1),
+        EndDate = new DateTime(2026, 4, 30),
+        GeneratedAtUtc = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc),
+        TotalCampaigns = 5,
         NewCampaignsInPeriod = 2,
-        TotalDonations       = 10,
-        TotalRaised          = 1234.56m,
-        UniqueDonors         = 7,
-        AverageDonation      = 123.46m,
-        LargestDonation      = 500m,
+        TotalDonations = 10,
+        TotalRaised = 1234.56m,
+        UniqueDonors = 7,
+        AverageDonation = 123.46m,
+        LargestDonation = 500m,
         ByStatus =
         {
             new CampaignStatusStat { Status = "Active",    CampaignCount = 3, DonationCount = 8, TotalRaised = 1000m },
@@ -99,24 +99,24 @@ public class ReportExporterTests
 
         var text = Encoding.UTF8.GetString(bytes);
         Assert.Contains("Givvn Platform Report", text);
-        Assert.Contains("SUMMARY",               text);
-        Assert.Contains("BY STATUS",             text);
-        Assert.Contains("DAILY TOTALS",          text);
-        Assert.Contains("TOP CAMPAIGNS",         text);
-        Assert.Contains("BY CATEGORY",           text);
-        Assert.Contains("BY PAYMENT METHOD",     text);
-        Assert.Contains("TOP DONORS",            text);
-        Assert.Contains("CAMPAIGN PROGRESS",     text);
-        Assert.Contains("DONATIONS",             text);
+        Assert.Contains("SUMMARY", text);
+        Assert.Contains("BY STATUS", text);
+        Assert.Contains("DAILY TOTALS", text);
+        Assert.Contains("TOP CAMPAIGNS", text);
+        Assert.Contains("BY CATEGORY", text);
+        Assert.Contains("BY PAYMENT METHOD", text);
+        Assert.Contains("TOP DONORS", text);
+        Assert.Contains("CAMPAIGN PROGRESS", text);
+        Assert.Contains("DONATIONS", text);
 
         // Headline figure flows through
-        Assert.Contains("1234.56",               text);
+        Assert.Contains("1234.56", text);
 
         // New section data flows through
-        Assert.Contains("Education",             text);
-        Assert.Contains("Card",                  text);
-        Assert.Contains("alice@example.com",     text);
-        Assert.Contains("R-001",                 text);
+        Assert.Contains("Education", text);
+        Assert.Contains("Card", text);
+        Assert.Contains("alice@example.com", text);
+        Assert.Contains("R-001", text);
 
         // Quoting/escaping: title contains commas + quotes
         Assert.Contains("\"Help \"\"Friends\"\", with, commas\"", text);
@@ -146,13 +146,13 @@ public class ReportExporterTests
         Assert.Equal((byte)'P', bytes[0]);
         Assert.Equal((byte)'K', bytes[1]);
 
-        using var ms      = new MemoryStream(bytes);
+        using var ms = new MemoryStream(bytes);
         using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
 
         // EPPlus writes one xml per worksheet under xl/worksheets/
         var sheetEntries = archive.Entries
             .Where(e => e.FullName.StartsWith("xl/worksheets/sheet", StringComparison.Ordinal)
-                     && e.FullName.EndsWith(".xml",                 StringComparison.Ordinal))
+                     && e.FullName.EndsWith(".xml", StringComparison.Ordinal))
             .ToList();
 
         Assert.Equal(9, sheetEntries.Count);
@@ -163,14 +163,14 @@ public class ReportExporterTests
         using var reader = new StreamReader(workbook!.Open());
         var workbookXml = reader.ReadToEnd();
 
-        Assert.Contains("Summary",            workbookXml);
-        Assert.Contains("By Status",          workbookXml);
-        Assert.Contains("Daily Totals",       workbookXml);
-        Assert.Contains("Top Campaigns",      workbookXml);
-        Assert.Contains("By Category",        workbookXml);
-        Assert.Contains("By Payment Method",  workbookXml);
-        Assert.Contains("Top Donors",         workbookXml);
-        Assert.Contains("Campaign Progress",  workbookXml);
-        Assert.Contains("Donations",          workbookXml);
+        Assert.Contains("Summary", workbookXml);
+        Assert.Contains("By Status", workbookXml);
+        Assert.Contains("Daily Totals", workbookXml);
+        Assert.Contains("Top Campaigns", workbookXml);
+        Assert.Contains("By Category", workbookXml);
+        Assert.Contains("By Payment Method", workbookXml);
+        Assert.Contains("Top Donors", workbookXml);
+        Assert.Contains("Campaign Progress", workbookXml);
+        Assert.Contains("Donations", workbookXml);
     }
 }

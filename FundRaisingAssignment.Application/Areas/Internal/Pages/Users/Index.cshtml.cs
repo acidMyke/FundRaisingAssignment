@@ -1,5 +1,4 @@
-﻿using FundRaisingAssignment.Application.Data;
-using FundRaisingAssignment.Application.Models;
+﻿using FundRaisingAssignment.Application.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

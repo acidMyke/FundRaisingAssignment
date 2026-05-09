@@ -8,40 +8,51 @@ namespace FundRaisingAssignment.Application.Models
     {
         public Guid Id { get; set; }
 
-        [Required][StringLength(100)][Display(Name = "Campaign Title")]
+        [Required]
+        [StringLength(100)]
+        [Display(Name = "Campaign Title")]
         public string Title { get; set; } = string.Empty;
 
-        [Required][Display(Name = "Description")]
+        [Required]
+        [Display(Name = "Description")]
         public string Description { get; set; } = string.Empty;
 
-        [StringLength(200)][Display(Name = "Short Description")]
+        [StringLength(200)]
+        [Display(Name = "Short Description")]
         public string? ShortDescription { get; set; }
 
         // ── Category: enum (Josh) ──────────────────────────────────────────────
-        [Required][Display(Name = "Category")]
+        [Required]
+        [Display(Name = "Category")]
         public CampaignCategory Category { get; set; } = CampaignCategory.Other;
 
         // ── Location: string (Karthik – used in search) ───────────────────────
-        [StringLength(100)][Display(Name = "Location")]
+        [StringLength(100)]
+        [Display(Name = "Location")]
         public string? Location { get; set; }
 
-        [StringLength(500)][Display(Name = "Cover Image URL")]
+        [StringLength(500)]
+        [Display(Name = "Cover Image URL")]
         public string? CoverImageUrl { get; set; }
 
         // ── Financial ─────────────────────────────────────────────────────────
-        [Required][Range(1, double.MaxValue)][Display(Name = "Funding Goal")]
+        [Required]
+        [Range(1, double.MaxValue)]
+        [Display(Name = "Funding Goal")]
         public decimal FundingGoal { get; set; }
 
-        [Required][Range(1, double.MaxValue)][Display(Name = "Target Amount")]
+        [Required]
+        [Range(1, double.MaxValue)]
+        [Display(Name = "Target Amount")]
         public decimal TargetAmount { get; set; }   // kept for Karthik compat
 
         public decimal CurrentAmount { get; set; } = 0;
 
         // ── Dates ─────────────────────────────────────────────────────────────
-        public DateTime CreatedAt  { get; set; } = DateTime.UtcNow;
-        public DateTime StartDate  { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
         public DateTime? PublishedAt { get; set; }
-        public DateTime? EndDate   { get; set; }   // nullable for Karthik DB compat
+        public DateTime? EndDate { get; set; }   // nullable for Karthik DB compat
 
         // ── Status ────────────────────────────────────────────────────────────
         public CampaignStatus Status { get; set; } = CampaignStatus.Draft;
@@ -51,7 +62,7 @@ namespace FundRaisingAssignment.Application.Models
 
         // ── Rating aggregates (Josh) ──────────────────────────────────────────
         public double AverageRating { get; set; } = 0;
-        public int    ReviewCount   { get; set; } = 0;
+        public int ReviewCount { get; set; } = 0;
 
         // ── Ownership ─────────────────────────────────────────────────────────
         [Required]
@@ -60,7 +71,7 @@ namespace FundRaisingAssignment.Application.Models
 
         // ── Derived helpers ───────────────────────────────────────────────────
         public bool IsPubliclyVisible => Status == CampaignStatus.Active;
-        public bool AcceptsDonations  => Status == CampaignStatus.Active;
+        public bool AcceptsDonations => Status == CampaignStatus.Active;
 
         // ── Domain methods ────────────────────────────────────────────────────
 
@@ -75,25 +86,25 @@ namespace FundRaisingAssignment.Application.Models
         {
             if (Status != CampaignStatus.PendingReview)
                 throw new InvalidOperationException("Only campaigns pending review can be published.");
-            Status      = CampaignStatus.Active;
+            Status = CampaignStatus.Active;
             PublishedAt = DateTime.UtcNow;
         }
 
         public void FlagCampaignByAdmin(string reason)
         {
-            Status     = CampaignStatus.Flagged;
+            Status = CampaignStatus.Flagged;
             FlagReason = reason;
         }
 
         public void PauseCampaign(string reason)
         {
-            Status     = CampaignStatus.Paused;
+            Status = CampaignStatus.Paused;
             FlagReason = reason;
         }
 
         public void TerminateCampaign(string reason)
         {
-            Status     = CampaignStatus.Cancelled;
+            Status = CampaignStatus.Cancelled;
             FlagReason = reason;
         }
 
@@ -101,37 +112,37 @@ namespace FundRaisingAssignment.Application.Models
         {
             if (Status != CampaignStatus.Flagged && Status != CampaignStatus.Paused)
                 throw new InvalidOperationException("Only Flagged or Paused campaigns can be released.");
-            Status     = CampaignStatus.Active;
+            Status = CampaignStatus.Active;
             FlagReason = null;
         }
 
         /// <summary>BCE Diagram 1 – updates goal + deadline.</summary>
         public void UpdateGoalAndDeadline(decimal goalAmount, DateTime deadlineDate)
         {
-            FundingGoal  = goalAmount;
+            FundingGoal = goalAmount;
             TargetAmount = goalAmount;
-            EndDate      = deadlineDate;
+            EndDate = deadlineDate;
         }
 
         public void ApproveCampaignStatus()
         {
-            Status     = CampaignStatus.Active;
+            Status = CampaignStatus.Active;
             FlagReason = null;
         }
 
         public void RemoveCampaignStatus(string removalReason)
         {
-            Status     = CampaignStatus.Cancelled;
+            Status = CampaignStatus.Cancelled;
             FlagReason = removalReason;
         }
 
         public void RecalculateRating(double newAverage, int newCount)
         {
             AverageRating = Math.Round(newAverage, 2);
-            ReviewCount   = newCount;
+            ReviewCount = newCount;
             if (Status == CampaignStatus.Active && ReviewCount >= 3 && AverageRating <= 2.0)
             {
-                Status     = CampaignStatus.Flagged;
+                Status = CampaignStatus.Flagged;
                 FlagReason = $"Auto-flagged: average rating {AverageRating:F1} stars ({ReviewCount} reviews).";
             }
         }
