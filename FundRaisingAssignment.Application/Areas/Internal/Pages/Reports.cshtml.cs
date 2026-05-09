@@ -316,6 +316,174 @@ public class ReportsModel : PageModel
             .Take(20)
             .ToListAsync();
 
+        // ---- By category ----
+        var donationsByCategory = await donationsQ
+            .Where(d => d.Campaign != null)
+            .GroupBy(d => d.Campaign!.Category)
+            .Select(g => new
+            {
+                Category = g.Key,
+                DonationCount = g.Count(),
+                TotalRaised = g.Sum(d => d.Amount),
+            })
+            .ToListAsync();
+
+        var campaignsByCategory = await campaignsQ
+            .GroupBy(c => c.Category)
+            .Select(g => new { Category = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var byCategory = campaignsByCategory
+            .Select(cc =>
+            {
+                var dStat = donationsByCategory.FirstOrDefault(x => Equals(x.Category, cc.Category));
+                return new CategoryStat
+                {
+                    Category = cc.Category.ToString() ?? "Other",
+                    CampaignCount = cc.Count,
+                    DonationCount = dStat?.DonationCount ?? 0,
+                    TotalRaised = dStat?.TotalRaised ?? 0m,
+                };
+            })
+            .OrderByDescending(c => c.TotalRaised)
+            .ToList();
+
+        // ---- By payment method ----
+        var byPaymentMethodRaw = await donationsQ
+            .GroupBy(d => d.PaymentMethod)
+            .Select(g => new
+            {
+                Method = g.Key,
+                DonationCount = g.Count(),
+                TotalRaised = g.Sum(d => d.Amount),
+            })
+            .ToListAsync();
+
+        var byPaymentMethod = byPaymentMethodRaw
+            .Select(p => new PaymentMethodStat
+            {
+                PaymentMethod = string.IsNullOrWhiteSpace(p.Method) ? "Other" : p.Method,
+                DonationCount = p.DonationCount,
+                TotalRaised = p.TotalRaised,
+            })
+            .OrderByDescending(p => p.TotalRaised)
+            .ToList();
+
+        // ---- Campaign progress (campaigns with activity in or created in range) ----
+        var donationCampaignIds = await donationsQ
+            .Select(d => d.CampaignId)
+            .Distinct()
+            .ToListAsync();
+
+        var relevantCampaigns = await campaignsQ
+            .Where(c => donationCampaignIds.Contains(c.Id)
+                     || (c.CreatedAt >= startUtc && c.CreatedAt < endUtc))
+            .Select(c => new
+            {
+                c.Id,
+                c.Title,
+                c.Category,
+                c.Status,
+                c.FundingGoal,
+                c.CurrentAmount,
+                c.AverageRating,
+                c.ReviewCount,
+                c.EndDate,
+                OwnerEmail = c.Owner != null ? c.Owner.Email : null,
+            })
+            .ToListAsync();
+
+        var periodActivity = await donationsQ
+            .GroupBy(d => d.CampaignId)
+            .Select(g => new
+            {
+                CampaignId = g.Key,
+                DonationCount = g.Count(),
+                Raised = g.Sum(d => d.Amount),
+            })
+            .ToListAsync();
+
+        var progress = relevantCampaigns
+            .Select(c =>
+            {
+                var act = periodActivity.FirstOrDefault(p => p.CampaignId == c.Id);
+                var pct = c.FundingGoal > 0
+                    ? Math.Round(c.CurrentAmount * 100m / c.FundingGoal, 2)
+                    : 0m;
+                return new CampaignProgressStat
+                {
+                    CampaignId = c.Id,
+                    Title = c.Title,
+                    Category = c.Category.ToString() ?? "Other",
+                    Status = c.Status.ToString() ?? "Unknown",
+                    FundingGoal = c.FundingGoal,
+                    CurrentAmount = c.CurrentAmount,
+                    PercentFunded = pct,
+                    DonationsInPeriod = act?.DonationCount ?? 0,
+                    RaisedInPeriod = act?.Raised ?? 0m,
+                    AverageRating = c.AverageRating,
+                    ReviewCount = c.ReviewCount,
+                    EndDate = c.EndDate,
+                    OwnerEmail = c.OwnerEmail ?? "",
+                };
+            })
+            .OrderByDescending(p => p.RaisedInPeriod)
+            .ThenByDescending(p => p.CurrentAmount)
+            .ToList();
+
+        // ---- Top donors (Anonymous bucketed together) ----
+        var donorsRaw = await donationsQ
+            .Select(d => new { d.IsAnonymous, d.DonorEmail, d.Amount })
+            .ToListAsync();
+
+        var topDonors = donorsRaw
+            .GroupBy(d => d.IsAnonymous
+                          || string.IsNullOrWhiteSpace(d.DonorEmail)
+                          || d.DonorEmail == "Anonymous"
+                ? "Anonymous"
+                : d.DonorEmail)
+            .Select(g => new TopDonorStat
+            {
+                DonorLabel = g.Key,
+                DonationCount = g.Count(),
+                TotalGiven = g.Sum(x => x.Amount),
+            })
+            .OrderByDescending(d => d.TotalGiven)
+            .Take(20)
+            .ToList();
+
+        // ---- Raw donations (capped to keep exports manageable) ----
+        const int donationCap = 5000;
+        var rawDonations = await donationsQ
+            .OrderByDescending(d => d.CreatedAt)
+            .Take(donationCap)
+            .Select(d => new
+            {
+                d.CreatedAt,
+                ReceiptNumber = d.ReceiptNumber ?? "",
+                CampaignTitle = d.Campaign != null ? d.Campaign.Title : "",
+                DonorLabel = d.IsAnonymous ? "Anonymous" : d.DonorEmail,
+                d.Amount,
+                d.PaymentMethod,
+                d.Status,
+                Message = d.Message ?? "",
+            })
+            .ToListAsync();
+
+        var donationRows = rawDonations
+            .Select(d => new DonationRow
+            {
+                CreatedAt = d.CreatedAt,
+                ReceiptNumber = d.ReceiptNumber,
+                CampaignTitle = d.CampaignTitle,
+                DonorLabel = string.IsNullOrWhiteSpace(d.DonorLabel) ? "Anonymous" : d.DonorLabel,
+                Amount = d.Amount,
+                PaymentMethod = string.IsNullOrWhiteSpace(d.PaymentMethod) ? "Other" : d.PaymentMethod,
+                Status = d.Status.ToString(),
+                Message = d.Message,
+            })
+            .ToList();
+
         var report = new PlatformReport
         {
             StartDate = start,
@@ -330,6 +498,11 @@ public class ReportsModel : PageModel
             ByStatus = byStatus,
             DailyTotals = daily,
             TopCampaigns = top,
+            ByCategory = byCategory,
+            ByPaymentMethod = byPaymentMethod,
+            CampaignProgress = progress,
+            TopDonors = topDonors,
+            Donations = donationRows,
         };
 
         _logger.LogInformation(
@@ -388,6 +561,66 @@ public class ReportsModel : PageModel
                           t.Status,
                           t.DonationCount.ToString(inv),
                           t.TotalRaised.ToString("F2", inv));
+        sb.AppendLine();
+
+        WriteRow(sb, "BY CATEGORY");
+        WriteRow(sb, "Category", "Campaigns", "Donations", "Total Raised");
+        foreach (var c in r.ByCategory)
+            WriteRow(sb, c.Category,
+                          c.CampaignCount.ToString(inv),
+                          c.DonationCount.ToString(inv),
+                          c.TotalRaised.ToString("F2", inv));
+        sb.AppendLine();
+
+        WriteRow(sb, "BY PAYMENT METHOD");
+        WriteRow(sb, "Payment Method", "Donations", "Total Raised");
+        foreach (var p in r.ByPaymentMethod)
+            WriteRow(sb, p.PaymentMethod,
+                          p.DonationCount.ToString(inv),
+                          p.TotalRaised.ToString("F2", inv));
+        sb.AppendLine();
+
+        WriteRow(sb, "TOP DONORS");
+        WriteRow(sb, "Donor", "Donations", "Total Given");
+        foreach (var d in r.TopDonors)
+            WriteRow(sb, d.DonorLabel,
+                          d.DonationCount.ToString(inv),
+                          d.TotalGiven.ToString("F2", inv));
+        sb.AppendLine();
+
+        WriteRow(sb, "CAMPAIGN PROGRESS");
+        WriteRow(sb, "Campaign ID", "Title", "Category", "Status",
+                     "Funding Goal", "Current Amount", "% Funded",
+                     "Donations In Period", "Raised In Period",
+                     "Avg Rating", "Reviews", "End Date", "Owner");
+        foreach (var p in r.CampaignProgress)
+            WriteRow(sb, p.CampaignId.ToString(),
+                          p.Title,
+                          p.Category,
+                          p.Status,
+                          p.FundingGoal.ToString("F2", inv),
+                          p.CurrentAmount.ToString("F2", inv),
+                          p.PercentFunded.ToString("F2", inv),
+                          p.DonationsInPeriod.ToString(inv),
+                          p.RaisedInPeriod.ToString("F2", inv),
+                          p.AverageRating.ToString("F2", inv),
+                          p.ReviewCount.ToString(inv),
+                          p.EndDate.HasValue ? p.EndDate.Value.ToString("yyyy-MM-dd") : "",
+                          p.OwnerEmail);
+        sb.AppendLine();
+
+        WriteRow(sb, "DONATIONS");
+        WriteRow(sb, "Date (UTC)", "Receipt #", "Campaign", "Donor",
+                     "Amount", "Payment Method", "Status", "Message");
+        foreach (var d in r.Donations)
+            WriteRow(sb, d.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                          d.ReceiptNumber,
+                          d.CampaignTitle,
+                          d.DonorLabel,
+                          d.Amount.ToString("F2", inv),
+                          d.PaymentMethod,
+                          d.Status,
+                          d.Message);
 
         return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(sb.ToString());
     }
@@ -501,6 +734,112 @@ public class ReportsModel : PageModel
             s4.Cells[row, 5].Style.Numberformat.Format = "$#,##0.00";
         }
         s4.Cells.AutoFitColumns();
+
+        // ---- Sheet 5: By Category ----------------------------------------
+        var s5 = pkg.Workbook.Worksheets.Add("By Category");
+        WriteSheetHeader(s5, "Category", "Campaigns", "Donations", "Total Raised");
+
+        for (int i = 0; i < r.ByCategory.Count; i++)
+        {
+            var row = i + 2;
+            var c = r.ByCategory[i];
+            s5.Cells[row, 1].Value = c.Category;
+            s5.Cells[row, 2].Value = c.CampaignCount;
+            s5.Cells[row, 3].Value = c.DonationCount;
+            s5.Cells[row, 4].Value = c.TotalRaised;
+            s5.Cells[row, 4].Style.Numberformat.Format = "$#,##0.00";
+        }
+        s5.Cells.AutoFitColumns();
+
+        // ---- Sheet 6: By Payment Method ----------------------------------
+        var s6 = pkg.Workbook.Worksheets.Add("By Payment Method");
+        WriteSheetHeader(s6, "Payment Method", "Donations", "Total Raised");
+
+        for (int i = 0; i < r.ByPaymentMethod.Count; i++)
+        {
+            var row = i + 2;
+            var p = r.ByPaymentMethod[i];
+            s6.Cells[row, 1].Value = p.PaymentMethod;
+            s6.Cells[row, 2].Value = p.DonationCount;
+            s6.Cells[row, 3].Value = p.TotalRaised;
+            s6.Cells[row, 3].Style.Numberformat.Format = "$#,##0.00";
+        }
+        s6.Cells.AutoFitColumns();
+
+        // ---- Sheet 7: Top Donors -----------------------------------------
+        var s7 = pkg.Workbook.Worksheets.Add("Top Donors");
+        WriteSheetHeader(s7, "Donor", "Donations", "Total Given");
+
+        for (int i = 0; i < r.TopDonors.Count; i++)
+        {
+            var row = i + 2;
+            var d = r.TopDonors[i];
+            s7.Cells[row, 1].Value = d.DonorLabel;
+            s7.Cells[row, 2].Value = d.DonationCount;
+            s7.Cells[row, 3].Value = d.TotalGiven;
+            s7.Cells[row, 3].Style.Numberformat.Format = "$#,##0.00";
+        }
+        s7.Cells.AutoFitColumns();
+
+        // ---- Sheet 8: Campaign Progress ----------------------------------
+        var s8 = pkg.Workbook.Worksheets.Add("Campaign Progress");
+        WriteSheetHeader(s8,
+            "Campaign ID", "Title", "Category", "Status",
+            "Funding Goal", "Current Amount", "% Funded",
+            "Donations In Period", "Raised In Period",
+            "Avg Rating", "Reviews", "End Date", "Owner");
+
+        for (int i = 0; i < r.CampaignProgress.Count; i++)
+        {
+            var row = i + 2;
+            var p = r.CampaignProgress[i];
+            s8.Cells[row, 1].Value = p.CampaignId;
+            s8.Cells[row, 2].Value = p.Title;
+            s8.Cells[row, 3].Value = p.Category;
+            s8.Cells[row, 4].Value = p.Status;
+            s8.Cells[row, 5].Value = p.FundingGoal;
+            s8.Cells[row, 5].Style.Numberformat.Format = "$#,##0.00";
+            s8.Cells[row, 6].Value = p.CurrentAmount;
+            s8.Cells[row, 6].Style.Numberformat.Format = "$#,##0.00";
+            s8.Cells[row, 7].Value = p.PercentFunded / 100m;
+            s8.Cells[row, 7].Style.Numberformat.Format = "0.00%";
+            s8.Cells[row, 8].Value = p.DonationsInPeriod;
+            s8.Cells[row, 9].Value = p.RaisedInPeriod;
+            s8.Cells[row, 9].Style.Numberformat.Format = "$#,##0.00";
+            s8.Cells[row, 10].Value = p.AverageRating;
+            s8.Cells[row, 10].Style.Numberformat.Format = "0.00";
+            s8.Cells[row, 11].Value = p.ReviewCount;
+            if (p.EndDate.HasValue)
+            {
+                s8.Cells[row, 12].Value = p.EndDate.Value;
+                s8.Cells[row, 12].Style.Numberformat.Format = "yyyy-mm-dd";
+            }
+            s8.Cells[row, 13].Value = p.OwnerEmail;
+        }
+        s8.Cells.AutoFitColumns();
+
+        // ---- Sheet 9: Donations (raw rows) -------------------------------
+        var s9 = pkg.Workbook.Worksheets.Add("Donations");
+        WriteSheetHeader(s9,
+            "Date (UTC)", "Receipt #", "Campaign", "Donor",
+            "Amount", "Payment Method", "Status", "Message");
+
+        for (int i = 0; i < r.Donations.Count; i++)
+        {
+            var row = i + 2;
+            var d = r.Donations[i];
+            s9.Cells[row, 1].Value = d.CreatedAt;
+            s9.Cells[row, 1].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
+            s9.Cells[row, 2].Value = d.ReceiptNumber;
+            s9.Cells[row, 3].Value = d.CampaignTitle;
+            s9.Cells[row, 4].Value = d.DonorLabel;
+            s9.Cells[row, 5].Value = d.Amount;
+            s9.Cells[row, 5].Style.Numberformat.Format = "$#,##0.00";
+            s9.Cells[row, 6].Value = d.PaymentMethod;
+            s9.Cells[row, 7].Value = d.Status;
+            s9.Cells[row, 8].Value = d.Message;
+        }
+        s9.Cells.AutoFitColumns();
 
         return pkg.GetAsByteArray();
     }

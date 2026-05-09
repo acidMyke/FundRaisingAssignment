@@ -39,6 +39,54 @@ public class ReportExporterTests
                 DonationCount = 8,
                 TotalRaised = 1000m,
             },
+        },
+        ByCategory =
+        {
+            new CategoryStat { Category = "Education", CampaignCount = 2, DonationCount = 5, TotalRaised = 600m },
+            new CategoryStat { Category = "Medical",   CampaignCount = 3, DonationCount = 5, TotalRaised = 634.56m },
+        },
+        ByPaymentMethod =
+        {
+            new PaymentMethodStat { PaymentMethod = "Card",  DonationCount = 8, TotalRaised = 1000m },
+            new PaymentMethodStat { PaymentMethod = "Other", DonationCount = 2, TotalRaised = 234.56m },
+        },
+        TopDonors =
+        {
+            new TopDonorStat { DonorLabel = "alice@example.com", DonationCount = 3, TotalGiven = 500m },
+            new TopDonorStat { DonorLabel = "Anonymous",         DonationCount = 4, TotalGiven = 400m },
+        },
+        CampaignProgress =
+        {
+            new CampaignProgressStat
+            {
+                CampaignId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                Title = "Build school",
+                Category = "Education",
+                Status = "Active",
+                FundingGoal = 5000m,
+                CurrentAmount = 2500m,
+                PercentFunded = 50m,
+                DonationsInPeriod = 5,
+                RaisedInPeriod = 600m,
+                AverageRating = 4.5,
+                ReviewCount = 8,
+                EndDate = new DateTime(2026, 12, 31),
+                OwnerEmail = "owner@example.com",
+            },
+        },
+        Donations =
+        {
+            new DonationRow
+            {
+                CreatedAt = new DateTime(2026, 4, 15, 10, 30, 0, DateTimeKind.Utc),
+                ReceiptNumber = "R-001",
+                CampaignTitle = "Build school",
+                DonorLabel = "alice@example.com",
+                Amount = 100m,
+                PaymentMethod = "Card",
+                Status = "Completed",
+                Message = "Great cause!",
+            },
         }
     };
 
@@ -55,9 +103,20 @@ public class ReportExporterTests
         Assert.Contains("BY STATUS",             text);
         Assert.Contains("DAILY TOTALS",          text);
         Assert.Contains("TOP CAMPAIGNS",         text);
+        Assert.Contains("BY CATEGORY",           text);
+        Assert.Contains("BY PAYMENT METHOD",     text);
+        Assert.Contains("TOP DONORS",            text);
+        Assert.Contains("CAMPAIGN PROGRESS",     text);
+        Assert.Contains("DONATIONS",             text);
 
         // Headline figure flows through
         Assert.Contains("1234.56",               text);
+
+        // New section data flows through
+        Assert.Contains("Education",             text);
+        Assert.Contains("Card",                  text);
+        Assert.Contains("alice@example.com",     text);
+        Assert.Contains("R-001",                 text);
 
         // Quoting/escaping: title contains commas + quotes
         Assert.Contains("\"Help \"\"Friends\"\", with, commas\"", text);
@@ -77,7 +136,7 @@ public class ReportExporterTests
     }
 
     [Fact]
-    public void ExportToXlsx_ProducesValidZipPackage_WithFourWorksheets()
+    public void ExportToXlsx_ProducesValidZipPackage_WithAllExpectedWorksheets()
     {
         var bytes = ReportsModel.ExportToXlsx(SampleReport());
 
@@ -96,17 +155,22 @@ public class ReportExporterTests
                      && e.FullName.EndsWith(".xml",                 StringComparison.Ordinal))
             .ToList();
 
-        Assert.Equal(4, sheetEntries.Count);
+        Assert.Equal(9, sheetEntries.Count);
 
-        // Workbook part lists sheet names — assert all four expected names appear
+        // Workbook part lists sheet names — assert all expected names appear
         var workbook = archive.GetEntry("xl/workbook.xml");
         Assert.NotNull(workbook);
         using var reader = new StreamReader(workbook!.Open());
         var workbookXml = reader.ReadToEnd();
 
-        Assert.Contains("Summary",       workbookXml);
-        Assert.Contains("By Status",     workbookXml);
-        Assert.Contains("Daily Totals",  workbookXml);
-        Assert.Contains("Top Campaigns", workbookXml);
+        Assert.Contains("Summary",            workbookXml);
+        Assert.Contains("By Status",          workbookXml);
+        Assert.Contains("Daily Totals",       workbookXml);
+        Assert.Contains("Top Campaigns",      workbookXml);
+        Assert.Contains("By Category",        workbookXml);
+        Assert.Contains("By Payment Method",  workbookXml);
+        Assert.Contains("Top Donors",         workbookXml);
+        Assert.Contains("Campaign Progress",  workbookXml);
+        Assert.Contains("Donations",          workbookXml);
     }
 }
