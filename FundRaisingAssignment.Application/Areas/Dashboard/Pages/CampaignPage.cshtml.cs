@@ -16,17 +16,17 @@ public class CampaignPageModel : PageModel
     public CampaignPageModel(ICampaignService svc, UserManager<ApplicationUser> um)
     {
         _svc = svc;
-        _um  = um;
+        _um = um;
     }
 
-    public CampaignPageView              PageView  { get; private set; } = new();
-    public IReadOnlyList<CampaignReview> Reviews   { get; private set; } = [];
-    public IReadOnlyList<Donation>       Donations { get; private set; } = [];
-    public bool IsOwner         { get; private set; }
-    public bool CanReview       { get; private set; }
+    public CampaignPageView PageView { get; private set; } = new();
+    public IReadOnlyList<CampaignReview> Reviews { get; private set; } = [];
+    public IReadOnlyList<Donation> Donations { get; private set; } = [];
+    public bool IsOwner { get; private set; }
+    public bool CanReview { get; private set; }
     public bool AlreadyReviewed { get; private set; }
-    public bool CanDonate       { get; private set; }
-    public bool IsAdmin         { get; private set; }
+    public bool CanDonate { get; private set; }
+    public bool IsAdmin { get; private set; }
 
     [BindProperty] public ReviewInput Review { get; set; } = new();
     [BindProperty] public DonateInput Donate { get; set; } = new();
@@ -63,7 +63,7 @@ public class CampaignPageModel : PageModel
         if (campaign is null) { PageView.ShowError("Campaign not found."); return Page(); }
 
         PageView.ShowGoalAndCountdown(campaign);
-        Reviews   = await _svc.GetCampaignReviewsAsync(id);
+        Reviews = await _svc.GetCampaignReviewsAsync(id);
         Donations = await _svc.GetCampaignDonationsAsync(id);
 
         var user = await _um.GetUserAsync(User);
@@ -71,7 +71,7 @@ public class CampaignPageModel : PageModel
 
         if (user is not null)
         {
-            IsOwner         = campaign.OwnerId == user.Id;
+            IsOwner = campaign.OwnerId == user.Id;
             AlreadyReviewed = await _svc.HasUserReviewedAsync(id, user.Id);
             // Reviews allowed: logged-in, not owner, campaign Active, not reviewed yet
             CanReview = !IsOwner && campaign.Status == CampaignStatus.Active && !AlreadyReviewed;
@@ -108,7 +108,7 @@ public class CampaignPageModel : PageModel
             await ReloadAsync(id); return Page();
         }
 
-        var user  = await _um.GetUserAsync(User);
+        var user = await _um.GetUserAsync(User);
         string email = user?.Email ?? "Guest";
 
         try
@@ -146,14 +146,14 @@ public class CampaignPageModel : PageModel
     {
         var campaign = await _svc.GetCampaignAsync(id);
         if (campaign is not null) PageView.ShowGoalAndCountdown(campaign);
-        Reviews   = await _svc.GetCampaignReviewsAsync(id);
+        Reviews = await _svc.GetCampaignReviewsAsync(id);
         Donations = await _svc.GetCampaignDonationsAsync(id);
-        var user  = await _um.GetUserAsync(User);
+        var user = await _um.GetUserAsync(User);
         if (user is not null)
         {
-            IsOwner         = campaign?.OwnerId == user.Id;
+            IsOwner = campaign?.OwnerId == user.Id;
             AlreadyReviewed = await _svc.HasUserReviewedAsync(id, user.Id);
-            CanReview       = !IsOwner && campaign?.Status == CampaignStatus.Active && !AlreadyReviewed;
+            CanReview = !IsOwner && campaign?.Status == CampaignStatus.Active && !AlreadyReviewed;
         }
         CanDonate = campaign?.AcceptsDonations == true && !IsOwner;
     }

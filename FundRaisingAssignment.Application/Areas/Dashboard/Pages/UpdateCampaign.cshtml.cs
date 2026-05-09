@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
@@ -29,28 +28,39 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 
         public class InputModel
         {
-            [Required][StringLength(100)][Display(Name = "Campaign Title")]
+            [Required]
+            [StringLength(100)]
+            [Display(Name = "Campaign Title")]
             public string Title { get; set; } = string.Empty;
 
-            [Required][StringLength(200)][Display(Name = "Short Description")]
+            [Required]
+            [StringLength(200)]
+            [Display(Name = "Short Description")]
             public string ShortDescription { get; set; } = string.Empty;
 
-            [Required][Display(Name = "Full Description / Purpose")]
+            [Required]
+            [Display(Name = "Full Description / Purpose")]
             public string Description { get; set; } = string.Empty;
 
-            [Required][Display(Name = "Category")]
+            [Required]
+            [Display(Name = "Category")]
             public CampaignCategory Category { get; set; } = CampaignCategory.Other;
 
-            [StringLength(500)][Display(Name = "Cover Image URL")]
+            [StringLength(500)]
+            [Display(Name = "Cover Image URL")]
             public string? CoverImageUrl { get; set; }
 
-            [Required][Range(1, double.MaxValue)][Display(Name = "Funding Goal (USD)")]
+            [Required]
+            [Range(1, double.MaxValue)]
+            [Display(Name = "Funding Goal (USD)")]
             public decimal FundingGoal { get; set; }
 
-            [Required][Display(Name = "Funding Deadline")]
+            [Required]
+            [Display(Name = "Funding Deadline")]
             public DateTime EndDate { get; set; }
 
-            [Required][Display(Name = "Status")]
+            [Required]
+            [Display(Name = "Status")]
             public CampaignStatus Status { get; set; }
         }
 
@@ -62,14 +72,14 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             CampaignTitle = c.Title;
             Input = new InputModel
             {
-                Title            = c.Title,
+                Title = c.Title,
                 ShortDescription = c.ShortDescription,
-                Description      = c.Description,
-                Category         = c.Category,
-                CoverImageUrl    = c.CoverImageUrl,
-                FundingGoal      = c.FundingGoal,
-                EndDate          = c.EndDate ?? DateTime.Today,
-                Status           = c.Status
+                Description = c.Description,
+                Category = c.Category,
+                CoverImageUrl = c.CoverImageUrl,
+                FundingGoal = c.FundingGoal,
+                EndDate = c.EndDate ?? DateTime.Today,
+                Status = c.Status
             };
             return Page();
         }
@@ -81,15 +91,15 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             var c = await _ctx.Campaigns.FindAsync(Id);
             if (c is null) return NotFound();
 
-            c.Title            = Input.Title;
+            c.Title = Input.Title;
             c.ShortDescription = Input.ShortDescription;
-            c.Description      = Input.Description;
-            c.Category         = Input.Category;
-            c.CoverImageUrl    = Input.CoverImageUrl;
-            c.FundingGoal      = Input.FundingGoal;
-            c.TargetAmount     = Input.FundingGoal;
-            c.EndDate          = Input.EndDate;
-            c.Status           = Input.Status;
+            c.Description = Input.Description;
+            c.Category = Input.Category;
+            c.CoverImageUrl = Input.CoverImageUrl;
+            c.FundingGoal = Input.FundingGoal;
+            c.TargetAmount = Input.FundingGoal;
+            c.EndDate = Input.EndDate;
+            c.Status = Input.Status;
 
             await _ctx.SaveChangesAsync();
             TempData["Success"] = "Campaign updated.";

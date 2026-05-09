@@ -16,9 +16,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
 
     public async Task<Campaign> CreateCampaignAsync(Campaign campaign)
     {
-        campaign.Id           = Guid.NewGuid();
-        campaign.CreatedAt    = DateTime.UtcNow;
-        campaign.Status       = CampaignStatus.Draft;
+        campaign.Id = Guid.NewGuid();
+        campaign.CreatedAt = DateTime.UtcNow;
+        campaign.Status = CampaignStatus.Draft;
         campaign.TargetAmount = campaign.FundingGoal;
         _db.Campaigns.Add(campaign);
         await _db.SaveChangesAsync();
@@ -29,12 +29,12 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     {
         var c = await _db.Campaigns.FindAsync(updated.Id)
             ?? throw new InvalidOperationException("Campaign not found.");
-        c.Title            = updated.Title;
+        c.Title = updated.Title;
         c.ShortDescription = updated.ShortDescription;
-        c.Description      = updated.Description;
-        c.Category         = updated.Category;
-        c.Location         = updated.Location;
-        c.CoverImageUrl    = updated.CoverImageUrl;
+        c.Description = updated.Description;
+        c.Category = updated.Category;
+        c.Location = updated.Location;
+        c.CoverImageUrl = updated.CoverImageUrl;
         await _db.SaveChangesAsync();
         return c;
     }
@@ -44,14 +44,14 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     {
         var c = new Campaign
         {
-            Id               = Guid.NewGuid(),
-            OwnerId          = ownerId,
-            Title            = $"Campaign {DateTime.Now:yyyy-MM-dd HH:mm}",
+            Id = Guid.NewGuid(),
+            OwnerId = ownerId,
+            Title = $"Campaign {DateTime.Now:yyyy-MM-dd HH:mm}",
             ShortDescription = "Created via Set Funding Goal.",
-            Description      = "Created via Set Funding Goal.",
-            Status           = CampaignStatus.Draft,
-            StartDate        = DateTime.Now,
-            CreatedAt        = DateTime.UtcNow,
+            Description = "Created via Set Funding Goal.",
+            Status = CampaignStatus.Draft,
+            StartDate = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
         };
         c.UpdateGoalAndDeadline(goalAmount, deadlineDate);
         _db.Campaigns.Add(c);
@@ -75,7 +75,7 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     public async Task<IReadOnlyList<Campaign>> SearchCampaignsAsync(
         string? keyword, string? category, string? location)
     {
-        keyword  = keyword?.Trim();
+        keyword = keyword?.Trim();
         category = category?.Trim();
         location = location?.Trim();
 
@@ -237,12 +237,12 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     {
         var review = new CampaignReview
         {
-            CampaignId    = campaignId,
-            ReviewerId    = reviewerId,
+            CampaignId = campaignId,
+            ReviewerId = reviewerId,
             ReviewerEmail = reviewerEmail,
-            Stars         = stars,
-            Comment       = comment,
-            CreatedAt     = DateTime.UtcNow
+            Stars = stars,
+            Comment = comment,
+            CreatedAt = DateTime.UtcNow
         };
         _db.CampaignReviews.Add(review);
 
@@ -290,15 +290,15 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
 
         var donation = new Donation
         {
-            Id          = Guid.NewGuid(),
-            CampaignId  = campaignId,
-            UserId      = donorId,         // maps DonorId → UserId in merged model
-            DonorEmail  = isAnonymous ? "Anonymous" : donorEmail,
-            Amount      = amount,
-            Message     = message,
+            Id = Guid.NewGuid(),
+            CampaignId = campaignId,
+            UserId = donorId,         // maps DonorId → UserId in merged model
+            DonorEmail = isAnonymous ? "Anonymous" : donorEmail,
+            Amount = amount,
+            Message = message,
             IsAnonymous = isAnonymous,
-            Status      = DonationStatus.Completed,
-            CreatedAt   = DateTime.UtcNow
+            Status = DonationStatus.Completed,
+            CreatedAt = DateTime.UtcNow
         };
         _db.Donations.Add(donation);
         campaign.CurrentAmount += amount;

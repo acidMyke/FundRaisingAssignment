@@ -24,7 +24,7 @@ public class IndexModel : PageModel
     public IndexModel(ICampaignService svc, UserManager<ApplicationUser> um)
     {
         _svc = svc;
-        _um  = um;
+        _um = um;
     }
 
     [BindProperty]
@@ -37,7 +37,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnGetAsync(Guid? campaignId)
     {
         GoalForm.DeadlineDate = DateTime.Today.AddDays(30);
-        GoalForm.CampaignId   = campaignId;
+        GoalForm.CampaignId = campaignId;
 
         if (campaignId.HasValue)
         {
@@ -48,7 +48,7 @@ public class IndexModel : PageModel
             if (user is null) return Challenge();
             if (EditingCampaign.OwnerId != user.Id) return Forbid();
 
-            GoalForm.GoalAmount   = EditingCampaign.FundingGoal;
+            GoalForm.GoalAmount = EditingCampaign.FundingGoal;
             GoalForm.DeadlineDate = EditingCampaign.EndDate ?? DateTime.Today;
         }
 
@@ -102,6 +102,6 @@ public class IndexModel : PageModel
         return RedirectToPage("/CampaignPage", new { area = "Dashboard", id = campaign.Id });
     }
 
-    private static bool ValidateGoal(decimal g)     => g > 0;
+    private static bool ValidateGoal(decimal g) => g > 0;
     private static bool ValidateDeadline(DateTime d) => d.Date > DateTime.Today;
 }

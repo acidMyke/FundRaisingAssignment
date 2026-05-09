@@ -75,9 +75,9 @@ app.MapRazorPages()
 // ── Database initialisation & role seeding ────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext    = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var roleManager  = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-    var userManager  = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
     dbContext.Database.Migrate();
 
@@ -90,7 +90,7 @@ using (var scope = app.Services.CreateScope())
 
     // Assign Admin role to the admin seed account (change email in appsettings if needed)
     var adminEmail = builder.Configuration["AdminSeedEmail"] ?? "admin@example.com";
-    var adminUser  = await userManager.FindByEmailAsync(adminEmail);
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser is not null && !await userManager.IsInRoleAsync(adminUser, ApplicationRole.Names.Admin))
         await userManager.AddToRoleAsync(adminUser, ApplicationRole.Names.Admin);
 }

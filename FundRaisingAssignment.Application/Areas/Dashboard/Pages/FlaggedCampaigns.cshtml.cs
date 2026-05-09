@@ -1,7 +1,6 @@
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
