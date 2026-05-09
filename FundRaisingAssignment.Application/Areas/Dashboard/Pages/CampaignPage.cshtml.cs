@@ -89,8 +89,14 @@ public class CampaignPageModel : PageModel
 
     public async Task<IActionResult> OnPostDonateAsync(Guid id)
     {
-        foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Review")).ToList())
-            ModelState.Remove(key);
+        // The Review form isn't on this submit, but the model binder still binds
+        // ReviewInput defaults and reports errors under unprefixed keys (Stars,
+        // Comment). Drop everything except the Donate fields and the route id.
+        foreach (var key in ModelState.Keys.ToList())
+        {
+            if (!key.StartsWith("Donate") && key != nameof(id))
+                ModelState.Remove(key);
+        }
 
         if (!ModelState.IsValid)
         { await ReloadAsync(id); return Page(); }
@@ -119,8 +125,11 @@ public class CampaignPageModel : PageModel
 
     public async Task<IActionResult> OnPostReviewAsync(Guid id)
     {
-        foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Donate")).ToList())
-            ModelState.Remove(key);
+        foreach (var key in ModelState.Keys.ToList())
+        {
+            if (!key.StartsWith("Review") && key != nameof(id))
+                ModelState.Remove(key);
+        }
 
         if (!ModelState.IsValid)
         { await ReloadAsync(id); return Page(); }
