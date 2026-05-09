@@ -46,6 +46,10 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             [Display(Name = "Category")]
             public CampaignCategory Category { get; set; } = CampaignCategory.Other;
 
+            [StringLength(100)]
+            [Display(Name = "Location")]
+            public string? Location { get; set; }
+
             [StringLength(500)]
             [Display(Name = "Cover Image URL")]
             public string? CoverImageUrl { get; set; }
@@ -76,6 +80,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 ShortDescription = c.ShortDescription,
                 Description = c.Description,
                 Category = c.Category,
+                Location = c.Location,
                 CoverImageUrl = c.CoverImageUrl,
                 FundingGoal = c.FundingGoal,
                 EndDate = c.EndDate ?? DateTime.Today,
@@ -95,6 +100,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             c.ShortDescription = Input.ShortDescription;
             c.Description = Input.Description;
             c.Category = Input.Category;
+            c.Location = string.IsNullOrWhiteSpace(Input.Location) ? null : Input.Location.Trim();
             c.CoverImageUrl = Input.CoverImageUrl;
             c.FundingGoal = Input.FundingGoal;
             c.TargetAmount = Input.FundingGoal;

@@ -111,6 +111,13 @@
           </div>
 
           <div class="form-floating mb-1">
+            <input asp-for="Input.Location" class="form-control" placeholder="e.g. Singapore" maxlength="100"/>
+            <label asp-for="Input.Location">Location <span class="text-muted">(optional)</span></label>
+            <span asp-validation-for="Input.Location" class="text-danger small"></span>
+          </div>
+          <div class="form-text small mb-3" style="color:#64748b;">Helps donors find local campaigns when they search by location.</div>
+
+          <div class="form-floating mb-1">
             <textarea asp-for="Input.Description" class="form-control" placeholder="Full description"></textarea>
             <label asp-for="Input.Description">Full description / purpose</label>
             <span asp-validation-for="Input.Description" class="text-danger small"></span>
