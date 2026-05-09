@@ -20,6 +20,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<CampaignReview> CampaignReviews { get; set; }
     public DbSet<FundRaiserNotification> FundRaiserNotifications { get; set; }
 
+    public DbSet<CampaignVisit> CampaignVisits { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
