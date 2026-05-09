@@ -11,13 +11,13 @@ public class DonationServiceTests
     {
         var user = new ApplicationUser
         {
-            Id             = Guid.NewGuid(),
-            UserName       = $"u{suffix}@test.local",
+            Id = Guid.NewGuid(),
+            UserName = $"u{suffix}@test.local",
             NormalizedUserName = $"U{suffix.ToUpperInvariant()}@TEST.LOCAL",
-            Email          = $"u{suffix}@test.local",
+            Email = $"u{suffix}@test.local",
             NormalizedEmail = $"U{suffix.ToUpperInvariant()}@TEST.LOCAL",
             EmailConfirmed = true,
-            SecurityStamp  = Guid.NewGuid().ToString(),
+            SecurityStamp = Guid.NewGuid().ToString(),
         };
         db.Context.Users.Add(user);
         db.Context.SaveChanges();
@@ -71,15 +71,15 @@ public class DonationServiceTests
             CancellationToken.None);
 
         var success = Assert.IsType<DonationResult.Success>(result);
-        Assert.Equal(50m,                        success.Donation.Amount);
-        Assert.Equal(DonationStatus.Completed,   success.Donation.Status);
-        Assert.Equal("Hello",                    success.Donation.Message);
+        Assert.Equal(50m, success.Donation.Amount);
+        Assert.Equal(DonationStatus.Completed, success.Donation.Status);
+        Assert.Equal("Hello", success.Donation.Message);
         Assert.False(success.GoalReached);
 
         var fresh = await db.Context.Campaigns.AsNoTracking()
             .FirstAsync(c => c.Id == campaign.Id);
-        Assert.Equal(150m,                       fresh.CurrentAmount);
-        Assert.Equal(CampaignStatus.Active,      fresh.Status);
+        Assert.Equal(150m, fresh.CurrentAmount);
+        Assert.Equal(CampaignStatus.Active, fresh.Status);
 
         Assert.Equal(1, await db.Context.Donations.CountAsync());
     }
@@ -118,8 +118,8 @@ public class DonationServiceTests
 
         var fresh = await db.Context.Campaigns.AsNoTracking()
             .FirstAsync(c => c.Id == campaign.Id);
-        Assert.Equal(115m,                       fresh.CurrentAmount);
-        Assert.Equal(CampaignStatus.Completed,   fresh.Status);
+        Assert.Equal(115m, fresh.CurrentAmount);
+        Assert.Equal(CampaignStatus.Completed, fresh.Status);
     }
 
     [Fact]
