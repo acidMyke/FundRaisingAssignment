@@ -27,6 +27,11 @@
                 <label asp-for="Input.ConfirmPassword">Confirm Password</label>
                 <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
             </div>
+            <div class="form-check mb-3">
+                <input asp-for="Input.IsFundraiser" class="form-check-input" />
+                <label asp-for="Input.IsFundraiser" class="form-check-label"></label>
+                <div class="form-text">Fundraisers can create and manage campaigns once an admin approves your application.</div>
+            </div>
             <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
         </form>
     </div>

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace FundRaisingAssignment.Application.Areas.Donation.Pages
+namespace FundRaisingAssignment.Application.Areas.Donations.Pages
 {
     [Authorize]
     public class CreateModel : PageModel
@@ -20,15 +20,15 @@ namespace FundRaisingAssignment.Application.Areas.Donation.Pages
         }
 
         [BindProperty]
-        public DonationRecord Donation { get; set; }
-        public Campaign Campaign { get; set; }
+        public Donation Donation { get; set; } = default!;
+        public Campaign? Campaign { get; set; }
 
         public async Task<IActionResult> OnGetAsync(Guid campaignId)
         {
             Campaign = await _context.Campaigns.FindAsync(campaignId);
             if (Campaign == null)
                 return NotFound();
-            Donation = new DonationRecord
+            Donation = new Donation
             {
                 CampaignId = campaignId,
                 ReceiptNumber = Guid.NewGuid().ToString().Substring(0, 8).ToUpper() // Temporary value for model binding
@@ -54,11 +54,12 @@ namespace FundRaisingAssignment.Application.Areas.Donation.Pages
                 TempData["Debug"] = "User is not authenticated.";
                 return Challenge();
             }
-            Donation.DoneeId = user.Id;
-            Donation.Date = DateTime.UtcNow;
+            Donation.UserId = user.Id;
+            Donation.CreatedAt = DateTime.UtcNow;
             Donation.CampaignId = campaignId;
+            Donation.Status = DonationStatus.Completed;
             Donation.ReceiptNumber = Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
-            _context.DonationRecords.Add(Donation);
+            _context.Donations.Add(Donation);
             Campaign.CurrentAmount += Donation.Amount;
             await _context.SaveChangesAsync();
             TempData["Debug"] = "Donation created and redirecting.";

@@ -1,0 +1,182 @@
+@page
+@using FundRaisingAssignment.Application.Areas.Dashboard.Pages
+@using FundRaisingAssignment.Application.Models
+@using FundRaisingAssignment.Application.Extensions
+@model CampaignsModel
+@{
+    ViewData["Title"] = "My Campaigns";
+}
+
+<style>
+  .tbl{width:100%;border-collapse:collapse}
+  .tbl th{background:#f8fafc;padding:9px 14px;text-align:left;font-size:.78rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+  .tbl td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:.88rem}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl tr:hover td{background:#fafafa}
+  .c-name{font-weight:600;color:#1e293b}
+  .c-sub{color:#94a3b8;font-size:.78rem;margin-top:2px}
+  .pb-bg{background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;margin-top:3px;width:90px}
+  .pb-fg{height:100%;border-radius:999px;background:#4f46e5}
+  .btn-xs{padding:4px 10px;font-size:.78rem;border-radius:5px;font-weight:500;text-decoration:none;border:1px solid transparent;cursor:pointer;display:inline-block;white-space:nowrap}
+  .btn-view{background:#f1f5f9;color:#1e293b;border-color:#e2e8f0}
+  .btn-view:hover{background:#e2e8f0}
+  .btn-goal{background:#eff6ff;color:#3b82f6;border-color:#bfdbfe}
+  .btn-goal:hover{background:#dbeafe}
+  .btn-submit{background:#4f46e5;color:#fff;border-color:#4f46e5}
+  .btn-submit:hover{background:#4338ca;color:#fff}
+  .status-notice{font-size:.78rem;margin-top:3px;padding:3px 7px;border-radius:4px;display:inline-block}
+  .notice-flag{background:#fef3c7;color:#92400e}
+  .notice-pause{background:#fee2e2;color:#991b1b}
+  .notice-pending{background:#dbeafe;color:#1e40af}
+  .alert-s{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.9rem}
+  .alert-e{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.9rem}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <h1 style="margin:0;font-size:1.65rem;font-weight:700;">My Campaigns</h1>
+    <p style="color:#64748b;font-size:.88rem;margin:4px 0 0;">
+      @Model.Campaigns.Count campaign@(Model.Campaigns.Count == 1 ? "" : "s")
+    </p>
+  </div>
+  <a asp-area="Dashboard" asp-page="/CreateCampaign"
+     style="display:inline-flex;align-items:center;gap:6px;background:#4f46e5;color:#fff;
+            padding:9px 18px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">
+    ✚ New Campaign
+  </a>
+</div>
+
+@if (TempData["Success"] != null)
+{ <div class="alert-s">✓ @TempData["Success"]</div> }
+@if (TempData["Error"] != null)
+{ <div class="alert-e">⚠ @TempData["Error"]</div> }
+
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:.85rem;color:#1e40af;">
+  <strong>How it works:</strong> Create your campaign → Submit for Review → Platform management will publish it → Donors can discover and fund it.
+  Once published, you can still update the <strong>funding goal</strong> and <strong>deadline</strong> at any time.
+</div>
+
+@if (!Model.Campaigns.Any())
+{
+  <div style="text-align:center;padding:56px 20px;color:#94a3b8;">
+    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" style="margin-bottom:14px;opacity:.35;">
+      <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/>
+    </svg>
+    <h3 style="color:#475569;margin-bottom:8px;">No campaigns yet</h3>
+    <a asp-area="Dashboard" asp-page="/CreateCampaign"
+       style="display:inline-block;margin-top:12px;background:#4f46e5;color:#fff;
+              padding:9px 22px;border-radius:8px;font-weight:600;text-decoration:none;">
+      ✚ Create Your First Campaign
+    </a>
+  </div>
+}
+else
+{
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th>Category</th>
+          <th>Raised / Goal</th>
+          <th>Deadline</th>
+          <th>Rating</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var c in Model.Campaigns)
+        {
+          int daysLeft = c.EndDate.HasValue ? Math.Max(0, (c.EndDate.Value.Date - DateTime.Today).Days) : 0;
+          double pct   = c.FundingGoal > 0
+                         ? Math.Min(100, (double)c.CurrentAmount / (double)c.FundingGoal * 100) : 0;
+
+          (string bg, string fg) = c.Status switch {
+            CampaignStatus.Active        => ("#d1fae5","#065f46"),
+            CampaignStatus.Draft         => ("#f1f5f9","#475569"),
+            CampaignStatus.PendingReview => ("#dbeafe","#1e40af"),
+            CampaignStatus.Flagged       => ("#fef3c7","#92400e"),
+            CampaignStatus.Paused        => ("#fee2e2","#991b1b"),
+            CampaignStatus.Cancelled     => ("#f1f5f9","#94a3b8"),
+            _                            => ("#f1f5f9","#475569")
+          };
+
+          <tr>
+            <td style="min-width:200px;">
+              <div class="c-name">@c.Title</div>
+              <div class="c-sub">@c.ShortDescription</div>
+            </td>
+            <td>
+              <span style="background:#f1f5f9;color:#475569;padding:2px 7px;border-radius:999px;font-size:.75rem;font-weight:500;">
+                @c.Category.GetDisplayName()
+              </span>
+            </td>
+            <td>
+              <div style="font-weight:600;font-size:.85rem;">$@c.CurrentAmount.ToString("N0")</div>
+              <div style="color:#94a3b8;font-size:.75rem;">of $@c.FundingGoal.ToString("N0")</div>
+              <div class="pb-bg"><div class="pb-fg" style="width:@pct.ToString("F0")%"></div></div>
+            </td>
+            <td>
+              <div style="font-size:.85rem;">@(c.EndDate?.ToString("MMM d, yyyy") ?? "—")</div>
+              <div style="color:#94a3b8;font-size:.75rem;">@daysLeft day@(daysLeft==1?"":"s") left</div>
+            </td>
+            <td>
+              @if (c.ReviewCount > 0)
+              {
+                <span style="color:#f59e0b;">★</span>
+                <strong>@c.AverageRating.ToString("F1")</strong>
+                <span style="color:#94a3b8;font-size:.75rem;">(@c.ReviewCount)</span>
+              }
+              else { <span style="color:#cbd5e1;font-size:.8rem;">—</span> }
+            </td>
+            <td>
+              <span style="background:@bg;color:@fg;padding:3px 9px;border-radius:999px;font-size:.75rem;font-weight:600;">
+                @c.Status.GetDisplayName()
+              </span>
+              @if (c.Status == CampaignStatus.PendingReview)
+              {
+                <div class="status-notice notice-pending">⏳ Awaiting admin review</div>
+              }
+              @if (c.Status == CampaignStatus.Flagged && !string.IsNullOrEmpty(c.FlagReason))
+              {
+                <div class="status-notice notice-flag" title="@c.FlagReason">⚑ @c.FlagReason.Truncate(40)</div>
+              }
+              @if (c.Status == CampaignStatus.Paused && !string.IsNullOrEmpty(c.FlagReason))
+              {
+                <div class="status-notice notice-pause" title="@c.FlagReason">⏸ @c.FlagReason.Truncate(40)</div>
+              }
+            </td>
+            <td>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+                @* View always available *@
+                <a asp-area="Dashboard" asp-page="/CampaignPage" asp-route-id="@c.Id"
+                   class="btn-xs btn-view">View</a>
+
+                @* Edit Goal/Deadline: always available (even after publish) *@
+                @if (c.Status != CampaignStatus.Cancelled)
+                {
+                  <a asp-area="Dashboard" asp-page="/Index" asp-route-campaignId="@c.Id"
+                     class="btn-xs btn-goal">$ Goal</a>
+                }
+
+                @* Submit for Review: Draft only *@
+                @if (c.Status == CampaignStatus.Draft)
+                {
+                  <form method="post" asp-page-handler="SubmitForReview" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="campaignId" value="@c.Id" />
+                    <button type="submit" class="btn-xs btn-submit"
+                            onclick="return confirm('Submit this campaign for review? You cannot edit campaign details after this point.')">
+                      Submit for Review →
+                    </button>
+                  </form>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

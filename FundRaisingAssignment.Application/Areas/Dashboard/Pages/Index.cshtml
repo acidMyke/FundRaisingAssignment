@@ -1,56 +1,70 @@
 @page
-@using FundRaisingAssignment.Application.Extensions
-@model FundRaisingAssignment.Application.Areas.Dashboard.Pages.IndexModel
+@using FundRaisingAssignment.Application.Areas.Dashboard.Pages
+@model IndexModel
 @{
-    ViewData["Title"] = "My campaigns";
+    bool editing = Model.EditingCampaign is not null;
+    ViewData["Title"] = editing ? $"Edit Funding Goal – {Model.EditingCampaign!.Title}" : "Set Funding Goal";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>My campaigns</h1>
-    <a asp-page="/CreateCampaign" class="btn btn-primary">Create Campaign</a>
+<div class="page-narrow">
+  <div class="page-hero">
+    <h1>@(editing ? "Edit Funding Goal & Deadline" : "Set Funding Goal")</h1>
+    @if (editing)
+    {
+      <p>Update the funding target and deadline for <strong>@Model.EditingCampaign!.Title</strong>.</p>
+    }
+    else
+    {
+      <p>Set a goal and deadline for a quick standalone campaign.</p>
+    }
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Campaign Goal &amp; Deadline</h2>
+
+    <form method="post" novalidate>
+      @Html.AntiForgeryToken()
+      <input type="hidden" asp-for="GoalForm.CampaignId" />
+
+      @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+      {
+        <div class="alert alert-error" role="alert">
+          Please correct the errors below before continuing.
+        </div>
+      }
+
+      <div class="form-group">
+        <label asp-for="GoalForm.GoalAmount" class="form-label"></label>
+        <div class="input-prefix-group">
+          <span class="input-prefix">USD $</span>
+          <input asp-for="GoalForm.GoalAmount" class="form-control"
+                 type="number" min="1" step="0.01" placeholder="5,000.00" />
+        </div>
+        <span asp-validation-for="GoalForm.GoalAmount" class="field-error"></span>
+        <p class="form-hint">Enter the total amount you need to raise.</p>
+      </div>
+
+      <div class="form-group">
+        <label asp-for="GoalForm.DeadlineDate" class="form-label"></label>
+        <input asp-for="GoalForm.DeadlineDate" class="form-control" type="date" />
+        <span asp-validation-for="GoalForm.DeadlineDate" class="field-error"></span>
+        <p class="form-hint">Must be a future date. Sets the campaign countdown clock.</p>
+      </div>
+
+      <hr class="divider" />
+
+      <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary btn-lg">
+          @(editing ? "Save Changes →" : "Save Goal & Deadline →")
+        </button>
+        <a asp-area="Dashboard" asp-page="/Campaigns" class="btn btn-secondary btn-lg">
+          ← My Campaigns
+        </a>
+      </div>
+    </form>
+  </div>
 </div>
 
-@if (Model.Campaigns.Any())
-{
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Target Amount</th>
-                    <th>Current Amount</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var campaign in Model.Campaigns)
-                {
-                    <tr>
-                        <td>
-                            @campaign.Title
-                            <td>
-                                <span class="badge bg-secondary">@campaign.Status.GetDisplayName()</span>
-                            </td>
-                            <td>@campaign.TargetAmount.ToString("C")</td>
-                            <td>@campaign.CurrentAmount.ToString("C")</td>
-                            <td>@campaign.StartDate.ToShortDateString()</td>
-                            <td>@(campaign.EndDate?.ToShortDateString() ?? "-")</td>
-                            <td>
-                                <a asp-page="./UpdateCampaign" asp-route-id="@campaign.Id"
-                                   class="btn btn-sm btn-outline-primary">Edit</a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-else
-    {
-        <div class="alert alert-info">
-            You have not created any campaigns yet.
-        </div>
-    }
+@section Scripts {
+  <partial name="_ValidationScriptsPartial" />
+}

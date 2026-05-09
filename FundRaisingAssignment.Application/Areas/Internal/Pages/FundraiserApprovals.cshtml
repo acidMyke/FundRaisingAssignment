@@ -1,0 +1,57 @@
+@page
+@model FundRaisingAssignment.Application.Areas.Internal.Pages.FundraiserApprovalsModel
+@{
+    ViewData["Title"] = "Fundraiser Approvals";
+}
+
+<div class="container-fluid py-3">
+    <h1 class="mb-3">Fundraiser approvals</h1>
+    <p class="text-muted">Review users who have applied to become fundraisers and approve or reject their request.</p>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-info">@Model.StatusMessage</div>
+    }
+
+    @if (Model.PendingUsers.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Joined</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model.PendingUsers)
+                    {
+                        <tr>
+                            <td>@user.Email</td>
+                            <td>@user.JoinDate.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="text-end">
+                                <form method="post" class="d-inline">
+                                    <button type="submit"
+                                            asp-page-handler="Approve"
+                                            asp-route-id="@user.Id"
+                                            class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="post" class="d-inline ms-1">
+                                    <button type="submit"
+                                            asp-page-handler="Reject"
+                                            asp-route-id="@user.Id"
+                                            class="btn btn-sm btn-outline-danger">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-secondary">No pending fundraiser applications.</div>
+    }
+</div>

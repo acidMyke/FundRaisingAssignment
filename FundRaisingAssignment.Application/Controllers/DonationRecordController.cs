@@ -8,19 +8,19 @@ namespace FundRaisingAssignment.Application.Controllers
     public class DonationRecordController : ControllerBase
     {
         // This would be replaced with a database context in a real app
-        private static List<DonationRecord> _donationRecords = new List<DonationRecord>();
+        private static List<Donation> _donationRecords = new List<Donation>();
 
-        [HttpGet("user/{doneeId}")]
-        public ActionResult<IEnumerable<DonationRecord>> GetDonationRecordsForUser(Guid doneeId)
+        [HttpGet("user/{userId}")]
+        public ActionResult<IEnumerable<Donation>> GetDonationRecordsForUser(Guid userId)
         {
-            var records = _donationRecords.Where(r => r.DoneeId == doneeId).ToList();
+            var records = _donationRecords.Where(r => r.UserId == userId).ToList();
             if (!records.Any())
                 return NotFound("No donation records available.");
             return Ok(records);
         }
 
         [HttpGet("{id}")]
-        public ActionResult<DonationRecord> GetDonationRecord(int id)
+        public ActionResult<Donation> GetDonationRecord(Guid id)
         {
             var record = _donationRecords.FirstOrDefault(r => r.Id == id);
             if (record == null)

@@ -1,0 +1,70 @@
+@page "{id:guid}"
+@model FundRaisingAssignment.Application.Areas.Campaigns.Pages.DonationConfirmationModel
+@{
+    ViewData["Title"] = "Donation receipt";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-2"
+                         style="width: 64px; height: 64px; font-size: 28px;">&#10003;</div>
+                    <h2 class="mb-1">Thank you for your donation!</h2>
+                    <p class="text-muted mb-0">Your contribution has been recorded.</p>
+                </div>
+
+                @if (Model.GoalReached)
+                {
+                    <div class="alert alert-success">
+                        <strong>Goal reached!</strong>
+                        Your donation pushed <em>@Model.Campaign.Title</em> to its target.
+                        The campaign has been marked as completed.
+                    </div>
+                }
+
+                <dl class="row mb-0">
+                    <dt class="col-sm-5 text-muted">Campaign</dt>
+                    <dd class="col-sm-7">@Model.Campaign.Title</dd>
+
+                    <dt class="col-sm-5 text-muted">Amount</dt>
+                    <dd class="col-sm-7"><strong>@Model.Donation.Amount.ToString("C")</strong></dd>
+
+                    <dt class="col-sm-5 text-muted">Status</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-success">@Model.Donation.Status</span>
+                    </dd>
+
+                    <dt class="col-sm-5 text-muted">Anonymity</dt>
+                    <dd class="col-sm-7">
+                        @(Model.Donation.IsAnonymous ? "Anonymous donation" : "Public donation")
+                    </dd>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Donation.Message))
+                    {
+                        <dt class="col-sm-5 text-muted">Your message</dt>
+                        <dd class="col-sm-7" style="white-space: pre-wrap;">@Model.Donation.Message</dd>
+                    }
+
+                    <dt class="col-sm-5 text-muted">Donation ID</dt>
+                    <dd class="col-sm-7"><code class="small">@Model.Donation.Id</code></dd>
+
+                    <dt class="col-sm-5 text-muted">Timestamp</dt>
+                    <dd class="col-sm-7">@Model.Donation.CreatedAt.ToString("f")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <a class="btn btn-outline-success"
+               asp-area="Campaigns" asp-page="./Details" asp-route-id="@Model.Campaign.Id">
+                Back to campaign
+            </a>
+            <a class="btn btn-success"
+               asp-area="Campaigns" asp-page="./Index">
+                Browse more campaigns
+            </a>
+        </div>
+    </div>
+</div>

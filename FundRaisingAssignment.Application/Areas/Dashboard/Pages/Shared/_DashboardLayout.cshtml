@@ -4,26 +4,62 @@
 
 @{
     Layout = "_Layout";
-    var JoinedForThreeDayAuthResult = await AuthorizationService.AuthorizeAsync(User, "RequireThreeDaysJoined");
-    if (!JoinedForThreeDayAuthResult.Succeeded)
-    {
-        IgnoreBody();
-        IgnoreSection("Scripts"); ;
-    }
+    var auth = await AuthorizationService.AuthorizeAsync(User, "RequireThreeDaysJoined");
+    if (!auth.Succeeded) { IgnoreBody(); IgnoreSection("Scripts"); }
+
+    var page = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+    bool isAdmin = User.IsInRole("Admin");
+
+    string active(string p) => page.Contains(p) ? "active" : "";
 }
 
-@* Check authorization policy RequireThreeDaysJoined *@
-@if (JoinedForThreeDayAuthResult.Succeeded)
+@if (auth.Succeeded)
 {
-    @RenderBody()
-    @section Scripts {
-        @RenderSection("Scripts", required: false)
+<style>
+  .dash-nav{background:#fff;border-bottom:2px solid #e2e8f0;margin-bottom:24px;}
+  .dash-nav-inner{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;align-items:stretch;gap:2px;flex-wrap:wrap;}
+  .dash-link{display:inline-flex;align-items:center;gap:5px;padding:12px 16px;font-size:.85rem;font-weight:500;color:#64748b;text-decoration:none;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;}
+  .dash-link:hover{color:#1e293b;border-bottom-color:#cbd5e1;}
+  .dash-link.active{color:#4f46e5;border-bottom-color:#4f46e5;font-weight:600;}
+  .dash-link-admin{color:#92400e;background:#fefce8;}
+  .dash-link-admin:hover{color:#78350f;background:#fef9c3;border-bottom-color:#fbbf24;}
+  .dash-link-admin.active{color:#92400e;border-bottom-color:#d97706;}
+  .dash-link-manage{color:#dc2626;}
+  .dash-link-manage:hover{color:#991b1b;border-bottom-color:#fca5a5;}
+  .dash-link-manage.active{color:#dc2626;border-bottom-color:#dc2626;}
+</style>
+
+<nav class="dash-nav">
+  <div class="dash-nav-inner">
+    <a asp-area="Dashboard" asp-page="/Campaigns"
+       class="dash-link @active("/Campaigns")">
+      📋 My Campaigns
+    </a>
+    <a asp-area="Dashboard" asp-page="/CreateCampaign"
+       class="dash-link @active("/CreateCampaign")">
+      ✚ Create Campaign
+    </a>
+    @if (isAdmin)
+    {
+      <a asp-area="Dashboard" asp-page="/ManageCampaigns"
+         class="dash-link dash-link-manage @active("/ManageCampaigns")">
+        ⚙ Manage All Campaigns
+      </a>
+      <a asp-area="Dashboard" asp-page="/FlaggedCampaigns"
+         class="dash-link dash-link-admin @active("/FlaggedCampaigns")">
+        ⚑ Flagged Campaigns
+      </a>
     }
+  </div>
+</nav>
+
+@RenderBody()
+@section Scripts { @RenderSection("Scripts", required: false) }
 }
 else
 {
-    <div class="text-center">
-        <h1 class="display-4">Access Denied</h1>
-        <p class="lead">You have to be a member of this platform for at least 3 days to access this page.</p>
-    </div>
+  <div style="text-align:center;padding:60px 20px;">
+    <h1 style="font-size:2rem;font-weight:700;">Access Denied</h1>
+    <p style="color:#64748b;margin-top:8px;">You need to be a member for at least 3 days to access this area.</p>
+  </div>
 }
