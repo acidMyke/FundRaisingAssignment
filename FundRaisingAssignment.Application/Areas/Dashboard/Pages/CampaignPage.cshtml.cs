@@ -22,6 +22,7 @@ public class CampaignPageModel : PageModel
     public CampaignPageView PageView { get; private set; } = new();
     public IReadOnlyList<CampaignReview> Reviews { get; private set; } = [];
     public IReadOnlyList<Donation> Donations { get; private set; } = [];
+    public IReadOnlyList<Donation> TopDonations { get; private set; } = [];
     public bool IsOwner { get; private set; }
     public bool CanReview { get; private set; }
     public bool AlreadyReviewed { get; private set; }
@@ -65,6 +66,7 @@ public class CampaignPageModel : PageModel
         PageView.ShowGoalAndCountdown(campaign);
         Reviews = await _svc.GetCampaignReviewsAsync(id);
         Donations = await _svc.GetCampaignDonationsAsync(id);
+        TopDonations = await _svc.GetTopDonationsAsync(id, 10);
 
         var user = await _um.GetUserAsync(User);
         IsAdmin = User.IsInRole("Admin");
@@ -148,6 +150,7 @@ public class CampaignPageModel : PageModel
         if (campaign is not null) PageView.ShowGoalAndCountdown(campaign);
         Reviews = await _svc.GetCampaignReviewsAsync(id);
         Donations = await _svc.GetCampaignDonationsAsync(id);
+        TopDonations = await _svc.GetTopDonationsAsync(id, 10);
         var user = await _um.GetUserAsync(User);
         if (user is not null)
         {

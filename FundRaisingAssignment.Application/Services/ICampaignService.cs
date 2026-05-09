@@ -50,4 +50,7 @@ public interface ICampaignService
     Task<IReadOnlyList<Donation>> GetCampaignDonationsAsync(Guid campaignId);
     Task<IReadOnlyList<Donation>> GetDonationsByUserAsync(Guid userId);
     Task<decimal> GetTotalDonatedAsync(Guid campaignId);
+
+    // ── Leaderboard  ───────────────────────────────────────────
+    Task<IReadOnlyList<Donation>> GetTopDonationsAsync(Guid campaignId, int topCount);
 }

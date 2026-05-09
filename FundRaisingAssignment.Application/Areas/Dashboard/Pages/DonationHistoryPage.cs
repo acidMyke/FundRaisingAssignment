@@ -1,4 +1,5 @@
 using FundRaisingAssignment.Application.Data;
+using FundRaisingAssignment.Application.Services;
 using FundRaisingAssignment.Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -11,12 +12,12 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
     [Authorize]
     public class DonationHistoryPageModel : PageModel
     {
-        private readonly ApplicationDbContext _context;
+        private readonly DonationService _donationService;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public DonationHistoryPageModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public DonationHistoryPageModel(DonationService donationService, UserManager<ApplicationUser> userManager)
         {
-            _context = context;
+            _donationService = donationService;
             _userManager = userManager;
         }
 
@@ -38,13 +39,19 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             await LoadDonationRecordsAsync();
             if (SelectedDonationId.HasValue)
             {
-                // Merged model: PK is Id
-                SelectedDonation = await _context.Donations
-                    .Include(r => r.Campaign)
-                    .FirstOrDefaultAsync(r => r.Id == SelectedDonationId.Value);
-
-                if (SelectedDonation == null)
-                    ErrorMessage = "Failed to retrieve donation details. Please try again.";
+                // Use DonationService to get all donations for the user, then find the selected one
+                var user = await _userManager.GetUserAsync(User);
+                if (user != null)
+                {
+                    var records = await _donationService.GetDonationsByUserAsync(user.Id);
+                    SelectedDonation = records.FirstOrDefault(r => r.Id == SelectedDonationId.Value);
+                    if (SelectedDonation == null)
+                        ErrorMessage = "Failed to retrieve donation details. Please try again.";
+                }
+                else
+                {
+                    ErrorMessage = "User not found.";
+                }
             }
             return Page();
         }
@@ -61,13 +68,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                     return;
                 }
 
-                // Merged model: filter by UserId (Karthik's field)
-                var records = await _context.Donations
-                    .Where(r => r.UserId == user.Id)
-                    .Include(r => r.Campaign)
-                    .OrderByDescending(r => r.CreatedAt)
-                    .ToListAsync();
-
+                var records = await _donationService.GetDonationsByUserAsync(user.Id);
                 if (records.Any())
                     DonationRecords = records;
                 else
