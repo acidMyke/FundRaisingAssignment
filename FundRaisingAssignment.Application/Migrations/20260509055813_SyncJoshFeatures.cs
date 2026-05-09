@@ -37,14 +37,21 @@ namespace FundRaisingAssignment.Application.Migrations
                 oldType: "character varying(100)",
                 oldMaxLength: 100);
 
-            migrationBuilder.AlterColumn<int>(
-                name: "Category",
-                table: "Campaigns",
-                type: "integer",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character varying(50)",
-                oldMaxLength: 50);
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""Campaigns"" ALTER COLUMN ""Category"" DROP DEFAULT;
+                ALTER TABLE ""Campaigns"" ALTER COLUMN ""Category"" TYPE integer USING CASE ""Category""
+                    WHEN 'Education'      THEN 0
+                    WHEN 'Medical'        THEN 1
+                    WHEN 'Environment'    THEN 2
+                    WHEN 'Community'      THEN 3
+                    WHEN 'Technology'     THEN 4
+                    WHEN 'Arts'           THEN 5
+                    WHEN 'Arts & Culture' THEN 5
+                    WHEN 'Other'          THEN 6
+                    ELSE 6
+                END;
+                ALTER TABLE ""Campaigns"" ALTER COLUMN ""Category"" SET DEFAULT 6;
+            ");
 
             migrationBuilder.AddColumn<double>(
                 name: "AverageRating",
