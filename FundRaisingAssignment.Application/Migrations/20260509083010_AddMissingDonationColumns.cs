@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,42 +10,19 @@ namespace FundRaisingAssignment.Application.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Notes",
-                table: "Donations",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "PaymentMethod",
-                table: "Donations",
-                type: "character varying(50)",
-                maxLength: 50,
-                nullable: false,
-                defaultValue: "");
-
-            migrationBuilder.AddColumn<string>(
-                name: "ReceiptNumber",
-                table: "Donations",
-                type: "character varying(50)",
-                maxLength: 50,
-                nullable: true);
+            // Idempotent: a prior partial run / manual schema change may have already
+            // added these columns before this migration was recorded in the history.
+            migrationBuilder.Sql(@"ALTER TABLE ""Donations"" ADD COLUMN IF NOT EXISTS ""Notes"" text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Donations"" ADD COLUMN IF NOT EXISTS ""PaymentMethod"" character varying(50) NOT NULL DEFAULT '';");
+            migrationBuilder.Sql(@"ALTER TABLE ""Donations"" ADD COLUMN IF NOT EXISTS ""ReceiptNumber"" character varying(50);");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Notes",
-                table: "Donations");
-
-            migrationBuilder.DropColumn(
-                name: "PaymentMethod",
-                table: "Donations");
-
-            migrationBuilder.DropColumn(
-                name: "ReceiptNumber",
-                table: "Donations");
+            migrationBuilder.Sql(@"ALTER TABLE ""Donations"" DROP COLUMN IF EXISTS ""Notes"";");
+            migrationBuilder.Sql(@"ALTER TABLE ""Donations"" DROP COLUMN IF EXISTS ""PaymentMethod"";");
+            migrationBuilder.Sql(@"ALTER TABLE ""Donations"" DROP COLUMN IF EXISTS ""ReceiptNumber"";");
         }
     }
 }
