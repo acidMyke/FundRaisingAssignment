@@ -40,7 +40,7 @@ public class RefundTests
     {
         var (donation, campaign) = Sample(donationAmount: 100m, campaignCurrent: 500m);
 
-        DonationService.ApplyRefund(donation, campaign);
+        Refund.ApplyRefund(donation, campaign);
 
         Assert.Equal(DonationStatus.Refunded, donation.Status);
         Assert.Equal(400m, campaign.CurrentAmount);
@@ -51,7 +51,7 @@ public class RefundTests
     {
         var (donation, campaign) = Sample(donationAmount: 1000m, campaignCurrent: 50m);
 
-        DonationService.ApplyRefund(donation, campaign);
+        Refund.ApplyRefund(donation, campaign);
 
         Assert.Equal(0m, campaign.CurrentAmount);
     }
@@ -65,7 +65,7 @@ public class RefundTests
             campaignTarget: 1000m,
             status: CampaignStatus.Completed);
 
-        DonationService.ApplyRefund(donation, campaign);
+        Refund.ApplyRefund(donation, campaign);
 
         Assert.Equal(850m, campaign.CurrentAmount);
         Assert.Equal(CampaignStatus.Active, campaign.Status);
@@ -80,7 +80,7 @@ public class RefundTests
             campaignTarget: 1000m,
             status: CampaignStatus.Completed);
 
-        DonationService.ApplyRefund(donation, campaign);
+        Refund.ApplyRefund(donation, campaign);
 
         Assert.Equal(1950m, campaign.CurrentAmount);
         Assert.Equal(CampaignStatus.Completed, campaign.Status);
@@ -92,7 +92,7 @@ public class RefundTests
         var (donation, campaign) = Sample();
         donation.Notes = "Existing donor message";
 
-        DonationService.ApplyRefund(donation, campaign);
+        Refund.ApplyRefund(donation, campaign);
 
         // Audit goes to RefundLog, not Notes — so the donor's note is preserved.
         Assert.Equal("Existing donor message", donation.Notes);
@@ -103,7 +103,7 @@ public class RefundTests
     {
         var (donation, _) = Sample();
 
-        DonationService.ApplyRefund(donation, null);
+        Refund.ApplyRefund(donation, null);
 
         Assert.Equal(DonationStatus.Refunded, donation.Status);
     }
@@ -117,7 +117,7 @@ public class RefundTests
         var adminId = Guid.NewGuid();
         var when = new DateTime(2026, 5, 9, 10, 0, 0, DateTimeKind.Utc);
 
-        var log = DonationService.BuildRefundLog(
+        var log = Refund.BuildRefundLog(
             donation, adminId, "admin@example.com", "  donor request  ", when);
 
         Assert.Equal(donation.Id, log.DonationId);
@@ -135,7 +135,7 @@ public class RefundTests
     {
         var (donation, _) = Sample();
 
-        var log = DonationService.BuildRefundLog(donation, null, "admin", null, DateTime.UtcNow);
+        var log = Refund.BuildRefundLog(donation, null, "admin", null, DateTime.UtcNow);
 
         Assert.Null(log.Reason);
         Assert.Null(log.AdminId);
@@ -146,7 +146,7 @@ public class RefundTests
     {
         var (donation, _) = Sample();
 
-        var log = DonationService.BuildRefundLog(donation, null, "admin", "   ", DateTime.UtcNow);
+        var log = Refund.BuildRefundLog(donation, null, "admin", "   ", DateTime.UtcNow);
 
         Assert.Null(log.Reason);
     }

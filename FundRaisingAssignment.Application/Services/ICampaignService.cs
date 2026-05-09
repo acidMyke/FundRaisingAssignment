@@ -44,9 +44,10 @@ public interface ICampaignService
     Task<IReadOnlyList<CampaignReview>> GetCampaignReviewsAsync(Guid campaignId);
     Task<bool> HasUserReviewedAsync(Guid campaignId, Guid userId);
 
-    // ── Donations (Josh's ICampaignService flow) ──────────────────────────────
-    Task<Donation> DonateAsync(Guid campaignId, Guid? donorId, string donorEmail,
-                               decimal amount, string? message, bool isAnonymous);
+    // ── Donations (canonical, consolidated flow) ──────────────────────────────
+    Task<DonationResult> DonateAsync(MakeDonationInput input, CancellationToken ct = default);
+    Task<RefundResult> RefundDonationAsync(Guid donationId, Guid? adminId, string adminLabel,
+                                           string? reason, CancellationToken ct = default);
     Task<IReadOnlyList<Donation>> GetCampaignDonationsAsync(Guid campaignId);
     Task<IReadOnlyList<Donation>> GetDonationsByUserAsync(Guid userId);
     Task<decimal> GetTotalDonatedAsync(Guid campaignId);

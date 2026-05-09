@@ -1,7 +1,15 @@
+// Web API boundary: routes donation requests through the canonical
+// ICampaignService.DonateAsync. The controller is now a thin translator —
+// no DbContext access, no inline transactions, no exception-based control flow.
+// MakeDonationRequest / DonationResponse stay because they're the public API
+// contract and must not leak the EF entity shape.
+
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FundRaisingAssignment.Application.Controllers
@@ -9,7 +17,9 @@ namespace FundRaisingAssignment.Application.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class DonationsController(DonationService donationService) : ControllerBase
+    public class DonationsController(
+        ICampaignService campaignService,
+        UserManager<ApplicationUser> userManager) : ControllerBase
     {
         public class MakeDonationRequest
         {
@@ -34,7 +44,8 @@ namespace FundRaisingAssignment.Application.Controllers
             string? Message,
             bool IsAnonymous,
             string Status,
-            DateTime CreatedAt);
+            DateTime CreatedAt,
+            bool GoalReached);
 
         [HttpPost]
         [ProducesResponseType(typeof(DonationResponse), StatusCodes.Status201Created)]
@@ -52,13 +63,18 @@ namespace FundRaisingAssignment.Application.Controllers
             if (!Guid.TryParse(userIdRaw, out var userId))
                 return Unauthorized();
 
-            var input = new MakeDonationInput(
-                request.CampaignId,
-                request.Amount,
-                request.Message,
-                request.IsAnonymous);
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            var donorEmail = user?.Email ?? "Unknown";
 
-            var result = await donationService.MakeDonationAsync(userId, input, ct);
+            var input = new MakeDonationInput(
+                CampaignId: request.CampaignId,
+                Amount: request.Amount,
+                Message: request.Message,
+                IsAnonymous: request.IsAnonymous,
+                UserId: userId,
+                DonorEmail: donorEmail);
+
+            var result = await campaignService.DonateAsync(input, ct);
 
             return result switch
             {
@@ -67,16 +83,17 @@ namespace FundRaisingAssignment.Application.Controllers
                     new { id = s.Donation.Id },
                     new DonationResponse(
                         s.Donation.Id,
-                        s.Campaign.Id,
-                        s.Campaign.Title,
+                        s.Donation.CampaignId,
+                        s.Donation.Campaign?.Title ?? "(unknown)",
                         s.Donation.Amount,
                         s.Donation.Message,
                         s.Donation.IsAnonymous,
                         s.Donation.Status.ToString(),
-                        s.Donation.CreatedAt)),
+                        s.Donation.CreatedAt,
+                        s.GoalReached)),
 
-                DonationResult.CampaignNotFound nf =>
-                    NotFound(new { error = $"Campaign '{nf.CampaignId}' was not found." }),
+                DonationResult.CampaignNotFound =>
+                    NotFound(new { error = $"Campaign '{request.CampaignId}' was not found." }),
 
                 DonationResult.CampaignNotActive na =>
                     Conflict(new { error = $"Campaign is currently '{na.CurrentStatus}' and is not accepting donations." }),
@@ -84,9 +101,8 @@ namespace FundRaisingAssignment.Application.Controllers
                 DonationResult.DeadlinePassed =>
                     Conflict(new { error = "Campaign deadline has passed." }),
 
-                DonationResult.TransactionFailed =>
-                    StatusCode(StatusCodes.Status500InternalServerError,
-                        new { error = "An unexpected error occurred while processing the donation." }),
+                DonationResult.InvalidAmount ia =>
+                    BadRequest(new { error = ia.Reason }),
 
                 _ => StatusCode(StatusCodes.Status500InternalServerError)
             };

@@ -8,9 +8,10 @@ namespace FundRaisingAssignment.Application.Services;
 /// Merged CampaignService: Karthik's SearchCampaigns + Josh's full campaign lifecycle.
 /// Implements ICampaignService (interface).
 /// </summary>
-public class CampaignService(ApplicationDbContext db) : ICampaignService
+public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> logger) : ICampaignService
 {
     private readonly ApplicationDbContext _db = db;
+    private readonly ILogger<CampaignService> _logger = logger;
 
     // ── Campaign CRUD ──────────────────────────────────────────────────────────
 
@@ -275,50 +276,123 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     public Task<bool> HasUserReviewedAsync(Guid campaignId, Guid userId) =>
         _db.CampaignReviews.AnyAsync(r => r.CampaignId == campaignId && r.ReviewerId == userId);
 
-    // ── Donations (Josh ICampaignService flow) ────────────────────────────────
+    // ── Donations (canonical consolidated flow) ───────────────────────────────
 
-    public async Task<Donation> DonateAsync(
-        Guid campaignId, Guid? donorId, string donorEmail,
-        decimal amount, string? message, bool isAnonymous)
+    public async Task<DonationResult> DonateAsync(MakeDonationInput input, CancellationToken ct = default)
     {
-        if (amount <= 0)
-            throw new ArgumentException("Donation amount must be greater than $0.");
+        if (input.Amount <= 0m)
+            return new DonationResult.InvalidAmount("Donation amount must be greater than $0.");
+        if (input.Amount > 1_000_000m)
+            return new DonationResult.InvalidAmount("Donation amount cannot exceed $1,000,000.");
 
-        var campaign = await _db.Campaigns.FindAsync(campaignId)
-            ?? throw new InvalidOperationException("Campaign not found.");
+        var campaign = await _db.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == input.CampaignId, ct);
 
-        if (!campaign.AcceptsDonations)
-            throw new InvalidOperationException("This campaign is not currently accepting donations.");
+        if (campaign is null)
+            return new DonationResult.CampaignNotFound();
 
-        // Generate receipt number: RCPT-YYYYMMDD-XXXX (XXXX = daily counter for this campaign)
-        var now = DateTime.UtcNow;
-        var datePart = now.ToString("yyyyMMdd");
-        var todayStart = now.Date;
-        var todayEnd = todayStart.AddDays(1);
-        // Count donations for this campaign on this date
-        int todayCount = await _db.Donations
-            .Where(d => d.CampaignId == campaignId && d.CreatedAt >= todayStart && d.CreatedAt < todayEnd)
-            .CountAsync();
-        int receiptCounter = todayCount + 1;
-        string receiptNumber = $"RCPT-{datePart}-{receiptCounter:D4}";
+        if (campaign.Status != CampaignStatus.Active)
+            return new DonationResult.CampaignNotActive(campaign.Status);
 
-        var donation = new Donation
+        if (campaign.EndDate.HasValue && campaign.EndDate.Value < DateTime.UtcNow)
+            return new DonationResult.DeadlinePassed();
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Id = Guid.NewGuid(),
-            CampaignId = campaignId,
-            UserId = donorId,         // maps DonorId → UserId in merged model
-            DonorEmail = isAnonymous ? "Anonymous" : donorEmail,
-            Amount = amount,
-            Message = message,
-            IsAnonymous = isAnonymous,
-            Status = DonationStatus.Completed,
-            CreatedAt = now,
-            ReceiptNumber = receiptNumber
-        };
-        _db.Donations.Add(donation);
-        campaign.CurrentAmount += amount;
-        await _db.SaveChangesAsync();
-        return donation;
+            var donation = new Donation
+            {
+                Id = Guid.NewGuid(),
+                CampaignId = campaign.Id,
+                UserId = input.UserId,
+                DonorEmail = input.IsAnonymous
+                    ? "Anonymous"
+                    : (string.IsNullOrWhiteSpace(input.DonorEmail) ? "Guest" : input.DonorEmail),
+                Amount = input.Amount,
+                Message = input.Message,
+                IsAnonymous = input.IsAnonymous,
+                Status = DonationStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                ReceiptNumber = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
+            };
+
+            await _db.Donations.AddAsync(donation, ct);
+            campaign.CurrentAmount += input.Amount;
+
+            bool goalReached = false;
+            if (campaign.CurrentAmount >= campaign.TargetAmount
+                && campaign.Status == CampaignStatus.Active)
+            {
+                campaign.Status = CampaignStatus.Completed;
+                goalReached = true;
+                _logger.LogInformation(
+                    "Campaign {CampaignId} reached its goal and was auto-completed.", campaign.Id);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "Donation {DonationId} of {Amount} recorded for campaign {CampaignId} by donor {DonorId} ({DonorEmail}).",
+                donation.Id, donation.Amount, campaign.Id,
+                input.UserId?.ToString() ?? "guest", donation.DonorEmail);
+
+            // Attach the loaded campaign so callers can read title/etc. without a reload.
+            donation.Campaign = campaign;
+            return new DonationResult.Success(donation, goalReached);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync(ct);
+            _logger.LogError(ex,
+                "Failed to process donation for campaign {CampaignId} by donor {DonorId}.",
+                input.CampaignId, input.UserId?.ToString() ?? "guest");
+            throw;
+        }
+    }
+
+    public async Task<RefundResult> RefundDonationAsync(
+        Guid donationId, Guid? adminId, string adminLabel, string? reason, CancellationToken ct = default)
+    {
+        var donation = await _db.Donations
+            .FirstOrDefaultAsync(d => d.Id == donationId, ct);
+
+        if (donation is null)
+            return new RefundResult.DonationNotFound();
+
+        if (donation.Status != DonationStatus.Completed)
+            return new RefundResult.NotRefundable(donation.Status);
+
+        var campaign = await _db.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == donation.CampaignId, ct);
+
+        var now = DateTime.UtcNow;
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            Refund.ApplyRefund(donation, campaign);
+
+            var log = Refund.BuildRefundLog(donation, adminId, adminLabel, reason, now);
+            await _db.RefundLogs.AddAsync(log, ct);
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "Donation {DonationId} ({Amount}) refunded by {Admin}; campaign {CampaignId} adjusted; refund log {RefundId}.",
+                donation.Id, donation.Amount, adminLabel, donation.CampaignId, log.Id);
+
+            return new RefundResult.Success(donation, campaign, log);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync(ct);
+            _logger.LogError(ex,
+                "Failed to refund donation {DonationId} by {Admin}.",
+                donationId, adminLabel);
+            return new RefundResult.TransactionFailed(ex);
+        }
     }
 
     public async Task<IReadOnlyList<Donation>> GetCampaignDonationsAsync(Guid campaignId) =>

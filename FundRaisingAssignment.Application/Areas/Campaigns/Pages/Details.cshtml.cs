@@ -1,3 +1,7 @@
+// Switched off the standalone DonationService onto the canonical
+// ICampaignService.DonateAsync; added a switch case for DonationResult.InvalidAmount
+// so amount-rule violations surface on the form instead of as a generic error.
+
 using System.ComponentModel.DataAnnotations;
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
@@ -11,7 +15,7 @@ namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
 
 public class DetailsModel(
     ApplicationDbContext context,
-    DonationService donationService,
+    ICampaignService campaignService,
     UserManager<ApplicationUser> userManager) : PageModel
 {
     public Campaign Campaign { get; private set; } = default!;
@@ -69,9 +73,14 @@ public class DetailsModel(
         if (user is null)
             return Challenge();
 
-        var result = await donationService.MakeDonationAsync(
-            user.Id,
-            new MakeDonationInput(id, Input.Amount, Input.Message, Input.IsAnonymous),
+        var result = await campaignService.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: id,
+                Amount: Input.Amount,
+                Message: Input.Message,
+                IsAnonymous: Input.IsAnonymous,
+                UserId: user.Id,
+                DonorEmail: user.Email ?? "Unknown"),
             ct);
 
         switch (result)
@@ -91,9 +100,8 @@ public class DetailsModel(
                 ModelState.AddModelError(string.Empty, "The campaign deadline has passed.");
                 return Page();
 
-            case DonationResult.TransactionFailed:
-                ModelState.AddModelError(string.Empty,
-                    "An unexpected error occurred while processing your donation. Please try again.");
+            case DonationResult.InvalidAmount ia:
+                ModelState.AddModelError(nameof(Input.Amount), ia.Reason);
                 return Page();
 
             default:

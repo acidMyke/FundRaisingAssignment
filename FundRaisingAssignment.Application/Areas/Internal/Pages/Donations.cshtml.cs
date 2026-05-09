@@ -19,18 +19,18 @@ public class DonationsModel : PageModel
     private const int PageSize = 50;
 
     private readonly ApplicationDbContext _db;
-    private readonly DonationService _donationService;
+    private readonly ICampaignService _campaignService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<DonationsModel> _logger;
 
     public DonationsModel(
         ApplicationDbContext db,
-        DonationService donationService,
+        ICampaignService campaignService,
         UserManager<ApplicationUser> userManager,
         ILogger<DonationsModel> logger)
     {
         _db = db;
-        _donationService = donationService;
+        _campaignService = campaignService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -153,7 +153,7 @@ public class DonationsModel : PageModel
         var admin = await _userManager.GetUserAsync(User);
         var adminLabel = admin?.Email ?? "admin";
 
-        var result = await _donationService.RefundDonationAsync(id, admin?.Id, adminLabel, reason, ct);
+        var result = await _campaignService.RefundDonationAsync(id, admin?.Id, adminLabel, reason, ct);
 
         StatusMessage = result switch
         {

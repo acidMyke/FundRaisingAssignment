@@ -12,12 +12,12 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
     [Authorize]
     public class DonationHistoryPageModel : PageModel
     {
-        private readonly DonationService _donationService;
+        private readonly ICampaignService _campaignService;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public DonationHistoryPageModel(DonationService donationService, UserManager<ApplicationUser> userManager)
+        public DonationHistoryPageModel(ICampaignService campaignService, UserManager<ApplicationUser> userManager)
         {
-            _donationService = donationService;
+            _campaignService = campaignService;
             _userManager = userManager;
         }
 
@@ -39,11 +39,10 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             await LoadDonationRecordsAsync();
             if (SelectedDonationId.HasValue)
             {
-                // Use DonationService to get all donations for the user, then find the selected one
                 var user = await _userManager.GetUserAsync(User);
                 if (user != null)
                 {
-                    var records = await _donationService.GetDonationsByUserAsync(user.Id);
+                    var records = await _campaignService.GetDonationsByUserAsync(user.Id);
                     SelectedDonation = records.FirstOrDefault(r => r.Id == SelectedDonationId.Value);
                     if (SelectedDonation == null)
                         ErrorMessage = "Failed to retrieve donation details. Please try again.";
@@ -68,9 +67,9 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                     return;
                 }
 
-                var records = await _donationService.GetDonationsByUserAsync(user.Id);
-                if (records.Any())
-                    DonationRecords = records;
+                var records = await _campaignService.GetDonationsByUserAsync(user.Id);
+                if (records.Count > 0)
+                    DonationRecords = records.ToList();
                 else
                     ErrorMessage = "No donation records available.";
             }

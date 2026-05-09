@@ -1,3 +1,10 @@
+// Migrated from DonationServiceTests.cs after the four duplicate donation flows
+// were consolidated onto ICampaignService.DonateAsync. All original assertions
+// (success, anonymity, goal-reached auto-completion, CampaignNotFound,
+// CampaignNotActive across six statuses, deadline rejection, future deadline
+// accepted) are preserved. Two new theories cover guest donors and the new
+// InvalidAmount validation branch.
+
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.EntityFrameworkCore;
@@ -5,7 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FundRaisingAssignment.Test;
 
-public class DonationServiceTests
+public class CampaignServiceDonateTests
 {
     private static Guid SeedUser(TestDb db, string suffix)
     {
@@ -54,20 +61,25 @@ public class DonationServiceTests
     private static Guid SeedDonor(TestDb db) =>
         SeedUser(db, "donor-" + Guid.NewGuid().ToString("N")[..8]);
 
-    private static DonationService CreateService(TestDb db) =>
-        new(db.Context, NullLogger<DonationService>.Instance);
+    private static CampaignService CreateService(TestDb db) =>
+        new(db.Context, NullLogger<CampaignService>.Instance);
 
     [Fact]
-    public async Task MakeDonation_Succeeds_PersistsDonation_AndIncrementsCampaignTotal()
+    public async Task Donate_Succeeds_PersistsDonation_AndIncrementsCampaignTotal()
     {
         using var db = new TestDb();
         var campaign = SeedCampaign(db, target: 500m, current: 100m);
         var donor = SeedDonor(db);
         var sut = CreateService(db);
 
-        var result = await sut.MakeDonationAsync(
-            donor,
-            new MakeDonationInput(campaign.Id, 50m, "Hello", IsAnonymous: false),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 50m,
+                Message: "Hello",
+                IsAnonymous: false,
+                UserId: donor,
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         var success = Assert.IsType<DonationResult.Success>(result);
@@ -85,15 +97,20 @@ public class DonationServiceTests
     }
 
     [Fact]
-    public async Task MakeDonation_AnonymousFlag_IsPersisted()
+    public async Task Donate_AnonymousFlag_IsPersisted()
     {
         using var db = new TestDb();
         var campaign = SeedCampaign(db);
         var sut = CreateService(db);
 
-        var result = await sut.MakeDonationAsync(
-            SeedDonor(db),
-            new MakeDonationInput(campaign.Id, 25m, null, IsAnonymous: true),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 25m,
+                Message: null,
+                IsAnonymous: true,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         var success = Assert.IsType<DonationResult.Success>(result);
@@ -102,15 +119,20 @@ public class DonationServiceTests
     }
 
     [Fact]
-    public async Task MakeDonation_GoalReached_AutoCompletesCampaign()
+    public async Task Donate_GoalReached_AutoCompletesCampaign()
     {
         using var db = new TestDb();
         var campaign = SeedCampaign(db, target: 100m, current: 90m);
         var sut = CreateService(db);
 
-        var result = await sut.MakeDonationAsync(
-            SeedDonor(db),
-            new MakeDonationInput(campaign.Id, 25m, null, false),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 25m,
+                Message: null,
+                IsAnonymous: false,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         var success = Assert.IsType<DonationResult.Success>(result);
@@ -123,15 +145,19 @@ public class DonationServiceTests
     }
 
     [Fact]
-    public async Task MakeDonation_CampaignNotFound_ReturnsNotFoundResult()
+    public async Task Donate_CampaignNotFound_ReturnsNotFoundResult()
     {
         using var db = new TestDb();
         var sut = CreateService(db);
 
-        // Donor exists but campaign does not — early-out path, no donation insert is attempted.
-        var result = await sut.MakeDonationAsync(
-            SeedDonor(db),
-            new MakeDonationInput(Guid.NewGuid(), 10m, null, false),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: Guid.NewGuid(),
+                Amount: 10m,
+                Message: null,
+                IsAnonymous: false,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         Assert.IsType<DonationResult.CampaignNotFound>(result);
@@ -145,15 +171,20 @@ public class DonationServiceTests
     [InlineData(CampaignStatus.Suspended)]
     [InlineData(CampaignStatus.Completed)]
     [InlineData(CampaignStatus.Cancelled)]
-    public async Task MakeDonation_CampaignNotActive_RejectsAndPersistsNothing(CampaignStatus status)
+    public async Task Donate_CampaignNotActive_RejectsAndPersistsNothing(CampaignStatus status)
     {
         using var db = new TestDb();
         var campaign = SeedCampaign(db, status: status);
         var sut = CreateService(db);
 
-        var result = await sut.MakeDonationAsync(
-            SeedDonor(db),
-            new MakeDonationInput(campaign.Id, 10m, null, false),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 10m,
+                Message: null,
+                IsAnonymous: false,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         var rejected = Assert.IsType<DonationResult.CampaignNotActive>(result);
@@ -166,15 +197,20 @@ public class DonationServiceTests
     }
 
     [Fact]
-    public async Task MakeDonation_DeadlinePassed_RejectsAndPersistsNothing()
+    public async Task Donate_DeadlinePassed_RejectsAndPersistsNothing()
     {
         using var db = new TestDb();
         var campaign = SeedCampaign(db, endDate: DateTime.UtcNow.AddDays(-1));
         var sut = CreateService(db);
 
-        var result = await sut.MakeDonationAsync(
-            SeedDonor(db),
-            new MakeDonationInput(campaign.Id, 10m, null, false),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 10m,
+                Message: null,
+                IsAnonymous: false,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         Assert.IsType<DonationResult.DeadlinePassed>(result);
@@ -186,17 +222,77 @@ public class DonationServiceTests
     }
 
     [Fact]
-    public async Task MakeDonation_DeadlineInFuture_IsAccepted()
+    public async Task Donate_DeadlineInFuture_IsAccepted()
     {
         using var db = new TestDb();
         var campaign = SeedCampaign(db, endDate: DateTime.UtcNow.AddDays(7));
         var sut = CreateService(db);
 
-        var result = await sut.MakeDonationAsync(
-            SeedDonor(db),
-            new MakeDonationInput(campaign.Id, 10m, null, false),
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 10m,
+                Message: null,
+                IsAnonymous: false,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
             CancellationToken.None);
 
         Assert.IsType<DonationResult.Success>(result);
+    }
+
+    [Fact]
+    public async Task Donate_GuestUser_PersistsWithNullUserIdAndEmail()
+    {
+        using var db = new TestDb();
+        var campaign = SeedCampaign(db);
+        var sut = CreateService(db);
+
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: 15m,
+                Message: "From a guest",
+                IsAnonymous: false,
+                UserId: null,
+                DonorEmail: "guest@example.com"),
+            CancellationToken.None);
+
+        var success = Assert.IsType<DonationResult.Success>(result);
+        Assert.Null(success.Donation.UserId);
+        Assert.Equal("guest@example.com", success.Donation.DonorEmail);
+
+        var fresh = await db.Context.Donations.AsNoTracking()
+            .FirstAsync(d => d.Id == success.Donation.Id);
+        Assert.Null(fresh.UserId);
+        Assert.Equal("guest@example.com", fresh.DonorEmail);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-10)]
+    [InlineData(2_000_000)]
+    public async Task Donate_InvalidAmount_RejectsAndPersistsNothing(decimal amount)
+    {
+        using var db = new TestDb();
+        var campaign = SeedCampaign(db, current: 0m);
+        var sut = CreateService(db);
+
+        var result = await sut.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: campaign.Id,
+                Amount: amount,
+                Message: null,
+                IsAnonymous: false,
+                UserId: SeedDonor(db),
+                DonorEmail: "donor@test.local"),
+            CancellationToken.None);
+
+        Assert.IsType<DonationResult.InvalidAmount>(result);
+        Assert.Equal(0, await db.Context.Donations.CountAsync());
+
+        var fresh = await db.Context.Campaigns.AsNoTracking()
+            .FirstAsync(c => c.Id == campaign.Id);
+        Assert.Equal(0m, fresh.CurrentAmount);
     }
 }

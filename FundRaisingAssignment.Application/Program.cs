@@ -44,8 +44,7 @@ builder.Services.AddAuthorizationBuilder()
         policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10))));
 
 // ── Application services ──────────────────────────────────────────────────────
-builder.Services.AddScoped<ICampaignService, CampaignService>();   // Josh's interface
-builder.Services.AddScoped<DonationService>();                     // Karthik's donation service
+builder.Services.AddScoped<ICampaignService, CampaignService>();   // canonical campaign + donation service
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
