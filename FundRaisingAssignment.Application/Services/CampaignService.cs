@@ -288,6 +288,18 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         if (!campaign.AcceptsDonations)
             throw new InvalidOperationException("This campaign is not currently accepting donations.");
 
+        // Generate receipt number: RCPT-YYYYMMDD-XXXX (XXXX = daily counter for this campaign)
+        var now = DateTime.UtcNow;
+        var datePart = now.ToString("yyyyMMdd");
+        var todayStart = now.Date;
+        var todayEnd = todayStart.AddDays(1);
+        // Count donations for this campaign on this date
+        int todayCount = await _db.Donations
+            .Where(d => d.CampaignId == campaignId && d.CreatedAt >= todayStart && d.CreatedAt < todayEnd)
+            .CountAsync();
+        int receiptCounter = todayCount + 1;
+        string receiptNumber = $"RCPT-{datePart}-{receiptCounter:D4}";
+
         var donation = new Donation
         {
             Id = Guid.NewGuid(),
@@ -298,7 +310,8 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
             Message = message,
             IsAnonymous = isAnonymous,
             Status = DonationStatus.Completed,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now,
+            ReceiptNumber = receiptNumber
         };
         _db.Donations.Add(donation);
         campaign.CurrentAmount += amount;
@@ -321,4 +334,14 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
 
     public Task<decimal> GetTotalDonatedAsync(Guid campaignId) =>
         _db.Donations.Where(d => d.CampaignId == campaignId).SumAsync(d => d.Amount);
+
+    /// Gets the top 10 donations for a campaign, ordered by amount (highest first), including user info.
+    public async Task<IReadOnlyList<Donation>> GetTopDonationsAsync(Guid campaignId, int count = 10) =>
+        await _db.Donations
+            .Where(d => d.CampaignId == campaignId)
+            .Include(d => d.User)
+            .OrderByDescending(d => d.Amount)
+            .ThenBy(d => d.CreatedAt)
+            .Take(count)
+            .ToListAsync();
 }

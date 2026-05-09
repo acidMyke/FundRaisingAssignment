@@ -19,10 +19,28 @@ public abstract record DonationResult
     public sealed record TransactionFailed(Exception Exception) : DonationResult;
 }
 
-public sealed class DonationService(
-    ApplicationDbContext context,
-    ILogger<DonationService> logger)
+public sealed class DonationService
 {
+    private readonly ApplicationDbContext context;
+    private readonly ILogger<DonationService> logger;
+
+    public DonationService(ApplicationDbContext context, ILogger<DonationService> logger)
+    {
+        this.context = context;
+        this.logger = logger;
+    }
+
+    /// <summary>
+    /// Retrieves all donations for a given user, including related campaign info.
+    /// </summary>
+    public async Task<List<Donation>> GetDonationsByUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await context.Donations
+            .Where(d => d.UserId == userId)
+            .Include(d => d.Campaign)
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync(ct);
+    }
     public async Task<DonationResult> MakeDonationAsync(
         Guid donorUserId,
         MakeDonationInput input,

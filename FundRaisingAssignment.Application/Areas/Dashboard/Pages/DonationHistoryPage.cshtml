@@ -66,7 +66,6 @@
                     <p><strong>Campaign:</strong> @Model.SelectedDonation.Campaign?.Title</p>
                     <p><strong>Amount:</strong> @Model.SelectedDonation.Amount.ToString("C")</p>
                     <p><strong>Receipt Number:</strong> @Model.SelectedDonation.ReceiptNumber</p>
-                    <p><strong>Payment Method:</strong> @Model.SelectedDonation.PaymentMethod</p>
                     @if (!string.IsNullOrEmpty(Model.SelectedDonation.Notes))
                     {
                         <p><strong>Notes:</strong> @Model.SelectedDonation.Notes</p>
