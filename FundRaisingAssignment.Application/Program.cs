@@ -4,7 +4,9 @@ using FundRaisingAssignment.Application.Security;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using FundRaisingAssignment.Application.Interfaces;
 using OfficeOpenXml;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +27,16 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     .AddRoles<ApplicationRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
+
+var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
+
+if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
+{
+    builder.Services.AddTransient<IEmailService, MailjetEmailService>();
+    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>());
+}
+
 // ── Authorization ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
 builder.Services.AddAuthorizationBuilder()
@@ -37,6 +49,7 @@ builder.Services.AddScoped<DonationService>();                     // Karthik's 
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpClient();
 builder.Services.AddRazorPages();
 
 // ── EPPlus license (Karthik) ──────────────────────────────────────────────────
