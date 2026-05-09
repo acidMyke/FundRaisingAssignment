@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -11,10 +11,9 @@ namespace FundRaisingAssignment.Application.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "ReceiptNumber",
+                name: "Notes",
                 table: "Donations",
-                type: "character varying(50)",
-                maxLength: 50,
+                type: "text",
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
@@ -23,12 +22,13 @@ namespace FundRaisingAssignment.Application.Migrations
                 type: "character varying(50)",
                 maxLength: 50,
                 nullable: false,
-                defaultValue: "Other");
+                defaultValue: "");
 
             migrationBuilder.AddColumn<string>(
-                name: "Notes",
+                name: "ReceiptNumber",
                 table: "Donations",
-                type: "text",
+                type: "character varying(50)",
+                maxLength: 50,
                 nullable: true);
         }
 
@@ -36,7 +36,7 @@ namespace FundRaisingAssignment.Application.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "ReceiptNumber",
+                name: "Notes",
                 table: "Donations");
 
             migrationBuilder.DropColumn(
@@ -44,7 +44,7 @@ namespace FundRaisingAssignment.Application.Migrations
                 table: "Donations");
 
             migrationBuilder.DropColumn(
-                name: "Notes",
+                name: "ReceiptNumber",
                 table: "Donations");
         }
     }
