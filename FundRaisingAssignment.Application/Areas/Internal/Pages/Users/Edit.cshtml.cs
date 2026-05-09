@@ -10,7 +10,13 @@ namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
     public class EditModel : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private static readonly string[] AllRoles = { "Admin", "CampaignManager", "Donor" };
+        private static readonly string[] AllRoles =
+        {
+            ApplicationRole.Names.Admin,
+            ApplicationRole.Names.Fundraiser,
+            ApplicationRole.Names.PendingFundraiser,
+            ApplicationRole.Names.Donor
+        };
 
         public EditModel(UserManager<ApplicationUser> userManager) => _userManager = userManager;
 
@@ -22,7 +28,7 @@ namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
         {
             public string Id { get; set; } = string.Empty;
             [Required, EmailAddress] public string Email { get; set; } = string.Empty;
-            [Required] public string Role { get; set; } = "Donor";
+            [Required] public string Role { get; set; } = ApplicationRole.Names.Donor;
             public DateTime JoinDate { get; set; }
         }
 
@@ -36,7 +42,7 @@ namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
             {
                 Id = user.Id.ToString(),
                 Email = user.Email ?? "",
-                Role = roles.FirstOrDefault() ?? "Donor",
+                Role = roles.FirstOrDefault() ?? ApplicationRole.Names.Donor,
                 JoinDate = user.JoinDate
             };
             IsLockedOut = user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow;

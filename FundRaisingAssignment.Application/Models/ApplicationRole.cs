@@ -23,11 +23,13 @@ namespace FundRaisingAssignment.Application.Models
         public static readonly ApplicationRole Admin = new(Names.Admin);
         public static readonly ApplicationRole Fundraiser = new(Names.Fundraiser);
         public static readonly ApplicationRole PendingFundraiser = new(Names.PendingFundraiser);
+        public static readonly ApplicationRole Donor = new(Names.Donor);
         public static IEnumerable<ApplicationRole> All =>
         [
             Admin,
             Fundraiser,
-            PendingFundraiser
+            PendingFundraiser,
+            Donor
         ];
     }
 }

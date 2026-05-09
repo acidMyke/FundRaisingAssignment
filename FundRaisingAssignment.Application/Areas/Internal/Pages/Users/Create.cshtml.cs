@@ -10,7 +10,13 @@ namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
     public class CreateModel : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private static readonly string[] AllRoles = { "Admin", "CampaignManager", "Donor" };
+        private static readonly string[] AllRoles =
+        {
+            ApplicationRole.Names.Admin,
+            ApplicationRole.Names.Fundraiser,
+            ApplicationRole.Names.PendingFundraiser,
+            ApplicationRole.Names.Donor
+        };
 
         public CreateModel(UserManager<ApplicationUser> userManager) => _userManager = userManager;
 
