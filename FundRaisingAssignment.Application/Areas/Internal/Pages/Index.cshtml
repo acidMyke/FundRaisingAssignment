@@ -1,32 +1,23 @@
 @page
 @{
-    ViewData["Title"] = "Admin Dashboard";
+    ViewData["Title"] = "Admin";
 }
 
 <div class="container-fluid py-3">
-    <h1 class="mb-3">User admin</h1>
-    <p class="text-muted">Internal tools for platform admins.</p>
+    <div class="mb-4 pb-3 border-bottom">
+        <small class="text-uppercase text-muted fw-semibold">Internal</small>
+        <h2 class="mt-2 mb-1">Admin tools</h2>
+        <p class="text-muted mb-0">User management, donation operations, and platform-wide reporting.</p>
+    </div>
 
-    <div class="row g-3 mt-2">
-        <div class="col-md-6 col-lg-4">
-            <a asp-area="Internal" asp-page="/Reports" class="text-decoration-none">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <small class="text-uppercase text-muted fw-semibold">Reports</small>
-                        <h5 class="mt-2 mb-1">Platform performance &amp; finance</h5>
-                        <p class="text-muted small mb-0">
-                            View aggregate stats and export CSV / Excel.
-                        </p>
-                    </div>
-                </div>
-            </a>
-        </div>
+    <!-- Users & Fundraisers -->
+    <h6 class="text-uppercase text-muted small fw-semibold mb-2 mt-1">Users &amp; Fundraisers</h6>
+    <div class="row g-3 mb-4">
         <div class="col-md-6 col-lg-4">
             <a asp-area="Internal" asp-page="/FundraiserApprovals" class="text-decoration-none">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
-                        <small class="text-uppercase text-muted fw-semibold">Fundraisers</small>
-                        <h5 class="mt-2 mb-1">Fundraiser approvals</h5>
+                        <h5 class="mb-1">Fundraiser approvals</h5>
                         <p class="text-muted small mb-0">
                             Review and approve users requesting fundraiser access.
                         </p>
@@ -38,10 +29,67 @@
             <a asp-area="Internal" asp-page="/Users/Index" class="text-decoration-none">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
-                        <small class="text-uppercase text-muted fw-semibold">Users</small>
-                        <h5 class="mt-2 mb-1">Manage user accounts</h5>
+                        <h5 class="mb-1">User accounts</h5>
                         <p class="text-muted small mb-0">
                             Create, edit, and remove user accounts and roles.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Campaigns & Donations -->
+    <h6 class="text-uppercase text-muted small fw-semibold mb-2">Campaigns &amp; Donations</h6>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Dashboard" asp-page="/ManageCampaigns" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="mb-1">Manage campaigns</h5>
+                        <p class="text-muted small mb-0">
+                            Approve, flag, pause, or terminate campaigns across the platform.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Internal" asp-page="/Donations" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="mb-1">Donations &amp; refunds</h5>
+                        <p class="text-muted small mb-0">
+                            Browse donation activity and refund completed donations.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Reports & Audit -->
+    <h6 class="text-uppercase text-muted small fw-semibold mb-2">Reports &amp; Audit</h6>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Internal" asp-page="/Reports" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="mb-1">Platform reports</h5>
+                        <p class="text-muted small mb-0">
+                            Aggregate stats with charts; export CSV or Excel.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Internal" asp-page="/RefundLogs" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="mb-1">Refund history</h5>
+                        <p class="text-muted small mb-0">
+                            Review every refund issued, filterable by date, admin, or campaign.
                         </p>
                     </div>
                 </div>

@@ -124,6 +124,22 @@
             else
             {
                 var r = Model.PreviewReport;
+                var jsonOpts = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                };
+
+                var dailyJson    = System.Text.Json.JsonSerializer.Serialize(
+                    r.DailyTotals.Select(d => new {
+                        date = d.Date.ToString("yyyy-MM-dd"),
+                        donations = d.DonationCount,
+                        raised = d.TotalRaised
+                    }), jsonOpts);
+
+                var statusJson   = System.Text.Json.JsonSerializer.Serialize(r.ByStatus, jsonOpts);
+                var categoryJson = System.Text.Json.JsonSerializer.Serialize(r.ByCategory, jsonOpts);
+                var topCampJson  = System.Text.Json.JsonSerializer.Serialize(
+                    r.TopCampaigns.Take(10), jsonOpts);
 
                 <!-- Summary -->
                 <div class="card shadow-sm mb-3">
@@ -186,6 +202,38 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Visualisations -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">Visualisations</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <small class="text-muted">Daily totals</small>
+                                <canvas id="chartDaily" height="110"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">By status</small>
+                                <canvas id="chartStatus" height="180"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">By category (raised)</small>
+                                <canvas id="chartCategory" height="180"></canvas>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">Top campaigns (top 10 by raised)</small>
+                                <canvas id="chartTopCampaigns" height="180"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script id="report-data-daily"    type="application/json">@Html.Raw(dailyJson)</script>
+                <script id="report-data-status"   type="application/json">@Html.Raw(statusJson)</script>
+                <script id="report-data-category" type="application/json">@Html.Raw(categoryJson)</script>
+                <script id="report-data-topcamp"  type="application/json">@Html.Raw(topCampJson)</script>
 
                 <!-- By status -->
                 <div class="card shadow-sm mb-3">
@@ -303,4 +351,193 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    @if (Model.PreviewReport is not null)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                function readJson(id) {
+                    var el = document.getElementById(id);
+                    if (!el) return null;
+                    try { return JSON.parse(el.textContent || "[]"); }
+                    catch (e) { return null; }
+                }
+
+                var fmtCurrency = function (v) {
+                    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
+                };
+
+                var palette = [
+                    '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                    '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab'
+                ];
+
+                // ---- Daily totals (line + bar combo) ----
+                var daily = readJson('report-data-daily') || [];
+                if (daily.length) {
+                    new Chart(document.getElementById('chartDaily'), {
+                        data: {
+                            labels: daily.map(function (d) { return d.date; }),
+                            datasets: [
+                                {
+                                    type: 'line',
+                                    label: 'Raised',
+                                    data: daily.map(function (d) { return Number(d.raised); }),
+                                    borderColor: palette[0],
+                                    backgroundColor: 'rgba(78, 121, 167, 0.15)',
+                                    fill: true,
+                                    tension: 0.25,
+                                    yAxisID: 'yMoney'
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Donations',
+                                    data: daily.map(function (d) { return d.donations; }),
+                                    backgroundColor: palette[1] + 'cc',
+                                    yAxisID: 'yCount'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            interaction: { mode: 'index', intersect: false },
+                            scales: {
+                                yMoney: {
+                                    type: 'linear', position: 'left', beginAtZero: true,
+                                    ticks: { callback: function (v) { return fmtCurrency(v); } }
+                                },
+                                yCount: {
+                                    type: 'linear', position: 'right', beginAtZero: true,
+                                    grid: { drawOnChartArea: false }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            if (ctx.dataset.label === 'Raised') {
+                                                return 'Raised: ' + fmtCurrency(ctx.parsed.y);
+                                            }
+                                            return 'Donations: ' + ctx.parsed.y;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // ---- By status (stacked bar: campaigns vs donations counts) ----
+                var status = readJson('report-data-status') || [];
+                if (status.length) {
+                    new Chart(document.getElementById('chartStatus'), {
+                        type: 'bar',
+                        data: {
+                            labels: status.map(function (s) { return s.status; }),
+                            datasets: [
+                                {
+                                    label: 'Campaigns',
+                                    data: status.map(function (s) { return s.campaignCount; }),
+                                    backgroundColor: palette[0]
+                                },
+                                {
+                                    label: 'Donations',
+                                    data: status.map(function (s) { return s.donationCount; }),
+                                    backgroundColor: palette[2]
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: { stacked: true },
+                                y: { stacked: true, beginAtZero: true }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        afterBody: function (items) {
+                                            var idx = items[0].dataIndex;
+                                            var s = status[idx];
+                                            return ['Raised: ' + fmtCurrency(s.totalRaised)];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // ---- By category (doughnut of raised) ----
+                var category = readJson('report-data-category') || [];
+                var categoryActive = category.filter(function (c) { return Number(c.totalRaised) > 0; });
+                if (categoryActive.length) {
+                    new Chart(document.getElementById('chartCategory'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: categoryActive.map(function (c) { return c.category; }),
+                            datasets: [{
+                                data: categoryActive.map(function (c) { return Number(c.totalRaised); }),
+                                backgroundColor: categoryActive.map(function (_, i) {
+                                    return palette[i % palette.length];
+                                })
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ctx.label + ': ' + fmtCurrency(ctx.parsed);
+                                        }
+                                    }
+                                },
+                                legend: { position: 'right' }
+                            }
+                        }
+                    });
+                }
+
+                // ---- Top campaigns (horizontal bar, top 10) ----
+                var top = readJson('report-data-topcamp') || [];
+                if (top.length) {
+                    new Chart(document.getElementById('chartTopCampaigns'), {
+                        type: 'bar',
+                        data: {
+                            labels: top.map(function (t) {
+                                return t.title.length > 40 ? t.title.slice(0, 37) + '...' : t.title;
+                            }),
+                            datasets: [{
+                                label: 'Raised',
+                                data: top.map(function (t) { return Number(t.totalRaised); }),
+                                backgroundColor: palette[4]
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: { callback: function (v) { return fmtCurrency(v); } }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return 'Raised: ' + fmtCurrency(ctx.parsed.x);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            })();
+        </script>
+    }
 }

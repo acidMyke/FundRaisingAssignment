@@ -5,8 +5,7 @@ namespace FundRaisingAssignment.Application.Models
 {
     /// <summary>
     /// Donor review for a campaign: star rating + optional comment.
-    /// When the campaign's computed average drops to ≤ 2.0 with ≥ 3 reviews it is
-    /// automatically flagged for admin review (BCE Diagram 2 trigger).
+    /// Any review of ≤ 2 stars on an Active campaign auto-flags it for admin review.
     /// </summary>
     [Table("CampaignReviews")]
     public class CampaignReview

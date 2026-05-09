@@ -24,6 +24,8 @@
   .btn-goal:hover{background:#dbeafe}
   .btn-submit{background:#4f46e5;color:#fff;border-color:#4f46e5}
   .btn-submit:hover{background:#4338ca;color:#fff}
+  .btn-thank{background:#fdf2f8;color:#be185d;border-color:#fbcfe8}
+  .btn-thank:hover{background:#fce7f3}
   .status-notice{font-size:.78rem;margin-top:3px;padding:3px 7px;border-radius:4px;display:inline-block}
   .notice-flag{background:#fef3c7;color:#92400e}
   .notice-pause{background:#fee2e2;color:#991b1b}
@@ -171,6 +173,13 @@ else
                       Submit for Review →
                     </button>
                   </form>
+                }
+
+                @* Thank Donors: any campaign that's been past Draft/PendingReview *@
+                @if (c.Status != CampaignStatus.Draft && c.Status != CampaignStatus.PendingReview)
+                {
+                  <a asp-area="Dashboard" asp-page="/ThankDonors" asp-route-campaignId="@c.Id"
+                     class="btn-xs btn-thank" title="Send a thank-you email to donors">♥ Thank Donors</a>
                 }
               </div>
             </td>
