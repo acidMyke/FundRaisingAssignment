@@ -1,3 +1,14 @@
+@{
+    string ActiveIf(string area, string page)
+    {
+        var currentArea = (ViewContext.RouteData.Values["area"] as string) ?? "";
+        var currentPage = (ViewContext.RouteData.Values["page"] as string) ?? "";
+        return string.Equals(currentArea, area, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentPage, page, StringComparison.OrdinalIgnoreCase)
+            ? "active fw-semibold"
+            : "";
+    }
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +19,12 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
     <link rel="stylesheet" href="~/FundRaisingAssignment.Application.styles.css" asp-append-version="true"/>
+    <style>
+        .navbar-nav .nav-link.active {
+            color: #4f46e5 !important;
+            border-bottom: 2px solid #4f46e5;
+        }
+    </style>
 </head>
 <body>
 <header>
@@ -21,26 +38,28 @@
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                 <ul class="navbar-nav flex-grow-1">
                     <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="Campaigns" asp-page="/Index">All Campaigns</a>
+                        <a class="nav-link text-dark @ActiveIf("Campaigns", "/Index")"
+                           asp-area="Campaigns" asp-page="/Index">All Campaigns</a>
                     </li>
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/Campaigns">My Campaigns</a>
+                            <a class="nav-link text-dark @ActiveIf("Dashboard", "/Campaigns")"
+                               asp-area="Dashboard" asp-page="/Campaigns">My Campaigns</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="Dashboard" asp-page="/DonationHistoryPage">Donation History</a>
+                            <a class="nav-link text-dark @ActiveIf("Dashboard", "/DonationHistoryPage")"
+                               asp-area="Dashboard" asp-page="/DonationHistoryPage">Donation History</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-page="/MyBudget">My Budget</a>
+                            <a class="nav-link text-dark @ActiveIf("", "/MyBudget")"
+                               asp-page="/MyBudget">My Budget</a>
                         </li>
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-warning fw-semibold" asp-area="Dashboard" asp-page="/ManageCampaigns">⚙ Manage Campaigns</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Internal" asp-page="/Index">Internal</a>
+                                <a class="nav-link text-dark @ActiveIf("Internal", "/Index")"
+                                   asp-area="Internal" asp-page="/Index">Admin</a>
                             </li>
                         }
                     }
@@ -56,13 +75,12 @@
 <footer class="border-top footer text-muted">
     <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 0;">
         <span>&copy; 2026 FundRaiser Platform</span>
-        <div style="display:flex;gap:16px;font-size:.85rem;">
-            <a asp-area="Campaigns" asp-page="/Index" style="color:#6366f1;text-decoration:none;">Browse Campaigns</a>
-            @if (User.Identity?.IsAuthenticated == true)
-            {
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div style="display:flex;gap:16px;font-size:.85rem;">
                 <a asp-area="Dashboard" asp-page="/CreateCampaign" style="color:#6366f1;text-decoration:none;">Start a Campaign</a>
-            }
-        </div>
+            </div>
+        }
     </div>
 </footer>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
