@@ -22,11 +22,11 @@
             <a class="nav-link" asp-area="Internal" asp-page="/Reports">Reports</a>
             <a class="nav-link" asp-area="Internal" asp-page="/FundraiserApprovals">Fundraiser approvals</a>
             <hr class="border-secondary my-3">
-            <a class="nav-link text-warning" asp-area="" asp-controller="Home" asp-action="Index">
+            <a class="nav-link text-warning" asp-area="" asp-page="/Index">
                 &larr; Back to Public Site
             </a>
             <form class="mt-auto" asp-area="Identity" asp-page="/Account/Logout"
-                  asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                  asp-route-returnUrl="@Url.Page("/Index", new { area = "" })">
                 <button type="submit" class="btn btn-outline-danger w-100 text-start border-0">Logout</button>
             </form>
             <!-- Nich -->
