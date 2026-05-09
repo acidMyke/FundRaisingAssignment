@@ -40,7 +40,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
 // ── EPPlus license (Karthik) ──────────────────────────────────────────────────
-ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+ExcelPackage.License.SetNonCommercialPersonal("Karthik");
 
 var app = builder.Build();
 
