@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
+using OfficeOpenXml.Drawing.Chart;
 using OfficeOpenXml.Style;
 
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages;
@@ -702,6 +703,19 @@ public class ReportsModel : PageModel
         }
         s2.Cells.AutoFitColumns();
 
+        if (r.ByStatus.Count > 0)
+        {
+            var lastRow = r.ByStatus.Count + 1;
+            var statusChart = s2.Drawings.AddChart("StatusChart", eChartType.ColumnStacked);
+            statusChart.Title.Text = "Campaigns vs donations by status";
+            var sc1 = statusChart.Series.Add(s2.Cells[2, 2, lastRow, 2], s2.Cells[2, 1, lastRow, 1]);
+            sc1.Header = "Campaigns";
+            var sc2 = statusChart.Series.Add(s2.Cells[2, 3, lastRow, 3], s2.Cells[2, 1, lastRow, 1]);
+            sc2.Header = "Donations";
+            statusChart.SetPosition(1, 0, 5, 10);
+            statusChart.SetSize(620, 360);
+        }
+
         // ---- Sheet 3: Daily Totals ---------------------------------------
         var s3 = pkg.Workbook.Worksheets.Add("Daily Totals");
         WriteSheetHeader(s3, "Date", "Donations", "Total Raised");
@@ -717,6 +731,17 @@ public class ReportsModel : PageModel
             s3.Cells[row, 3].Style.Numberformat.Format = "$#,##0.00";
         }
         s3.Cells.AutoFitColumns();
+
+        if (r.DailyTotals.Count > 0)
+        {
+            var lastRow = r.DailyTotals.Count + 1;
+            var dailyChart = s3.Drawings.AddChart("DailyChart", eChartType.Line);
+            dailyChart.Title.Text = "Daily raised over period";
+            var ds = dailyChart.Series.Add(s3.Cells[2, 3, lastRow, 3], s3.Cells[2, 1, lastRow, 1]);
+            ds.Header = "Total raised";
+            dailyChart.SetPosition(1, 0, 4, 10);
+            dailyChart.SetSize(720, 320);
+        }
 
         // ---- Sheet 4: Top Campaigns --------------------------------------
         var s4 = pkg.Workbook.Worksheets.Add("Top Campaigns");
@@ -735,6 +760,18 @@ public class ReportsModel : PageModel
         }
         s4.Cells.AutoFitColumns();
 
+        if (r.TopCampaigns.Count > 0)
+        {
+            // Top 10 only — list is already sorted desc by TotalRaised
+            var lastChartRow = Math.Min(r.TopCampaigns.Count, 10) + 1;
+            var topChart = s4.Drawings.AddChart("TopCampaignsChart", eChartType.BarClustered);
+            topChart.Title.Text = "Top campaigns by raised";
+            var ts = topChart.Series.Add(s4.Cells[2, 5, lastChartRow, 5], s4.Cells[2, 2, lastChartRow, 2]);
+            ts.Header = "Total raised";
+            topChart.SetPosition(1, 0, 7, 10);
+            topChart.SetSize(720, 380);
+        }
+
         // ---- Sheet 5: By Category ----------------------------------------
         var s5 = pkg.Workbook.Worksheets.Add("By Category");
         WriteSheetHeader(s5, "Category", "Campaigns", "Donations", "Total Raised");
@@ -750,6 +787,17 @@ public class ReportsModel : PageModel
             s5.Cells[row, 4].Style.Numberformat.Format = "$#,##0.00";
         }
         s5.Cells.AutoFitColumns();
+
+        if (r.ByCategory.Any(c => c.TotalRaised > 0))
+        {
+            var lastRow = r.ByCategory.Count + 1;
+            var catChart = s5.Drawings.AddChart("CategoryChart", eChartType.Doughnut);
+            catChart.Title.Text = "Raised by category";
+            var cs = catChart.Series.Add(s5.Cells[2, 4, lastRow, 4], s5.Cells[2, 1, lastRow, 1]);
+            cs.Header = "Total raised";
+            catChart.SetPosition(1, 0, 5, 10);
+            catChart.SetSize(480, 360);
+        }
 
         // ---- Sheet 6: By Payment Method ----------------------------------
         var s6 = pkg.Workbook.Worksheets.Add("By Payment Method");

@@ -1,0 +1,160 @@
+@page
+@using FundRaisingAssignment.Application.Models
+@model FundRaisingAssignment.Application.Areas.Internal.Pages.DonationsModel
+@{
+    ViewData["Title"] = "Donations";
+}
+
+<div class="container-fluid py-3">
+
+    <div class="d-flex justify-content-between align-items-end mb-4 pb-3 border-bottom">
+        <div>
+            <small class="text-uppercase text-muted fw-semibold">User Admin</small>
+            <h2 class="mt-2 mb-1">Donations</h2>
+            <p class="text-muted mb-0">
+                Browse donation activity and issue refunds on completed donations.
+            </p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Filter form -->
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-md-5">
+            <label asp-for="Search" class="form-label small fw-medium">Search receipt #, donor email or campaign</label>
+            <input asp-for="Search" class="form-control" placeholder="e.g. R-12345 or alice@example.com" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="StatusFilter" class="form-label small fw-medium">Status</label>
+            <select asp-for="StatusFilter"
+                    asp-items="Html.GetEnumSelectList<DonationStatus>()"
+                    class="form-select">
+                <option value="">All statuses</option>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a asp-page="/Donations" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </form>
+
+    <div class="text-muted small mb-2">
+        Showing @Model.Rows.Count of @Model.TotalCount donation(s).
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="alert alert-secondary">No donations match your filters.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date (UTC)</th>
+                        <th>Receipt #</th>
+                        <th>Campaign</th>
+                        <th>Donor</th>
+                        <th class="text-end">Amount</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Rows)
+                    {
+                        var modalId = $"refund-{d.Id:N}";
+                        <tr>
+                            <td>@d.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td><code>@(string.IsNullOrEmpty(d.ReceiptNumber) ? "—" : d.ReceiptNumber)</code></td>
+                            <td>@d.CampaignTitle</td>
+                            <td>@d.DonorLabel</td>
+                            <td class="text-end">@d.Amount.ToString("C")</td>
+                            <td>@d.PaymentMethod</td>
+                            <td>
+                                @{
+                                    var badgeClass = d.Status switch
+                                    {
+                                        DonationStatus.Completed => "bg-success",
+                                        DonationStatus.Refunded  => "bg-warning text-dark",
+                                        DonationStatus.Failed    => "bg-danger",
+                                        DonationStatus.Pending   => "bg-secondary",
+                                        _                        => "bg-light text-dark"
+                                    };
+                                }
+                                <span class="badge @badgeClass">@d.Status</span>
+                            </td>
+                            <td class="text-end">
+                                @if (d.Status == DonationStatus.Completed)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#@modalId">
+                                        Refund
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+
+                        @if (d.Status == DonationStatus.Completed)
+                        {
+                            <!-- Confirmation modal -->
+                            <div class="modal fade" id="@modalId" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <form method="post" asp-page-handler="Refund" asp-route-id="@d.Id">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">Confirm refund</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p class="mb-2">
+                                                    Refund <strong>@d.Amount.ToString("C")</strong>
+                                                    for <em>@d.CampaignTitle</em>?
+                                                </p>
+                                                <p class="small text-muted mb-3">
+                                                    This sets the donation status to Refunded and
+                                                    deducts the amount from the campaign's current total.
+                                                </p>
+                                                <div class="mb-2">
+                                                    <label class="form-label small fw-medium">Reason (optional)</label>
+                                                    <textarea name="reason" class="form-control" rows="2"
+                                                              placeholder="e.g. donor requested cancellation"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-warning">Confirm refund</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalCount > Model.Rows.Count)
+        {
+            <div class="text-muted small">
+                Only the most recent @Model.Rows.Count rows are shown. Use the search/status filter to narrow down.
+            </div>
+        }
+    }
+</div>

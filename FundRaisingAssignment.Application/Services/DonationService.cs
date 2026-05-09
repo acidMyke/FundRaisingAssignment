@@ -19,6 +19,14 @@ public abstract record DonationResult
     public sealed record TransactionFailed(Exception Exception) : DonationResult;
 }
 
+public abstract record RefundResult
+{
+    public sealed record Success(Donation Donation, Campaign? Campaign) : RefundResult;
+    public sealed record DonationNotFound : RefundResult;
+    public sealed record NotRefundable(DonationStatus CurrentStatus) : RefundResult;
+    public sealed record TransactionFailed(Exception Exception) : RefundResult;
+}
+
 public sealed class DonationService(
     ApplicationDbContext context,
     ILogger<DonationService> logger)
@@ -86,6 +94,88 @@ public sealed class DonationService(
                 "Failed to process donation for campaign {CampaignId} by user {UserId}.",
                 input.CampaignId, donorUserId);
             return new DonationResult.TransactionFailed(ex);
+        }
+    }
+
+    /// <summary>
+    /// Marks a Completed donation as Refunded, deducts the amount from the
+    /// campaign's CurrentAmount (floored at 0), and re-opens the campaign if
+    /// it had been auto-Completed and now falls back below its target.
+    /// Reason is appended to the donation's Notes for audit.
+    /// </summary>
+    public async Task<RefundResult> RefundDonationAsync(
+        Guid donationId,
+        string adminLabel,
+        string? reason,
+        CancellationToken ct)
+    {
+        var donation = await context.Donations
+            .FirstOrDefaultAsync(d => d.Id == donationId, ct);
+
+        if (donation is null)
+            return new RefundResult.DonationNotFound();
+
+        if (donation.Status != DonationStatus.Completed)
+            return new RefundResult.NotRefundable(donation.Status);
+
+        var campaign = await context.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == donation.CampaignId, ct);
+
+        await using var tx = await context.Database.BeginTransactionAsync(ct);
+        try
+        {
+            ApplyRefund(donation, campaign, adminLabel, reason, DateTime.UtcNow);
+
+            await context.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            logger.LogInformation(
+                "Donation {DonationId} ({Amount}) refunded by {Admin}; campaign {CampaignId} adjusted.",
+                donation.Id, donation.Amount, adminLabel, donation.CampaignId);
+
+            return new RefundResult.Success(donation, campaign);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync(ct);
+            logger.LogError(ex,
+                "Failed to refund donation {DonationId} by {Admin}.",
+                donationId, adminLabel);
+            return new RefundResult.TransactionFailed(ex);
+        }
+    }
+
+    /// <summary>
+    /// Pure refund state-transition logic — extracted so unit tests can
+    /// exercise it without spinning up a database. Mutates donation and
+    /// campaign in place; caller is responsible for persisting.
+    /// </summary>
+    internal static void ApplyRefund(
+        Donation donation,
+        Campaign? campaign,
+        string adminLabel,
+        string? reason,
+        DateTime utcNow)
+    {
+        donation.Status = DonationStatus.Refunded;
+
+        var note = $"[{utcNow:yyyy-MM-dd HH:mm} UTC] Refunded by {adminLabel}"
+                 + (string.IsNullOrWhiteSpace(reason) ? "." : $": {reason}");
+
+        donation.Notes = string.IsNullOrWhiteSpace(donation.Notes)
+            ? note
+            : donation.Notes + "\n" + note;
+
+        if (campaign is null) return;
+
+        campaign.CurrentAmount = Math.Max(0m, campaign.CurrentAmount - donation.Amount);
+
+        // If the refund drops a previously auto-Completed campaign back under
+        // its target, re-open it so it can keep accepting donations.
+        if (campaign.Status == CampaignStatus.Completed
+            && campaign.CurrentAmount < campaign.TargetAmount)
+        {
+            campaign.Status = CampaignStatus.Active;
         }
     }
 }
