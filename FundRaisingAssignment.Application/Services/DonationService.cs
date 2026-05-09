@@ -21,7 +21,7 @@ public abstract record DonationResult
 
 public abstract record RefundResult
 {
-    public sealed record Success(Donation Donation, Campaign? Campaign) : RefundResult;
+    public sealed record Success(Donation Donation, Campaign? Campaign, RefundLog Log) : RefundResult;
     public sealed record DonationNotFound : RefundResult;
     public sealed record NotRefundable(DonationStatus CurrentStatus) : RefundResult;
     public sealed record TransactionFailed(Exception Exception) : RefundResult;
@@ -99,12 +99,13 @@ public sealed class DonationService(
 
     /// <summary>
     /// Marks a Completed donation as Refunded, deducts the amount from the
-    /// campaign's CurrentAmount (floored at 0), and re-opens the campaign if
-    /// it had been auto-Completed and now falls back below its target.
-    /// Reason is appended to the donation's Notes for audit.
+    /// campaign's CurrentAmount (floored at 0), re-opens the campaign if it
+    /// had been auto-Completed and now falls back below its target, and
+    /// writes a structured RefundLog row for audit/reporting.
     /// </summary>
     public async Task<RefundResult> RefundDonationAsync(
         Guid donationId,
+        Guid? adminId,
         string adminLabel,
         string? reason,
         CancellationToken ct)
@@ -121,19 +122,24 @@ public sealed class DonationService(
         var campaign = await context.Campaigns
             .FirstOrDefaultAsync(c => c.Id == donation.CampaignId, ct);
 
+        var now = DateTime.UtcNow;
+
         await using var tx = await context.Database.BeginTransactionAsync(ct);
         try
         {
-            ApplyRefund(donation, campaign, adminLabel, reason, DateTime.UtcNow);
+            ApplyRefund(donation, campaign);
+
+            var log = BuildRefundLog(donation, adminId, adminLabel, reason, now);
+            await context.RefundLogs.AddAsync(log, ct);
 
             await context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
 
             logger.LogInformation(
-                "Donation {DonationId} ({Amount}) refunded by {Admin}; campaign {CampaignId} adjusted.",
-                donation.Id, donation.Amount, adminLabel, donation.CampaignId);
+                "Donation {DonationId} ({Amount}) refunded by {Admin}; campaign {CampaignId} adjusted; refund log {RefundId}.",
+                donation.Id, donation.Amount, adminLabel, donation.CampaignId, log.Id);
 
-            return new RefundResult.Success(donation, campaign);
+            return new RefundResult.Success(donation, campaign, log);
         }
         catch (Exception ex)
         {
@@ -148,23 +154,12 @@ public sealed class DonationService(
     /// <summary>
     /// Pure refund state-transition logic — extracted so unit tests can
     /// exercise it without spinning up a database. Mutates donation and
-    /// campaign in place; caller is responsible for persisting.
+    /// campaign in place; caller is responsible for persisting + writing
+    /// the audit log row.
     /// </summary>
-    internal static void ApplyRefund(
-        Donation donation,
-        Campaign? campaign,
-        string adminLabel,
-        string? reason,
-        DateTime utcNow)
+    internal static void ApplyRefund(Donation donation, Campaign? campaign)
     {
         donation.Status = DonationStatus.Refunded;
-
-        var note = $"[{utcNow:yyyy-MM-dd HH:mm} UTC] Refunded by {adminLabel}"
-                 + (string.IsNullOrWhiteSpace(reason) ? "." : $": {reason}");
-
-        donation.Notes = string.IsNullOrWhiteSpace(donation.Notes)
-            ? note
-            : donation.Notes + "\n" + note;
 
         if (campaign is null) return;
 
@@ -178,4 +173,21 @@ public sealed class DonationService(
             campaign.Status = CampaignStatus.Active;
         }
     }
+
+    internal static RefundLog BuildRefundLog(
+        Donation donation,
+        Guid? adminId,
+        string adminLabel,
+        string? reason,
+        DateTime utcNow) => new()
+        {
+            Id          = Guid.NewGuid(),
+            DonationId  = donation.Id,
+            CampaignId  = donation.CampaignId,
+            AdminId     = adminId,
+            AdminLabel  = adminLabel,
+            Amount      = donation.Amount,
+            Reason      = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
+            RefundedAt  = utcNow,
+        };
 }

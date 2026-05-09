@@ -15,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Donation>      Donations      { get; set; }
     public DbSet<DonationGoal>  DonationGoals  { get; set; }
     public DbSet<ExportFile>    ExportFiles    { get; set; }
+    public DbSet<RefundLog>     RefundLogs     { get; set; }
 
     // ── Josh's DbSets ─────────────────────────────────────────────────────────
     public DbSet<CampaignReview>         CampaignReviews         { get; set; }
@@ -95,6 +96,33 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .OnDelete(DeleteBehavior.Restrict);
             b.HasIndex(e => e.CreatedByAdminId);
             b.HasIndex(e => e.CreatedAt);
+        });
+
+        // ── RefundLog ──────────────────────────────────────────────────────────
+        builder.Entity<RefundLog>(b =>
+        {
+            b.HasOne(r => r.Donation)
+             .WithMany()
+             .HasForeignKey(r => r.DonationId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(r => r.Campaign)
+             .WithMany()
+             .HasForeignKey(r => r.CampaignId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(r => r.Admin)
+             .WithMany()
+             .HasForeignKey(r => r.AdminId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+
+            b.Property(r => r.Amount).HasColumnType("numeric(18,2)");
+
+            b.HasIndex(r => r.DonationId);
+            b.HasIndex(r => r.CampaignId);
+            b.HasIndex(r => r.AdminId);
+            b.HasIndex(r => r.RefundedAt);
         });
 
         // ── CampaignReview (Josh) ──────────────────────────────────────────────

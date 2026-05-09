@@ -57,7 +57,13 @@ public class DonationsModel : PageModel
         string DonorLabel,
         decimal Amount,
         string PaymentMethod,
-        DonationStatus Status);
+        DonationStatus Status,
+        RefundSummary? Refund);
+
+    public sealed record RefundSummary(
+        string AdminLabel,
+        DateTime RefundedAt,
+        string? Reason);
 
     public async Task OnGetAsync(CancellationToken ct)
     {
@@ -80,22 +86,66 @@ public class DonationsModel : PageModel
 
         TotalCount = await q.CountAsync(ct);
 
-        Rows = await q
+        var rowsRaw = await q
             .OrderByDescending(d => d.CreatedAt)
             .Take(PageSize)
-            .Select(d => new DonationRow(
+            .Select(d => new
+            {
                 d.Id,
                 d.CreatedAt,
-                d.ReceiptNumber ?? "",
-                d.Campaign != null ? d.Campaign.Title : "(unknown)",
+                ReceiptNumber = d.ReceiptNumber ?? "",
+                CampaignTitle = d.Campaign != null ? d.Campaign.Title : "(unknown)",
                 d.CampaignId,
-                d.IsAnonymous
+                DonorLabel = d.IsAnonymous
                     ? "Anonymous"
                     : (string.IsNullOrWhiteSpace(d.DonorEmail) ? "Anonymous" : d.DonorEmail),
                 d.Amount,
-                string.IsNullOrWhiteSpace(d.PaymentMethod) ? "Other" : d.PaymentMethod,
-                d.Status))
+                PaymentMethod = string.IsNullOrWhiteSpace(d.PaymentMethod) ? "Other" : d.PaymentMethod,
+                d.Status,
+            })
             .ToListAsync(ct);
+
+        // For any refunded donations on this page, fetch the most-recent RefundLog
+        // so the view can show who refunded it, when, and why.
+        var refundedIds = rowsRaw
+            .Where(r => r.Status == DonationStatus.Refunded)
+            .Select(r => r.Id)
+            .ToList();
+
+        Dictionary<Guid, RefundSummary> refundLookup = [];
+        if (refundedIds.Count > 0)
+        {
+            var logs = await _db.RefundLogs
+                .AsNoTracking()
+                .Where(l => refundedIds.Contains(l.DonationId))
+                .OrderByDescending(l => l.RefundedAt)
+                .Select(l => new { l.DonationId, l.AdminLabel, l.RefundedAt, l.Reason })
+                .ToListAsync(ct);
+
+            refundLookup = logs
+                .GroupBy(l => l.DonationId)
+                .ToDictionary(
+                    g => g.Key,
+                    g =>
+                    {
+                        var first = g.First();
+                        return new RefundSummary(first.AdminLabel, first.RefundedAt, first.Reason);
+                    });
+        }
+
+        Rows = rowsRaw
+            .Select(r => new DonationRow(
+                r.Id,
+                r.CreatedAt,
+                r.ReceiptNumber,
+                r.CampaignTitle,
+                r.CampaignId,
+                r.DonorLabel,
+                r.Amount,
+                r.PaymentMethod,
+                r.Status,
+                refundLookup.TryGetValue(r.Id, out var refund) ? refund : null))
+            .ToList();
     }
 
     public async Task<IActionResult> OnPostRefundAsync(Guid id, string? reason, CancellationToken ct)
@@ -103,7 +153,7 @@ public class DonationsModel : PageModel
         var admin = await _userManager.GetUserAsync(User);
         var adminLabel = admin?.Email ?? "admin";
 
-        var result = await _donationService.RefundDonationAsync(id, adminLabel, reason, ct);
+        var result = await _donationService.RefundDonationAsync(id, admin?.Id, adminLabel, reason, ct);
 
         StatusMessage = result switch
         {

@@ -92,6 +92,22 @@
                                     };
                                 }
                                 <span class="badge @badgeClass">@d.Status</span>
+                                @if (d.Status == DonationStatus.Refunded && d.Refund is not null)
+                                {
+                                    <div class="small text-muted mt-1" style="line-height: 1.3;">
+                                        by <strong>@d.Refund.AdminLabel</strong><br />
+                                        @d.Refund.RefundedAt.ToString("yyyy-MM-dd HH:mm") UTC
+                                        @if (!string.IsNullOrWhiteSpace(d.Refund.Reason))
+                                        {
+                                            <br />
+                                            <em title="@d.Refund.Reason">
+                                                &ldquo;@(d.Refund.Reason!.Length > 60
+                                                    ? d.Refund.Reason.Substring(0, 57) + "..."
+                                                    : d.Refund.Reason)&rdquo;
+                                            </em>
+                                        }
+                                    </div>
+                                }
                             </td>
                             <td class="text-end">
                                 @if (d.Status == DonationStatus.Completed)

@@ -1,0 +1,138 @@
+@page
+@model FundRaisingAssignment.Application.Areas.Internal.Pages.RefundLogsModel
+@{
+    ViewData["Title"] = "Refund history";
+}
+
+<div class="container-fluid py-3">
+
+    <div class="d-flex justify-content-between align-items-end mb-4 pb-3 border-bottom">
+        <div>
+            <small class="text-uppercase text-muted fw-semibold">User Admin</small>
+            <h2 class="mt-2 mb-1">Refund history</h2>
+            <p class="text-muted mb-0">
+                Every refund issued on the platform, with audit trail.
+            </p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-md-2">
+            <label asp-for="StartDate" class="form-label small fw-medium">From</label>
+            <input asp-for="StartDate" type="date" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="EndDate" class="form-label small fw-medium">To</label>
+            <input asp-for="EndDate" type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Admin" class="form-label small fw-medium">Admin (email contains)</label>
+            <input asp-for="Admin" class="form-control" placeholder="e.g. admin@@" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Campaign" class="form-label small fw-medium">Campaign title contains</label>
+            <input asp-for="Campaign" class="form-control" placeholder="e.g. school" />
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a asp-page="/RefundLogs" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </form>
+
+    <!-- Summary cards -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+                <small class="text-muted d-block">Total refunds</small>
+                <strong class="fs-5">@Model.TotalCount.ToString("N0")</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+                <small class="text-muted d-block">Total amount refunded</small>
+                <strong class="fs-5">@Model.TotalAmount.ToString("C")</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+                <small class="text-muted d-block">Admins involved</small>
+                <strong class="fs-5">@Model.UniqueAdmins.ToString("N0")</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+                <small class="text-muted d-block">Campaigns affected</small>
+                <strong class="fs-5">@Model.UniqueCampaigns.ToString("N0")</strong>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="alert alert-secondary">No refunds match your filters.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Refunded at (UTC)</th>
+                        <th>Admin</th>
+                        <th>Campaign</th>
+                        <th>Receipt #</th>
+                        <th class="text-end">Amount</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td>@r.RefundedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@r.AdminLabel</td>
+                            <td>
+                                <a asp-page="/Donations" asp-route-Search="@r.CampaignTitle">
+                                    @r.CampaignTitle
+                                </a>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(r.ReceiptNumber))
+                                {
+                                    <a asp-page="/Donations" asp-route-Search="@r.ReceiptNumber">
+                                        <code>@r.ReceiptNumber</code>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end">@r.Amount.ToString("C")</td>
+                            <td class="small">
+                                @if (string.IsNullOrWhiteSpace(r.Reason))
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                                else
+                                {
+                                    <span title="@r.Reason">
+                                        @(r.Reason.Length > 80 ? r.Reason.Substring(0, 77) + "..." : r.Reason)
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalCount > Model.Rows.Count)
+        {
+            <div class="text-muted small">
+                Showing @Model.Rows.Count of @Model.TotalCount.ToString("N0") refund(s). Narrow the filters to see more.
+            </div>
+        }
+    }
+</div>
