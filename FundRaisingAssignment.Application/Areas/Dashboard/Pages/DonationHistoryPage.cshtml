@@ -32,7 +32,7 @@
                 @foreach (var record in Model.DonationRecords)
                 {
                     <tr>
-                        <td>@record.Date.ToShortDateString()</td>
+                        <td>@record.CreatedAt.ToShortDateString()</td>
                         <td>
                             @if (record.Campaign != null)
                             {
@@ -62,7 +62,7 @@
                     <strong>Donation Receipt</strong>
                 </div>
                 <div class="card-body">
-                    <p><strong>Date:</strong> @Model.SelectedDonation.Date.ToShortDateString()</p>
+                    <p><strong>Date:</strong> @Model.SelectedDonation.CreatedAt.ToShortDateString()</p>
                     <p><strong>Campaign:</strong> @Model.SelectedDonation.Campaign?.Title</p>
                     <p><strong>Amount:</strong> @Model.SelectedDonation.Amount.ToString("C")</p>
                     <p><strong>Receipt Number:</strong> @Model.SelectedDonation.ReceiptNumber</p>

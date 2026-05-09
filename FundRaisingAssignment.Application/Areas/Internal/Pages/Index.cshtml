@@ -1,8 +1,51 @@
 @page
 @{
-    ViewData["Title"] = "User Admin";
+    ViewData["Title"] = "Admin Dashboard";
 }
 
-<div>
-    <h1>User admin</h1>
+<div class="container-fluid py-3">
+    <h1 class="mb-3">User admin</h1>
+    <p class="text-muted">Internal tools for platform admins.</p>
+
+    <div class="row g-3 mt-2">
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Internal" asp-page="/Reports" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <small class="text-uppercase text-muted fw-semibold">Reports</small>
+                        <h5 class="mt-2 mb-1">Platform performance &amp; finance</h5>
+                        <p class="text-muted small mb-0">
+                            View aggregate stats and export CSV / Excel.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Internal" asp-page="/FundraiserApprovals" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <small class="text-uppercase text-muted fw-semibold">Fundraisers</small>
+                        <h5 class="mt-2 mb-1">Fundraiser approvals</h5>
+                        <p class="text-muted small mb-0">
+                            Review and approve users requesting fundraiser access.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <a asp-area="Internal" asp-page="/Users/Index" class="text-decoration-none">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <small class="text-uppercase text-muted fw-semibold">Users</small>
+                        <h5 class="mt-2 mb-1">Manage user accounts</h5>
+                        <p class="text-muted small mb-0">
+                            Create, edit, and remove user accounts and roles.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
 </div>

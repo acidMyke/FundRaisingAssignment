@@ -1,20 +1,18 @@
-namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
-
-using FundRaisingAssignment.Application.Services;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-public class IndexModel : PageModel
+namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
+
+/// <summary>
+/// Public campaign listing with search (Karthik) + card grid (Josh).
+/// </summary>
+public class IndexModel(ICampaignService campaignService) : PageModel
 {
-    private readonly CampaignService _service;
+    private readonly ICampaignService _svc = campaignService;
 
-    public IndexModel(CampaignService service)
-    {
-        _service = service;
-    }
-
-    public List<Campaign> Campaigns { get; set; } = new();
+    public IReadOnlyList<Campaign> Campaigns { get; private set; } = [];
 
     [BindProperty(SupportsGet = true)]
     public string? Keyword { get; set; }
@@ -25,22 +23,26 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? Location { get; set; }
 
-    public bool HasSearched { get; set; }
-
     public async Task OnGetAsync()
     {
-        Keyword = Keyword?.Trim();
-        Category = Category?.Trim();
-        Location = Location?.Trim();
+        var now = DateTime.UtcNow;
 
-        HasSearched = !string.IsNullOrWhiteSpace(Keyword)
-                || !string.IsNullOrWhiteSpace(Category)
-                || !string.IsNullOrWhiteSpace(Location);
-
-        if (HasSearched)
+        if (!string.IsNullOrWhiteSpace(Keyword) ||
+            !string.IsNullOrWhiteSpace(Category) ||
+            !string.IsNullOrWhiteSpace(Location))
         {
-            Campaigns = await _service.SearchCampaigns(Keyword, Category, Location);
+            // Search mode (Karthik)
+            var results = await _svc.SearchCampaignsAsync(Keyword, Category, Location);
+            Campaigns = results
+                .Where(c => c.Status == CampaignStatus.Active &&
+                            (c.EndDate == null || c.EndDate >= now))
+                .OrderByDescending(c => c.CreatedAt)
+                .ToList();
         }
-
+        else
+        {
+            // Default: all public active campaigns (Josh)
+            Campaigns = await _svc.GetPublicCampaignsAsync();
+        }
     }
 }

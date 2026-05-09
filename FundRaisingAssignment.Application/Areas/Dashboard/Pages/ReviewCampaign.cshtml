@@ -1,0 +1,161 @@
+@page "{id:guid}"
+@using FundRaisingAssignment.Application.Areas.Dashboard.Pages
+@using FundRaisingAssignment.Application.Models
+@using FundRaisingAssignment.Application.Extensions
+@model ReviewCampaignModel
+@{
+    ViewData["Title"] = "Review Campaign";
+    string starsFull(double avg) {
+        var sb = new System.Text.StringBuilder();
+        for (int i=1; i<=5; i++) sb.Append(i<=Math.Round(avg)?"★":"☆");
+        return sb.ToString();
+    }
+}
+
+<div class="page-narrow">
+  <div style="margin-bottom:var(--space-4);">
+    <a asp-area="Dashboard" asp-page="/FlaggedCampaigns"
+       class="btn btn-secondary" style="font-size:var(--text-sm);">← Back to Flagged Campaigns</a>
+  </div>
+
+  @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+  {
+    <div class="alert alert-error" role="alert">@Model.ErrorMessage</div>
+  }
+
+  @if (Model.Campaign is null)
+  {
+    <div class="card"><p>Campaign could not be loaded.</p></div>
+  }
+  else
+  {
+    var c = Model.Campaign;
+    int daysLeft = c.EndDate.HasValue ? Math.Max(0, (c.EndDate.Value.Date - DateTime.Today).Days) : 0;
+
+    <div class="page-hero">
+      <h1>Review Campaign</h1>
+      <p>Inspect the flagged campaign and its donor reviews, then approve or remove it.</p>
+    </div>
+
+    @* Campaign Details *@
+    <div class="card" style="margin-bottom:var(--space-5);">
+      <h2 class="card-title">Campaign Details</h2>
+      <div class="stats-grid" style="margin-bottom:var(--space-4);">
+        <div class="stat-card">
+          <p class="stat-label">Funding Goal</p>
+          <p class="stat-value highlight">$@c.FundingGoal.ToString("N0")</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Days Remaining</p>
+          <p class="stat-value">@daysLeft</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Average Rating</p>
+          <p class="stat-value" style="color:#f59e0b;">
+            @(c.ReviewCount > 0 ? $"{c.AverageRating:F1} ★" : "—")
+          </p>
+        </div>
+      </div>
+      <dl style="display:grid; gap:var(--space-3);">
+        <div><dt style="font-weight:600;color:var(--color-text-muted);font-size:var(--text-sm);">Title</dt><dd>@c.Title</dd></div>
+        <div><dt style="font-weight:600;color:var(--color-text-muted);font-size:var(--text-sm);">Category</dt><dd>@c.Category.GetDisplayName()</dd></div>
+        <div><dt style="font-weight:600;color:var(--color-text-muted);font-size:var(--text-sm);">Short Description</dt><dd>@c.ShortDescription</dd></div>
+        <div><dt style="font-weight:600;color:var(--color-text-muted);font-size:var(--text-sm);">Full Description</dt><dd style="white-space:pre-wrap;">@c.Description</dd></div>
+        <div><dt style="font-weight:600;color:var(--color-text-muted);font-size:var(--text-sm);">Owner</dt><dd>@(c.Owner?.Email ?? "Unknown")</dd></div>
+        <div><dt style="font-weight:600;color:var(--color-text-muted);font-size:var(--text-sm);">Deadline</dt><dd>@(c.EndDate?.ToString("MMMM d, yyyy") ?? "—")</dd></div>
+      </dl>
+    </div>
+
+    @* Flag info *@
+    <div class="card" style="border-left:4px solid #d97706; margin-bottom:var(--space-5);">
+      <h2 class="card-title" style="color:#92400e;">⚠ Flag Reason</h2>
+      <p style="margin:0;">@(string.IsNullOrEmpty(c.FlagReason) ? "No reason recorded." : c.FlagReason)</p>
+    </div>
+
+    @* Donor Reviews *@
+    @if (Model.Reviews.Any())
+    {
+      <div class="card" style="margin-bottom:var(--space-5);">
+        <h2 class="card-title">
+          Donor Reviews
+          <span style="color:#f59e0b; margin-left:var(--space-2);">
+            @starsFull(c.AverageRating) @c.AverageRating.ToString("F1")
+          </span>
+          <span style="color:var(--color-text-muted); font-size:var(--text-sm); font-weight:400; margin-left:var(--space-2);">
+            (@c.ReviewCount review@(c.ReviewCount==1?"":"s"))
+          </span>
+        </h2>
+        <div style="display:flex; flex-direction:column; gap:var(--space-3); margin-top:var(--space-4);">
+          @foreach (var r in Model.Reviews)
+          {
+            <div style="border:1px solid var(--color-border,#e2e8f0);
+                        border-radius:var(--radius-md,8px); padding:var(--space-3);">
+              <div style="display:flex; gap:var(--space-3); align-items:center; margin-bottom:var(--space-1);">
+                <span style="color:#f59e0b;">@starsFull(r.Stars)</span>
+                <span style="font-size:var(--text-sm); font-weight:600;">@r.ReviewerEmail</span>
+                <span style="color:var(--color-text-muted); font-size:var(--text-xs); margin-left:auto;">
+                  @r.CreatedAt.ToString("MMM d, yyyy")
+                </span>
+              </div>
+              @if (!string.IsNullOrEmpty(r.Comment))
+              {
+                <p style="margin:0; font-size:var(--text-sm); color:var(--color-text-muted);">@r.Comment</p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @* Admin Decision *@
+    <div class="card">
+      <h2 class="card-title">Admin Decision</h2>
+      <p style="color:var(--color-text-muted); margin-bottom:var(--space-5);">
+        The fundraiser will be notified by email of your decision.
+      </p>
+
+      @* Approve *@
+      <div style="padding:var(--space-4); border:1px solid #e2e8f0;
+                  border-radius:var(--radius-md,8px); margin-bottom:var(--space-4);">
+        <h3 style="color:#16a34a; margin:0 0 var(--space-2);">✓ Approve Campaign</h3>
+        <p style="color:var(--color-text-muted); font-size:var(--text-sm); margin-bottom:var(--space-3);">
+          Restores the campaign to Active status and clears the flag.
+        </p>
+        <form method="post" asp-page-handler="Approve">
+          @Html.AntiForgeryToken()
+          <input type="hidden" asp-for="Id" />
+          <button type="submit" class="btn btn-primary"
+                  onclick="return confirm('Approve this campaign?')">Approve Campaign</button>
+        </form>
+      </div>
+
+      @* Remove *@
+      <div style="padding:var(--space-4); border:1px solid #dc2626;
+                  border-radius:var(--radius-md,8px);">
+        <h3 style="color:#dc2626; margin:0 0 var(--space-2);">✗ Remove Campaign</h3>
+        <p style="color:var(--color-text-muted); font-size:var(--text-sm); margin-bottom:var(--space-3);">
+          Cancels the campaign permanently. The fundraiser will be told why.
+        </p>
+        <form method="post" asp-page-handler="Remove">
+          @Html.AntiForgeryToken()
+          <input type="hidden" asp-for="Id" />
+          <div class="form-group">
+            <label asp-for="RemovalReason" class="form-label"></label>
+            <textarea asp-for="RemovalReason" class="form-control" rows="3"
+                      placeholder="Explain why this campaign is being removed…"></textarea>
+            <span asp-validation-for="RemovalReason" class="field-error"></span>
+          </div>
+          <button type="submit" class="btn"
+                  style="background:#dc2626; color:#fff;"
+                  onclick="return confirm('Remove this campaign? This cannot be undone.')">
+            Remove Campaign
+          </button>
+        </form>
+      </div>
+    </div>
+  }
+</div>
+
+@section Scripts {
+  <partial name="_ValidationScriptsPartial" />
+}
