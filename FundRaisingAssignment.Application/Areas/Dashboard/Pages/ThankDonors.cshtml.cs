@@ -118,20 +118,20 @@ The {Campaign.Title} team";
             .Select(d => new
             {
                 Email = (d.User?.Email ?? d.DonorEmail ?? "").Trim(),
-                Name  = d.User?.UserName ?? d.DonorEmail ?? "Donor",
+                Name = d.User?.UserName ?? d.DonorEmail ?? "Donor",
                 d.Amount,
                 d.CreatedAt
             })
             .Where(x => !string.IsNullOrWhiteSpace(x.Email)
                      && !x.Email.Equals("Anonymous", StringComparison.OrdinalIgnoreCase)
-                     && !x.Email.Equals("Guest",     StringComparison.OrdinalIgnoreCase))
+                     && !x.Email.Equals("Guest", StringComparison.OrdinalIgnoreCase))
             .GroupBy(x => x.Email, StringComparer.OrdinalIgnoreCase)
             .Select(g => new DonorRow(
-                Email:           g.Key,
-                DisplayName:     g.First().Name,
-                TotalDonated:    g.Sum(x => x.Amount),
-                DonationCount:   g.Count(),
-                LastDonationAt:  g.Max(x => x.CreatedAt)))
+                Email: g.Key,
+                DisplayName: g.First().Name,
+                TotalDonated: g.Sum(x => x.Amount),
+                DonationCount: g.Count(),
+                LastDonationAt: g.Max(x => x.CreatedAt)))
             .OrderByDescending(d => d.LastDonationAt)
             .ToList();
 

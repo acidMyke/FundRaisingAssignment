@@ -157,11 +157,11 @@ public class DonationsModel : PageModel
 
         StatusMessage = result switch
         {
-            RefundResult.Success s            => $"Refunded donation {s.Donation.Id} ({s.Donation.Amount:C}).",
-            RefundResult.DonationNotFound     => "Donation not found.",
-            RefundResult.NotRefundable nr     => $"Cannot refund — donation status is {nr.CurrentStatus}.",
+            RefundResult.Success s => $"Refunded donation {s.Donation.Id} ({s.Donation.Amount:C}).",
+            RefundResult.DonationNotFound => "Donation not found.",
+            RefundResult.NotRefundable nr => $"Cannot refund — donation status is {nr.CurrentStatus}.",
             RefundResult.TransactionFailed tf => $"Refund failed: {tf.Exception.Message}",
-            _                                 => "Refund failed."
+            _ => "Refund failed."
         };
 
         return RedirectToPage(new { Search, StatusFilter });

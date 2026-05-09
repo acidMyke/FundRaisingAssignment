@@ -199,13 +199,13 @@ public sealed class DonationService
         string? reason,
         DateTime utcNow) => new()
         {
-            Id          = Guid.NewGuid(),
-            DonationId  = donation.Id,
-            CampaignId  = donation.CampaignId,
-            AdminId     = adminId,
-            AdminLabel  = adminLabel,
-            Amount      = donation.Amount,
-            Reason      = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
-            RefundedAt  = utcNow,
+            Id = Guid.NewGuid(),
+            DonationId = donation.Id,
+            CampaignId = donation.CampaignId,
+            AdminId = adminId,
+            AdminLabel = adminLabel,
+            Amount = donation.Amount,
+            Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
+            RefundedAt = utcNow,
         };
 }

@@ -14,21 +14,21 @@ public class RefundTests
     {
         var campaign = new Campaign
         {
-            Id            = Guid.NewGuid(),
-            Title         = "Test campaign",
-            Description   = "Desc",
-            FundingGoal   = campaignTarget,
-            TargetAmount  = campaignTarget,
+            Id = Guid.NewGuid(),
+            Title = "Test campaign",
+            Description = "Desc",
+            FundingGoal = campaignTarget,
+            TargetAmount = campaignTarget,
             CurrentAmount = campaignCurrent,
-            Status        = status,
-            OwnerId       = Guid.NewGuid(),
+            Status = status,
+            OwnerId = Guid.NewGuid(),
         };
         var donation = new Donation
         {
-            Id         = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
-            Amount     = donationAmount,
-            Status     = donationStatus,
+            Amount = donationAmount,
+            Status = donationStatus,
         };
         return (donation, campaign);
     }
