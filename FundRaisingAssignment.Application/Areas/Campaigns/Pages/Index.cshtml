@@ -49,7 +49,13 @@
     </div>
     <div class="s-group">
       <label class="s-label">Category</label>
-      <input name="Category" value="@Model.Category" class="s-input" placeholder="e.g. Education"/>
+      <select name="Category" class="s-input">
+        <option value="">All categories</option>
+        @foreach (var cat in Enum.GetValues<CampaignCategory>())
+        {
+          <option value="@cat" selected="@(string.Equals(Model.Category, cat.ToString(), StringComparison.OrdinalIgnoreCase))">@cat</option>
+        }
+      </select>
     </div>
     <div class="s-group">
       <label class="s-label">Location</label>
