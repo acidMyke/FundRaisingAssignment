@@ -5,9 +5,14 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
 
-public class IndexModel(CampaignService campaignService) : PageModel
+/// <summary>
+/// Public campaign listing with search (Karthik) + card grid (Josh).
+/// </summary>
+public class IndexModel(ICampaignService campaignService) : PageModel
 {
-    public IList<Campaign> Campaigns { get; private set; } = [];
+    private readonly ICampaignService _svc = campaignService;
+
+    public IReadOnlyList<Campaign> Campaigns { get; private set; } = [];
 
     [BindProperty(SupportsGet = true)]
     public string? Keyword { get; set; }
@@ -18,15 +23,26 @@ public class IndexModel(CampaignService campaignService) : PageModel
     [BindProperty(SupportsGet = true)]
     public string? Location { get; set; }
 
-    public async Task OnGetAsync(CancellationToken ct)
+    public async Task OnGetAsync()
     {
         var now = DateTime.UtcNow;
-        var results = await campaignService.SearchCampaigns(Keyword, Category, Location);
 
-        Campaigns = results
-            .Where(c => c.Status == CampaignStatus.Active &&
-                        (c.EndDate == null || c.EndDate >= now))
-            .OrderByDescending(c => c.CreatedAt)
-            .ToList();
+        if (!string.IsNullOrWhiteSpace(Keyword) ||
+            !string.IsNullOrWhiteSpace(Category) ||
+            !string.IsNullOrWhiteSpace(Location))
+        {
+            // Search mode (Karthik)
+            var results = await _svc.SearchCampaignsAsync(Keyword, Category, Location);
+            Campaigns = results
+                .Where(c => c.Status == CampaignStatus.Active &&
+                            (c.EndDate == null || c.EndDate >= now))
+                .OrderByDescending(c => c.CreatedAt)
+                .ToList();
+        }
+        else
+        {
+            // Default: all public active campaigns (Josh)
+            Campaigns = await _svc.GetPublicCampaignsAsync();
+        }
     }
 }

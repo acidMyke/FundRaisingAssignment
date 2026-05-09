@@ -16,16 +16,17 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 
         public DonationHistoryPageModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
-            _context = context;
+            _context     = context;
             _userManager = userManager;
         }
 
         public List<Donation> DonationRecords { get; set; } = new();
+
         [BindProperty]
         public Guid? SelectedDonationId { get; set; }
+
         public Donation? SelectedDonation { get; set; }
         public string? ErrorMessage { get; set; }
-
 
         public async Task OnGetAsync()
         {
@@ -37,11 +38,13 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             await LoadDonationRecordsAsync();
             if (SelectedDonationId.HasValue)
             {
-                SelectedDonation = await _context.Donations.FirstOrDefaultAsync(r => r.Id == SelectedDonationId.Value);
+                // Merged model: PK is Id
+                SelectedDonation = await _context.Donations
+                    .Include(r => r.Campaign)
+                    .FirstOrDefaultAsync(r => r.Id == SelectedDonationId.Value);
+
                 if (SelectedDonation == null)
-                {
                     ErrorMessage = "Failed to retrieve donation details. Please try again.";
-                }
             }
             return Page();
         }
@@ -53,16 +56,19 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 var user = await _userManager.GetUserAsync(User);
                 if (user == null)
                 {
-                    ErrorMessage = "User not found.";
+                    ErrorMessage   = "User not found.";
                     DonationRecords = new List<Donation>();
                     return;
                 }
+
+                // Merged model: filter by UserId (Karthik's field)
                 var records = await _context.Donations
                     .Where(r => r.UserId == user.Id)
                     .Include(r => r.Campaign)
                     .OrderByDescending(r => r.CreatedAt)
                     .ToListAsync();
-                if (records != null && records.Any())
+
+                if (records.Any())
                     DonationRecords = records;
                 else
                     ErrorMessage = "No donation records available.";

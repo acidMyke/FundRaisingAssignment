@@ -37,6 +37,7 @@ public sealed class DonationService(
         if (campaign.Status != CampaignStatus.Active)
             return new DonationResult.CampaignNotActive(campaign.Status);
 
+        // EndDate is nullable in merged model
         if (campaign.EndDate.HasValue && campaign.EndDate.Value < DateTime.UtcNow)
             return new DonationResult.DeadlinePassed();
 
@@ -45,29 +46,28 @@ public sealed class DonationService(
         {
             var donation = new Donation
             {
-                Id = Guid.NewGuid(),
-                CampaignId = campaign.Id,
-                UserId = donorUserId,
-                Amount = input.Amount,
-                Message = input.Message,
+                Id          = Guid.NewGuid(),          // merged model uses Id as PK
+                CampaignId  = campaign.Id,
+                UserId      = donorUserId,              // merged model uses UserId
+                Amount      = input.Amount,
+                Message     = input.Message,
                 IsAnonymous = input.IsAnonymous,
-                Status = DonationStatus.Completed,
-                CreatedAt = DateTime.UtcNow
+                DonorEmail  = input.IsAnonymous ? "Anonymous" : string.Empty,
+                Status      = DonationStatus.Completed,
+                CreatedAt   = DateTime.UtcNow
             };
 
             await context.Donations.AddAsync(donation, ct);
-
             campaign.CurrentAmount += input.Amount;
 
-            var goalReached = false;
-            if (campaign.CurrentAmount >= campaign.TargetAmount &&
-                campaign.Status == CampaignStatus.Active)
+            bool goalReached = false;
+            if (campaign.CurrentAmount >= campaign.TargetAmount
+                && campaign.Status == CampaignStatus.Active)
             {
                 campaign.Status = CampaignStatus.Completed;
                 goalReached = true;
                 logger.LogInformation(
-                    "Campaign {CampaignId} reached its goal and was auto-completed.",
-                    campaign.Id);
+                    "Campaign {CampaignId} reached its goal and was auto-completed.", campaign.Id);
             }
 
             await context.SaveChangesAsync(ct);

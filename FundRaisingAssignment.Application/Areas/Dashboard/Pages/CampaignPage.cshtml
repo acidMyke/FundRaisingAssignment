@@ -1,0 +1,347 @@
+@page "{id:guid}"
+@using FundRaisingAssignment.Application.Areas.Dashboard.Pages
+@using FundRaisingAssignment.Application.Models
+@model CampaignPageModel
+@{
+    ViewData["Title"] = Model.PageView.HasError ? "Campaign" : Model.PageView.Title;
+    double circ   = 2 * Math.PI * 66;
+    double prog   = Model.PageView.HasError ? 0 : Math.Min(1.0, Model.PageView.DaysRemaining / 90.0);
+    double offset = circ * (1 - prog);
+    string Stars(double avg) { var s = new System.Text.StringBuilder(); for (int i=1;i<=5;i++) s.Append(i<=Math.Round(avg)?"★":"☆"); return s.ToString(); }
+}
+
+<style>
+  .cp-layout{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
+  .cp-main{flex:1;min-width:280px;}
+  .cp-sidebar{width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;}
+  .card-box{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;}
+  .fund-bar-bg{background:#e2e8f0;border-radius:999px;height:11px;overflow:hidden;margin:9px 0 5px;}
+  .fund-bar-fg{height:100%;border-radius:999px;background:#4f46e5;transition:width .5s;}
+  .field-error,.text-danger,span[data-valmsg-for]{color:#dc2626!important;font-size:.8rem;display:block;margin-top:3px;}
+  .donate-wrap{position:relative;}
+  .donate-pfx{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-weight:600;pointer-events:none;}
+  .donate-inp{width:100%;padding:9px 11px 9px 26px;border:1px solid #e2e8f0;border-radius:7px;font-size:.95rem;box-sizing:border-box;}
+  .donate-inp:focus{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1);}
+  .inp-err{border-color:#dc2626!important;background:#fff5f5;}
+  .form-ctrl{width:100%;padding:8px 11px;border:1px solid #e2e8f0;border-radius:7px;font-size:.88rem;box-sizing:border-box;}
+  .form-ctrl:focus{outline:none;border-color:#4f46e5;}
+  .lbl{font-size:.8rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;}
+  .frow{margin-bottom:12px;}
+  .btn-donate{width:100%;padding:11px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .15s;}
+  .btn-donate:hover{background:#4338ca;}
+  .star-row{display:flex;gap:5px;font-size:1.8rem;cursor:pointer;user-select:none;}
+  .star-row label{color:#d1d5db;transition:color .1s;}
+  .donation-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;}
+  .donation-row:last-child{border-bottom:none;}
+  .ring-wrap{position:relative;width:148px;height:148px;margin:0 auto;}
+  .ring-track{fill:none;stroke:#e2e8f0;stroke-width:10;}
+  .ring-prog{fill:none;stroke:#4f46e5;stroke-width:10;stroke-linecap:round;transform:rotate(-90deg);transform-origin:center;}
+  .ring-ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring-days{font-size:2.1rem;font-weight:800;line-height:1;color:#1e293b;}
+  .ring-unit{font-size:.68rem;color:#94a3b8;font-weight:500;text-transform:uppercase;}
+  .alert-g{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:.88rem;}
+  .alert-b{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:.88rem;}
+  .alert-e{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:.88rem;}
+  .status-banner{padding:14px 18px;border-radius:10px;margin-bottom:20px;font-size:.9rem;display:flex;gap:10px;align-items:center;}
+  .sb-paused{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+  .sb-flagged{background:#fef3c7;color:#92400e;border:1px solid #fbbf24;}
+  .sb-pending{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
+  .sb-cancelled{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;}
+</style>
+
+@if (Model.PageView.HasError)
+{
+  <div class="alert-e">@Model.PageView.ErrorMessage</div>
+  <a asp-area="Dashboard" asp-page="/Campaigns" style="color:#4f46e5;font-weight:500;text-decoration:none;">← My Campaigns</a>
+}
+else
+{
+  var v = Model.PageView;
+
+  @if (TempData["DonateSuccess"] != null) { <div class="alert-g">💚 @TempData["DonateSuccess"]</div> }
+  @if (TempData["ReviewSuccess"] != null) { <div class="alert-g">⭐ @TempData["ReviewSuccess"]</div> }
+  @if (TempData["Success"] != null)       { <div class="alert-g">✓ @TempData["Success"]</div> }
+  @if (TempData["Error"] != null)         { <div class="alert-e">⚠ @TempData["Error"]</div> }
+
+  @* Status banners for non-Active campaigns *@
+  @if (v.Status == CampaignStatus.PendingReview)
+  {
+    <div class="status-banner sb-pending">
+      <span style="font-size:1.2rem;">⏳</span>
+      <div><strong>Awaiting Review</strong> — This campaign is pending platform management approval and is not yet visible to donors.</div>
+    </div>
+  }
+  @if (v.Status == CampaignStatus.Paused)
+  {
+    <div class="status-banner sb-paused">
+      <span style="font-size:1.2rem;">⏸</span>
+      <div><strong>Campaign Paused</strong> — Platform management has temporarily paused this campaign. Donations are not accepted. Please wait for it to be released.</div>
+    </div>
+  }
+  @if (v.Status == CampaignStatus.Flagged)
+  {
+    <div class="status-banner sb-flagged">
+      <span style="font-size:1.2rem;">⚑</span>
+      <div><strong>Under Review</strong> — This campaign has been flagged and is under review by platform management. Donations are suspended until resolved.</div>
+    </div>
+  }
+  @if (v.Status == CampaignStatus.Cancelled)
+  {
+    <div class="status-banner sb-cancelled">
+      <span style="font-size:1.2rem;">✗</span>
+      <div><strong>Terminated</strong> — This campaign has been permanently terminated by platform management and is no longer accepting donations.</div>
+    </div>
+  }
+
+  @if (!string.IsNullOrEmpty(v.CoverImageUrl))
+  {
+    <div style="height:240px;background:url('@v.CoverImageUrl') center/cover no-repeat;border-radius:14px;margin-bottom:20px;"></div>
+  }
+
+  <div class="cp-layout">
+    <div class="cp-main">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="background:#eff6ff;color:#3b82f6;padding:2px 9px;border-radius:999px;font-size:.75rem;font-weight:600;">@v.Category</span>
+        @{
+          (string sbg, string sfg) = v.Status switch {
+            CampaignStatus.Active    => ("#d1fae5","#065f46"),
+            CampaignStatus.Paused   => ("#fee2e2","#991b1b"),
+            CampaignStatus.Flagged  => ("#fef3c7","#92400e"),
+            CampaignStatus.Cancelled=> ("#f1f5f9","#94a3b8"),
+            _                       => ("#dbeafe","#1e40af")
+          };
+        }
+        <span style="background:@sbg;color:@sfg;padding:2px 9px;border-radius:999px;font-size:.75rem;font-weight:600;">@v.Status</span>
+        @if (v.ReviewCount > 0)
+        { <span style="color:#f59e0b;font-size:.85rem;">@Stars(v.AverageRating) <strong>@v.AverageRating.ToString("F1")</strong> <span style="color:#94a3b8;">(@v.ReviewCount)</span></span> }
+      </div>
+
+      <h1 style="margin:0 0 5px;font-size:1.85rem;font-weight:800;color:#0f172a;">@v.Title</h1>
+      <p style="color:#64748b;margin:0 0 18px;">@v.ShortDesc</p>
+
+      @* Progress *@
+      <div class="card-box" style="margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span><strong style="font-size:1.5rem;color:#1e293b;">$@v.CurrentAmount.ToString("N0")</strong> <span style="color:#94a3b8;font-size:.85rem;">raised</span></span>
+          <span style="color:#94a3b8;font-size:.82rem;">of <strong style="color:#1e293b;">$@v.FundingGoal.ToString("N0")</strong></span>
+        </div>
+        <div class="fund-bar-bg"><div class="fund-bar-fg" style="width:@v.ProgressPercent.ToString("F1")%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:.77rem;color:#94a3b8;">
+          <span>@v.ProgressPercent.ToString("F0")% funded</span>
+          <span>@Model.Donations.Count donor@(Model.Donations.Count==1?"":"s")</span>
+        </div>
+      </div>
+
+      @* About *@
+      <div class="card-box" style="margin-bottom:18px;">
+        <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;">About this campaign</h2>
+        <p style="white-space:pre-wrap;line-height:1.75;color:#374151;margin:0;">@v.Description</p>
+        <p style="font-size:.8rem;color:#94a3b8;margin:14px 0 0;">Organised by <strong>@v.OwnerEmail</strong></p>
+      </div>
+
+      @* Owner actions *@
+      @if (Model.IsOwner)
+      {
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+          <a asp-area="Dashboard" asp-page="/Index" asp-route-campaignId="@v.CampaignId"
+             style="padding:7px 15px;border:1px solid #bfdbfe;border-radius:7px;font-size:.83rem;font-weight:500;text-decoration:none;color:#3b82f6;background:#eff6ff;">
+            $ Edit Goal &amp; Deadline
+          </a>
+        </div>
+      }
+
+      @* Admin quick-actions (edit full details) *@
+      @if (Model.IsAdmin && !Model.IsOwner)
+      {
+        <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:.82rem;color:#713f12;">
+          ⚙ <strong>Admin:</strong>
+          <a asp-area="Dashboard" asp-page="/UpdateCampaign" asp-route-id="@v.CampaignId"
+             style="color:#4f46e5;margin-left:8px;">Full Edit</a>
+          <span style="margin:0 8px;color:#fbbf24;">|</span>
+          <a asp-area="Dashboard" asp-page="/ManageCampaigns" style="color:#4f46e5;">Manage All Campaigns</a>
+        </div>
+      }
+
+      @* Donations list *@
+      @if (Model.Donations.Any())
+      {
+        <div class="card-box" style="margin-bottom:18px;">
+          <h2 style="margin:0 0 12px;font-size:1.05rem;font-weight:700;">Recent Donations (@Model.Donations.Count)</h2>
+          @foreach (var d in Model.Donations.Take(8))
+          {
+            <div class="donation-row">
+              <div>
+                <div style="font-weight:600;font-size:.85rem;">@(d.IsAnonymous ? "Anonymous" : d.DonorEmail)</div>
+                @if (!string.IsNullOrEmpty(d.Message))
+                { <div style="color:#64748b;font-size:.78rem;">"@d.Message"</div> }
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:700;color:#059669;font-size:.92rem;">+$@d.Amount.ToString("N2")</div>
+                <div style="font-size:.73rem;color:#94a3b8;">@d.CreatedAt.ToString("MMM d, yyyy")</div>
+              </div>
+            </div>
+          }
+          @if (Model.Donations.Count > 8)
+          { <p style="margin:8px 0 0;font-size:.78rem;color:#94a3b8;text-align:center;">+@(Model.Donations.Count-8) more</p> }
+        </div>
+      }
+
+      @* Reviews *@
+      <div style="margin-top:24px;">
+        <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:14px;">
+          Donor Reviews
+          @if (v.ReviewCount > 0)
+          { <span style="color:#f59e0b;margin-left:8px;">@Stars(v.AverageRating) @v.AverageRating.ToString("F1")</span> }
+        </h2>
+
+        @if (Model.CanReview)
+        {
+          <div class="card-box" style="margin-bottom:16px;border-left:4px solid #4f46e5;">
+            <h3 style="margin:0 0 12px;font-size:.95rem;font-weight:700;">Leave a Review</h3>
+            <form method="post" asp-page-handler="Review" asp-route-id="@v.CampaignId" novalidate>
+              @Html.AntiForgeryToken()
+              <div class="frow">
+                <span class="lbl">Your Rating</span>
+                <div class="star-row" id="sp">
+                  @for (int s=1;s<=5;s++)
+                  {
+                    <label data-star="@s"><input type="radio" asp-for="Review.Stars" value="@s" style="display:none;"/>★</label>
+                  }
+                </div>
+                <span asp-validation-for="Review.Stars" class="field-error"></span>
+              </div>
+              <div class="frow">
+                <label asp-for="Review.Comment" class="lbl"></label>
+                <textarea asp-for="Review.Comment" class="form-ctrl" rows="3" placeholder="Share your thoughts…"></textarea>
+                <span asp-validation-for="Review.Comment" class="field-error"></span>
+              </div>
+              <button type="submit" style="padding:8px 18px;background:#1e293b;color:#fff;border:none;border-radius:7px;font-size:.85rem;font-weight:600;cursor:pointer;">Submit Review</button>
+            </form>
+          </div>
+        }
+        else if (Model.AlreadyReviewed) { <div class="alert-b" style="margin-bottom:14px;">✓ You have already reviewed this campaign.</div> }
+        else if (!User.Identity!.IsAuthenticated) { <div class="alert-b" style="margin-bottom:14px;"><a href="/Identity/Account/Login" style="color:#1e40af;font-weight:600;">Sign in</a> to leave a review.</div> }
+
+        @if (!Model.Reviews.Any())
+        { <p style="color:#94a3b8;font-size:.88rem;padding:20px 0;">No reviews yet.</p> }
+        else
+        {
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            @foreach (var r in Model.Reviews)
+            {
+              <div style="border:1px solid #e2e8f0;border-radius:9px;padding:12px 14px;">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:5px;">
+                  <span style="color:#f59e0b;font-size:1rem;">@Stars(r.Stars)</span>
+                  <strong style="font-size:.85rem;color:#1e293b;">@r.ReviewerEmail</strong>
+                  <span style="color:#94a3b8;font-size:.75rem;margin-left:auto;">@r.CreatedAt.ToString("MMM d, yyyy")</span>
+                </div>
+                @if (!string.IsNullOrEmpty(r.Comment))
+                { <p style="margin:0;color:#4b5563;font-size:.85rem;line-height:1.6;">@r.Comment</p> }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @* SIDEBAR *@
+    <div class="cp-sidebar">
+      @* Countdown ring *@
+      <div class="card-box" style="text-align:center;padding:20px 14px;">
+        <div class="ring-wrap">
+          <svg width="148" height="148" viewBox="0 0 148 148">
+            <circle class="ring-track" cx="74" cy="74" r="66"/>
+            <circle class="ring-prog" cx="74" cy="74" r="66"
+              stroke-dasharray="@circ.ToString("F2")"
+              stroke-dashoffset="@offset.ToString("F2")"/>
+          </svg>
+          <div class="ring-ctr">
+            <span class="ring-days">@v.DaysRemaining</span>
+            <span class="ring-unit">days left</span>
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:#94a3b8;margin:8px 0 0;">Ends @v.DeadlineDate.ToString("MMM d, yyyy")</p>
+      </div>
+
+      @* DONATE CARD – only for Active campaigns *@
+      @if (Model.CanDonate)
+      {
+        <div class="card-box" style="border-top:4px solid #4f46e5;">
+          <h3 style="margin:0 0 12px;font-size:.95rem;font-weight:700;color:#1e293b;">💚 Donate</h3>
+          <form method="post" asp-page-handler="Donate" asp-route-id="@v.CampaignId" novalidate>
+            @Html.AntiForgeryToken()
+            <div class="frow">
+              <label class="lbl">Amount (USD) <span style="color:#dc2626;">*</span></label>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;">
+                @foreach (var p in new[]{10,25,50,100})
+                {
+                  <button type="button" style="padding:3px 9px;border:1px solid #e2e8f0;border-radius:5px;font-size:.75rem;cursor:pointer;background:#f8fafc;"
+                          onclick="document.getElementById('damt').value='@p'">$@p</button>
+                }
+              </div>
+              <div class="donate-wrap">
+                <span class="donate-pfx">$</span>
+                <input asp-for="Donate.Amount" id="damt"
+                       class="donate-inp @(ViewData.ModelState["Donate.Amount"]?.Errors.Any()==true ? "inp-err":"")"
+                       type="number" min="0.01" step="0.01" placeholder="0.00"/>
+              </div>
+              <span asp-validation-for="Donate.Amount" class="field-error"></span>
+            </div>
+            <div class="frow">
+              <label asp-for="Donate.Message" class="lbl"></label>
+              <textarea asp-for="Donate.Message" class="form-ctrl" rows="2" style="font-size:.83rem;" placeholder="Words of encouragement…"></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
+              <input asp-for="Donate.IsAnonymous" type="checkbox" style="width:15px;height:15px;accent-color:#4f46e5;"/>
+              <label asp-for="Donate.IsAnonymous" style="font-size:.8rem;color:#374151;cursor:pointer;margin:0;">Donate anonymously</label>
+            </div>
+            <button type="submit" class="btn-donate">Donate Now →</button>
+            @if (!User.Identity!.IsAuthenticated)
+            { <p style="font-size:.72rem;color:#94a3b8;margin-top:8px;text-align:center;">Donating as guest. <a href="/Identity/Account/Login" style="color:#4f46e5;">Sign in</a> to track donations.</p> }
+          </form>
+        </div>
+      }
+      else if (!Model.CanDonate && v.Status != CampaignStatus.Active)
+      {
+        <div class="card-box" style="background:#f8fafc;text-align:center;font-size:.83rem;color:#64748b;border:1px solid #f1f5f9;">
+          <p style="margin:0;">Donations are not available.<br/>This campaign is currently <strong>@v.Status</strong>.</p>
+        </div>
+      }
+      else if (Model.IsOwner)
+      {
+        <div class="card-box" style="background:#f8fafc;text-align:center;font-size:.83rem;color:#64748b;">
+          <p style="margin:0;">You cannot donate to your own campaign.</p>
+        </div>
+      }
+
+      <a asp-area="Campaigns" asp-page="/Index"
+         style="display:block;text-align:center;padding:9px;border:1px solid #e2e8f0;border-radius:8px;font-size:.83rem;color:#475569;text-decoration:none;background:#fff;">
+        ← All Campaigns
+      </a>
+    </div>
+  </div>
+}
+
+@section Scripts {
+  <partial name="_ValidationScriptsPartial"/>
+  <script>
+  (function(){
+    var labels = document.querySelectorAll('#sp label');
+    labels.forEach(function(l){
+      l.addEventListener('mouseenter',function(){
+        var n=parseInt(l.dataset.star);
+        labels.forEach(function(x){x.style.color=parseInt(x.dataset.star)<=n?'#f59e0b':'#d1d5db';});
+      });
+      l.addEventListener('click',function(){
+        var n=parseInt(l.dataset.star);
+        labels.forEach(function(x){x.style.color=parseInt(x.dataset.star)<=n?'#f59e0b':'#d1d5db';});
+      });
+    });
+    document.getElementById('sp')?.addEventListener('mouseleave',function(){
+      var c=document.querySelector('#sp input:checked');
+      var chosen=c?parseInt(c.value):0;
+      labels.forEach(function(x){x.style.color=parseInt(x.dataset.star)<=chosen?'#f59e0b':'#d1d5db';});
+    });
+  })();
+  </script>
+}
