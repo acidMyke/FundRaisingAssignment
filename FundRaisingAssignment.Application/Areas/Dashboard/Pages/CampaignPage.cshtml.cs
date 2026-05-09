@@ -6,6 +6,20 @@ using FundRaisingAssignment.Application.Boundaries;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// User Story:   PM01 – Review Flagged Campaign              Owner: Zhu Jianshan (Josh)
+// User Story:   PM06 – View Top Donors Leaderboard          Owner: Ho Dan Ze
+// BCE Role:     Boundary
+// Description:  Logged-in campaign details page with three contributions:
+//                 • DN03 — donate form (OnPostDonateAsync) → DonateAsync
+//                 • PM01 — reviews form (OnPostReviewAsync, AddReviewAsync)
+//                 • PM06 — Top Donations tab (GetTopDonationsAsync, top-10
+//                   leaderboard rendered inline next to recent donations)
+// Notes:        PM06 is currently surfaced only as an inline tab here; there
+//               is no dedicated leaderboard page (see Pending list).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 
 public class CampaignPageModel : PageModel

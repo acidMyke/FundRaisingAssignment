@@ -1,5 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA02 – Export Platform Performance and Financial Report
+//                                                          Owner: Unnikrishna Pillai Karthik
+// BCE Role:     Entity
+// Description:  Persisted row representing a generated export (CSV / XLSX),
+//               including its bytes, content type, the admin who created it,
+//               and the date range covered. Backs the post-export "download"
+//               sub-flow on the Reports page.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Models;
 
 public class ExportFile

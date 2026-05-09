@@ -11,6 +11,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// BCE Role:     Boundary
+// Description:  Public campaign details page with an inline donation form.
+//               OnPost funnels through ICampaignService.DonateAsync and on
+//               success redirects to the DN05 confirmation/receipt page.
+// Notes:        One of the four boundary entry points consolidated onto the
+//               canonical DN03 control surface.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
 
 public class DetailsModel(

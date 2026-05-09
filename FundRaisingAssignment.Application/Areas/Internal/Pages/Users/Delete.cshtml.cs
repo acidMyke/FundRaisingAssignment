@@ -3,6 +3,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA01 – User Admin – Add and Manage Users    Owner: Khoo Shi Hao Nicholas
+// BCE Role:     Boundary
+// Description:  Admin confirm-and-delete page for removing a user account.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
 {
     public class DeleteModel : PageModel

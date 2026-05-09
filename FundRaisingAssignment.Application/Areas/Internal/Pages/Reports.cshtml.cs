@@ -11,10 +11,24 @@ using OfficeOpenXml;
 using OfficeOpenXml.Drawing.Chart;
 using OfficeOpenXml.Style;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA02 – Export Platform Performance and Financial Report
+//                                                          Owner: Unnikrishna Pillai Karthik
+// BCE Role:     Boundary + Control
+// Description:  Admin-only Reports page: aggregates campaign + donation
+//               activity over a date range, previews on-screen with charts,
+//               and exports to CSV or XLSX (with embedded EPPlus charts).
+// Notes:        ExportFile rows are persisted for re-download. CSV/XLSX
+//               header reads "GiveHive Platform Report". Visualisations
+//               cover daily totals, by status, by category, top campaigns,
+//               by payment method, top donors, by location (DN01 dimension),
+//               and campaign progress.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages;
 
 /// <summary>
-/// PageModel for /Internal/Reports — Karthik's user story 2 (User Admin).
+/// PageModel for /Internal/Reports — UA02 (Karthik).
 ///
 /// Three handlers:
 ///   OnGet              → show the empty form

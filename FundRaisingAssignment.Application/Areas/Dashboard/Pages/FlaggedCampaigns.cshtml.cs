@@ -3,6 +3,16 @@ using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   PM01 – Review Flagged Campaign              Owner: Zhu Jianshan (Josh)
+// BCE Role:     Boundary
+// Description:  Admin-only dashboard listing campaigns currently in the Flagged
+//               status, used as the entry point to ReviewCampaign.
+// Notes:        Maps to BCE Diagram 2 – «boundary» FlaggedCampaignDashboard
+//               (input) and CampaignReviewView (output). Reads the flagged set
+//               via ICampaignService.GetFlaggedCampaignsAsync.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 
 /// <summary>

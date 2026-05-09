@@ -12,6 +12,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// BCE Role:     Boundary
+// Description:  Web API entry point at POST /api/donations. Validates the
+//               request body, resolves the donor from the auth claims,
+//               and delegates to ICampaignService.DonateAsync.
+// Notes:        Web API entry point; mirrors the Razor Page boundaries that
+//               all funnel through ICampaignService.DonateAsync.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Controllers
 {
     [ApiController]

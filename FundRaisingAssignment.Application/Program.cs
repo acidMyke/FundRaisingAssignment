@@ -10,6 +10,18 @@ using Microsoft.EntityFrameworkCore;
 using FundRaisingAssignment.Application.Interfaces;
 using OfficeOpenXml;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   Cross-cutting (composition root)            Owner: Team
+// BCE Role:     Configuration / wiring
+// Description:  Application entry point. Wires DI registrations, Identity,
+//               authorization policies, MVC + Razor Pages, the HTTP pipeline,
+//               role seeding, and the optional dataset seeder.
+// Notes:        Per-registration Format-B annotations identify which user
+//               story each binding supports. Pending stories (FR04, PM05,
+//               and the standalone PM06 leaderboard page) are flagged in
+//               the regions at the bottom of this file.
+// ─────────────────────────────────────────────────────────────────────────────
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Database ─────────────────────────────────────────────────────────────────
@@ -19,41 +31,41 @@ if (connectionString.Contains("__REPLACE_ME__"))
     throw new InvalidOperationException("DefaultConnection is still using the placeholder. Set it via environment variables.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+    options.UseNpgsql(connectionString));                          // Cross-cutting — entity persistence
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();        // Cross-cutting — dev diagnostics
 
 // ── Identity ──────────────────────────────────────────────────────────────────
-builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>    // UA01 — user accounts
     options.SignIn.RequireConfirmedAccount = true)
-    .AddRoles<ApplicationRole>()
+    .AddRoles<ApplicationRole>()                                   // UA01 — role assignment
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName)); // FR03 — email settings
 
 var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
 
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
-    builder.Services.AddTransient<IEmailService, MailjetEmailService>();
-    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>());
+    builder.Services.AddTransient<IEmailService, MailjetEmailService>();           // FR03 — Send Thank-You Message (Nicholas)
+    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>()); // FR03 — Identity adapter for the same transport
 }
 
 // ── Authorization ─────────────────────────────────────────────────────────────
-builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();   // Cross-cutting — auth policy handler
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("RequireThreeDaysJoined",
-        policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10))));
+        policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10)))); // Cross-cutting — guard policy
 
 // ── Application services ──────────────────────────────────────────────────────
-builder.Services.AddScoped<ICampaignService, CampaignService>();   // canonical campaign + donation service
+builder.Services.AddScoped<ICampaignService, CampaignService>();   // DN01, DN03, FR01, PM01, PM06 — backbone service
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
-builder.Services.AddControllersWithViews();
-builder.Services.AddHttpClient();
-builder.Services.AddRazorPages();
+builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
+builder.Services.AddHttpClient();             // FR03 — Mailjet HTTP client
+builder.Services.AddRazorPages();             // Cross-cutting — Razor Pages host
 
-// ── EPPlus license (Karthik) ──────────────────────────────────────────────────
-ExcelPackage.License.SetNonCommercialPersonal("Karthik");
+// ── EPPlus license (UA02) ─────────────────────────────────────────────────────
+ExcelPackage.License.SetNonCommercialPersonal("Karthik");          // UA02 — Excel exports (Karthik)
 
 var app = builder.Build();
 
@@ -149,3 +161,35 @@ static int? ParseIntArg(string[] args, string name)
     if (idx < 0 || idx + 1 >= args.Length) return null;
     return int.TryParse(args[idx + 1], out var v) ? v : null;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gap analysis — user stories with no implementation in the current codebase.
+// Surfacing them here so the Final Report's traceability matrix has a single
+// authoritative source for "not done" state. Update or remove the regions
+// below as work lands.
+// ─────────────────────────────────────────────────────────────────────────────
+
+#region FR04 (Pending — owner: Yong Jun Jie)
+// User Story:   FR04 – Campaign Access Delegation
+// Owner:        Yong Jun Jie (JJ)
+// Status:       Pending — no Delegate*/CampaignAccess* files exist.
+//               No DI registrations or entities for delegated campaign
+//               ownership / co-fundraiser permissions.
+#endregion
+
+#region PM05 (Pending — owner: Khoo Si Kai)
+// User Story:   PM05 – View Platform Analytics Dashboard
+// Owner:        Khoo Si Kai
+// Status:       Pending — no analytics dashboard page. The Reports area
+//               (UA02 / Karthik) covers ad-hoc admin reporting with charts,
+//               but there is no always-on dashboard surface.
+#endregion
+
+#region PM06 (Partial — owner: Ho Dan Ze)
+// User Story:   PM06 – View Top Donors Leaderboard
+// Owner:        Ho Dan Ze
+// Status:       Partial — leaderboard data is exposed via
+//               ICampaignService.GetTopDonationsAsync and surfaced as an
+//               inline tab on Areas/Dashboard/Pages/CampaignPage.cshtml.
+//               There is no standalone /Leaderboard page or PM-wide view.
+#endregion

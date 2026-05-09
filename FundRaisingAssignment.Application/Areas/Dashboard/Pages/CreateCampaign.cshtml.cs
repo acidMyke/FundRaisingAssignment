@@ -6,6 +6,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   FR01 – Set Funding Goal and Deadline        Owner: Zhu Jianshan (Josh)
+// BCE Role:     Boundary
+// Description:  Fundraiser-facing form to create a new campaign. Captures
+//               title, description, category, location, funding goal, and
+//               deadline; persists via ICampaignService.CreateCampaignAsync.
+// Notes:        Status is forced to Draft on the server side. Location field
+//               is non-required (DN01 – Si Kai's search dimension).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
     [Authorize]

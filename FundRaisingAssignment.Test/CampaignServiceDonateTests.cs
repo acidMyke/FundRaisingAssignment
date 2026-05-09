@@ -10,6 +10,17 @@ using FundRaisingAssignment.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// BCE Role:     Supporting tests
+// Description:  Behaviour tests for the canonical ICampaignService.DonateAsync
+//               flow. Covers Success, anonymity, goal-reached auto-complete,
+//               CampaignNotFound, CampaignNotActive across statuses, deadline
+//               handling, guest donors, and InvalidAmount validation.
+// Notes:        Migrated from the deleted DonationServiceTests.cs as part of
+//               the donation flow consolidation.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Test;
 
 public class CampaignServiceDonateTests

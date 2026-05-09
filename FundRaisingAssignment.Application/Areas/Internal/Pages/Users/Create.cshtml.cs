@@ -5,6 +5,13 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA01 – User Admin – Add and Manage Users    Owner: Khoo Shi Hao Nicholas
+// BCE Role:     Boundary
+// Description:  Admin form for creating a new user with a role assignment
+//               (Admin / Fundraiser / PendingFundraiser / Donor).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
 {
     public class CreateModel : PageModel

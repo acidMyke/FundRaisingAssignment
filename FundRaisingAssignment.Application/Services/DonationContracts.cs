@@ -5,6 +5,17 @@
 
 using FundRaisingAssignment.Application.Models;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// BCE Role:     Control (DTO contracts)
+// Description:  Input record (MakeDonationInput) and discriminated-union
+//               result (DonationResult.Success / CampaignNotFound /
+//               CampaignNotActive / DeadlinePassed / InvalidAmount) shared
+//               by every DN03 boundary.
+// Notes:        Consolidated contracts; the deleted DonationService.cs used
+//               to host these. Contributors: Josh, Karthik (consolidated).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Services;
 
 public sealed record MakeDonationInput(

@@ -6,6 +6,19 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   FR01 – Set Funding Goal and Deadline        Owner: Zhu Jianshan (Josh)
+// BCE Role:     Boundary
+// Description:  Admin-only full-detail editor for an existing campaign. Edits
+//               title, description, category, location, goal, deadline, and
+//               status. Fundraisers themselves only edit goal+deadline via
+//               the smaller MyBudget / Set Funding Goal page.
+// Notes:        Status options exclude Flagged and PendingReview from the
+//               dropdown so admins can't manually create those transitions
+//               here — those go through the lifecycle handlers in
+//               ManageCampaigns (PM01).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
     /// <summary>

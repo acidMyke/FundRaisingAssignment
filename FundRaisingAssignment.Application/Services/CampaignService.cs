@@ -2,18 +2,36 @@ using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// User Story:   FR01 – Set Funding Goal and Deadline        Owner: Zhu Jianshan (Josh)
+// User Story:   PM01 – Review Flagged Campaign              Owner: Zhu Jianshan (Josh)
+// User Story:   DN01 – Search Fundraising Campaigns         Owner: Khoo Si Kai
+// User Story:   PM06 – View Top Donors Leaderboard          Owner: Ho Dan Ze
+// BCE Role:     Control
+// Description:  Application service exposing campaign lifecycle, search,
+//               donations (canonical DonateAsync), refunds, reviews, and
+//               leaderboard queries. The single backend behind every Razor
+//               page and the Web API controller.
+// Notes:        DN03 was consolidated from four duplicate implementations
+//               (Razor page, anonymous donate page, Web API controller, and
+//               a deleted DonationService). See git history and the Final
+//               Report § "Donation flow consolidation".
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Services;
 
 /// <summary>
-/// Merged CampaignService: Karthik's SearchCampaigns + Josh's full campaign lifecycle.
-/// Implements ICampaignService (interface).
+/// Merged CampaignService: search filter (DN01 – Si Kai) + full campaign
+/// lifecycle (FR01 / PM01 – Josh) + consolidated donation flow (DN03 – Shared).
+/// Implements <see cref="ICampaignService"/>.
 /// </summary>
 public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> logger) : ICampaignService
 {
     private readonly ApplicationDbContext _db = db;
     private readonly ILogger<CampaignService> _logger = logger;
 
-    // ── Campaign CRUD ──────────────────────────────────────────────────────────
+    #region FR01 – Campaign CRUD (Josh)
 
     public async Task<Campaign> CreateCampaignAsync(Campaign campaign)
     {
@@ -71,7 +89,9 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
         return c;
     }
 
-    // ── Search (Karthik's SearchCampaigns adapted to async) ───────────────────
+    #endregion
+
+    #region DN01 – Search (Khoo Si Kai)
 
     public async Task<IReadOnlyList<Campaign>> SearchCampaignsAsync(
         string? keyword, string? category, string? location)
@@ -98,7 +118,9 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
         return await query.ToListAsync();
     }
 
-    // ── Fundraiser workflow ────────────────────────────────────────────────────
+    #endregion
+
+    #region FR01 – Fundraiser workflow (Josh)
 
     public async Task<Campaign> SubmitForReviewAsync(Guid campaignId, Guid ownerId)
     {
@@ -110,7 +132,9 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
         return c;
     }
 
-    // ── Admin workflow ─────────────────────────────────────────────────────────
+    #endregion
+
+    #region PM01 – Admin lifecycle workflow (Josh)
 
     public async Task<Campaign> PublishCampaignAsync(Guid campaignId)
     {
@@ -157,7 +181,9 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
         return c;
     }
 
-    // ── Queries ────────────────────────────────────────────────────────────────
+    #endregion
+
+    #region Shared queries
 
     public Task<Campaign?> GetCampaignAsync(Guid id) =>
         _db.Campaigns.Include(c => c.Owner).FirstOrDefaultAsync(c => c.Id == id);
@@ -193,7 +219,9 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
 
-    // ── BCE Diagram 2 ──────────────────────────────────────────────────────────
+    #endregion
+
+    #region PM01 – BCE Diagram 2 outcomes (Josh)
 
     public async Task<Campaign> ApproveCampaignAsync(Guid id)
     {
@@ -231,7 +259,9 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
         return n;
     }
 
-    // ── Reviews ────────────────────────────────────────────────────────────────
+    #endregion
+
+    #region PM01 – Reviews + auto-flag pipeline (Josh)
 
     public async Task<CampaignReview> AddReviewAsync(
         Guid campaignId, Guid reviewerId, string reviewerEmail, int stars, string? comment)
@@ -276,8 +306,18 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
     public Task<bool> HasUserReviewedAsync(Guid campaignId, Guid userId) =>
         _db.CampaignReviews.AnyAsync(r => r.CampaignId == campaignId && r.ReviewerId == userId);
 
-    // ── Donations (canonical consolidated flow) ───────────────────────────────
+    #endregion
 
+    #region DN03 – Donations (Shared; canonical consolidated flow)
+    /// <summary>
+    /// Canonical donation entry point. Validates, transactionally records the
+    /// donation, increments the campaign's CurrentAmount, and auto-completes
+    /// the campaign once it reaches its target.
+    /// </summary>
+    /// <remarks>
+    /// User Story: DN03 — Make a Donation to a Campaign.
+    /// Owner: Shared (consolidated from prior Josh + Karthik duplicates).
+    /// </remarks>
     public async Task<DonationResult> DonateAsync(MakeDonationInput input, CancellationToken ct = default)
     {
         if (input.Amount <= 0m)
@@ -411,7 +451,18 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
     public Task<decimal> GetTotalDonatedAsync(Guid campaignId) =>
         _db.Donations.Where(d => d.CampaignId == campaignId).SumAsync(d => d.Amount);
 
-    /// Gets the top 10 donations for a campaign, ordered by amount (highest first), including user info.
+    #endregion
+
+    #region PM06 – Top Donors Leaderboard (Ho Dan Ze; partial)
+    /// <summary>
+    /// Gets the top donations for a campaign, ordered by amount (highest first),
+    /// including user info. Surfaced inline on CampaignPage; no dedicated
+    /// leaderboard page exists yet.
+    /// </summary>
+    /// <remarks>
+    /// User Story: PM06 — View Top Donors Leaderboard.
+    /// Owner: Ho Dan Ze. Status: partial (no standalone leaderboard page).
+    /// </remarks>
     public async Task<IReadOnlyList<Donation>> GetTopDonationsAsync(Guid campaignId, int count = 10) =>
         await _db.Donations
             .Where(d => d.CampaignId == campaignId)
@@ -420,4 +471,5 @@ public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> l
             .ThenBy(d => d.CreatedAt)
             .Take(count)
             .ToListAsync();
+    #endregion
 }

@@ -7,6 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN05 – View Donation Receipt                Owner: Ho Dan Ze
+// BCE Role:     Boundary
+// Description:  Donor-facing donation history list with per-row receipt detail
+//               drilldown. Lists every Donation owned by the current user.
+// Notes:        Reads through ICampaignService.GetDonationsByUserAsync (DN03
+//               control surface) — the boundary itself does no DB work.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
     [Authorize]

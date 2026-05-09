@@ -13,6 +13,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// BCE Role:     Boundary
+// Description:  Standalone donation form (alternative entry point) that
+//               binds a small CreateInput DTO and delegates to
+//               ICampaignService.DonateAsync.
+// Notes:        Refactored from a vulnerable direct-bind implementation;
+//               now uses the canonical ICampaignService.DonateAsync.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Donations.Pages
 {
     [Authorize]

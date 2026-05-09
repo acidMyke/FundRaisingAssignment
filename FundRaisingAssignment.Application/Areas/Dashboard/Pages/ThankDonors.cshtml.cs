@@ -8,6 +8,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   FR03 – Send Thank-You Message to Donors     Owner: Khoo Shi Hao Nicholas
+// BCE Role:     Boundary
+// Description:  Fundraiser-facing page that lists donors for a campaign and
+//               sends a thank-you email via IEmailSender (Mailjet-backed).
+// Notes:        Reuses the MailjetEmailService registered in Program.cs;
+//               no new transport code added.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 
 [Authorize]

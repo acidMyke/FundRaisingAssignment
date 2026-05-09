@@ -5,6 +5,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   PM01 – Review Flagged Campaign              Owner: Zhu Jianshan (Josh)
+// BCE Role:     Boundary
+// Description:  Admin Platform Management dashboard. Lists every campaign
+//               grouped by status and exposes the lifecycle actions: Publish,
+//               Flag, Pause, Release, Terminate.
+// Notes:        Each lifecycle handler delegates to ICampaignService and
+//               triggers a fundraiser notification (NotifyFundRaiserAsync).
+//               Status transitions are enforced by the Campaign entity (FR01).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 
 /// <summary>
