@@ -1,5 +1,6 @@
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +39,6 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             await LoadDonationRecordsAsync();
             if (SelectedDonationId.HasValue)
             {
-                // Merged model: PK is Id
                 SelectedDonation = await _context.Donations
                     .Include(r => r.Campaign)
                     .FirstOrDefaultAsync(r => r.Id == SelectedDonationId.Value);
@@ -47,6 +47,22 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                     ErrorMessage = "Failed to retrieve donation details. Please try again.";
             }
             return Page();
+        }
+
+        public async Task<IActionResult> OnPostDownloadAsync(Guid PrintOrDownloadId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var donation = await _context.Donations
+                .Include(d => d.Campaign)
+                .FirstOrDefaultAsync(d => d.Id == PrintOrDownloadId && d.UserId == user.Id);
+
+            if (donation is null) return NotFound();
+
+            var pdfBytes = DonationReceiptPdf.Generate(donation);
+            var fileName = $"receipt-{(donation.ReceiptNumber ?? donation.Id.ToString())}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
         }
 
         private async Task LoadDonationRecordsAsync()
@@ -61,7 +77,6 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                     return;
                 }
 
-                // Merged model: filter by UserId (Karthik's field)
                 var records = await _context.Donations
                     .Where(r => r.UserId == user.Id)
                     .Include(r => r.Campaign)

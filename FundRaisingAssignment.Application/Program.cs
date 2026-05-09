@@ -55,6 +55,9 @@ builder.Services.AddRazorPages();
 // ── EPPlus license (Karthik) ──────────────────────────────────────────────────
 ExcelPackage.License.SetNonCommercialPersonal("Karthik");
 
+// ── QuestPDF license ──────────────────────────────────────────────────────────
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var app = builder.Build();
 
 // ── HTTP pipeline ─────────────────────────────────────────────────────────────
