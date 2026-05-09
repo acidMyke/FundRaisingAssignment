@@ -260,6 +260,8 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         if (stats != null)
             campaign.RecalculateRating(stats.Avg, stats.Count);
 
+        campaign.FlagFromLowReview(stars, reviewerEmail);
+
         await _db.SaveChangesAsync();
         return review;
     }

@@ -140,10 +140,14 @@ namespace FundRaisingAssignment.Application.Models
         {
             AverageRating = Math.Round(newAverage, 2);
             ReviewCount = newCount;
-            if (Status == CampaignStatus.Active && ReviewCount >= 3 && AverageRating <= 2.0)
+        }
+
+        public void FlagFromLowReview(int stars, string reviewerEmail)
+        {
+            if (Status == CampaignStatus.Active && stars <= 2)
             {
                 Status = CampaignStatus.Flagged;
-                FlagReason = $"Auto-flagged: average rating {AverageRating:F1} stars ({ReviewCount} reviews).";
+                FlagReason = $"Auto-flagged: low review ({stars} stars) from {reviewerEmail}.";
             }
         }
     }
