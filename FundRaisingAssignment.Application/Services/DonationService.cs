@@ -8,7 +8,8 @@ public sealed record MakeDonationInput(
     Guid CampaignId,
     decimal Amount,
     string? Message,
-    bool IsAnonymous);
+    bool IsAnonymous,
+    string? DonorEmail = null);
 
 public abstract record DonationResult
 {
@@ -32,7 +33,7 @@ public sealed class DonationService(
     ILogger<DonationService> logger)
 {
     public async Task<DonationResult> MakeDonationAsync(
-        Guid donorUserId,
+        Guid? donorUserId,
         MakeDonationInput input,
         CancellationToken ct)
     {
@@ -54,13 +55,15 @@ public sealed class DonationService(
         {
             var donation = new Donation
             {
-                Id = Guid.NewGuid(),          // merged model uses Id as PK
+                Id = Guid.NewGuid(),
                 CampaignId = campaign.Id,
-                UserId = donorUserId,              // merged model uses UserId
+                UserId = donorUserId,
                 Amount = input.Amount,
                 Message = input.Message,
                 IsAnonymous = input.IsAnonymous,
-                DonorEmail = input.IsAnonymous ? "Anonymous" : string.Empty,
+                DonorEmail = input.IsAnonymous
+                    ? "Anonymous"
+                    : (string.IsNullOrWhiteSpace(input.DonorEmail) ? "Guest" : input.DonorEmail),
                 Status = DonationStatus.Completed,
                 CreatedAt = DateTime.UtcNow
             };

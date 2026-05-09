@@ -11,11 +11,16 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 public class CampaignPageModel : PageModel
 {
     private readonly ICampaignService _svc;
+    private readonly DonationService _donationService;
     private readonly UserManager<ApplicationUser> _um;
 
-    public CampaignPageModel(ICampaignService svc, UserManager<ApplicationUser> um)
+    public CampaignPageModel(
+        ICampaignService svc,
+        DonationService donationService,
+        UserManager<ApplicationUser> um)
     {
         _svc = svc;
+        _donationService = donationService;
         _um = um;
     }
 
@@ -109,16 +114,33 @@ public class CampaignPageModel : PageModel
         }
 
         var user = await _um.GetUserAsync(User);
-        string email = user?.Email ?? "Guest";
 
-        try
+        var input = new MakeDonationInput(
+            CampaignId: id,
+            Amount: Donate.Amount,
+            Message: Donate.Message,
+            IsAnonymous: Donate.IsAnonymous,
+            DonorEmail: user?.Email);
+
+        var result = await _donationService.MakeDonationAsync(user?.Id, input, HttpContext.RequestAborted);
+
+        switch (result)
         {
-            await _svc.DonateAsync(id, user?.Id, email, Donate.Amount, Donate.Message, Donate.IsAnonymous);
-            TempData["DonateSuccess"] = $"Thank you! Your donation of ${Donate.Amount:N2} has been received.";
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["Error"] = ex.Message;
+            case DonationResult.Success:
+                TempData["DonateSuccess"] = $"Thank you! Your donation of ${Donate.Amount:N2} has been received.";
+                break;
+            case DonationResult.CampaignNotFound:
+                TempData["Error"] = "Campaign not found.";
+                break;
+            case DonationResult.CampaignNotActive na:
+                TempData["Error"] = $"This campaign is currently '{na.CurrentStatus}' and is not accepting donations.";
+                break;
+            case DonationResult.DeadlinePassed:
+                TempData["Error"] = "The campaign deadline has passed.";
+                break;
+            case DonationResult.TransactionFailed:
+                TempData["Error"] = "An unexpected error occurred while processing your donation.";
+                break;
         }
         return RedirectToPage(new { id });
     }

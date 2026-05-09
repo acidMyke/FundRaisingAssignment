@@ -44,9 +44,7 @@ public interface ICampaignService
     Task<IReadOnlyList<CampaignReview>> GetCampaignReviewsAsync(Guid campaignId);
     Task<bool> HasUserReviewedAsync(Guid campaignId, Guid userId);
 
-    // ── Donations (Josh's ICampaignService flow) ──────────────────────────────
-    Task<Donation> DonateAsync(Guid campaignId, Guid? donorId, string donorEmail,
-                               decimal amount, string? message, bool isAnonymous);
+    // ── Donation queries (writes go through DonationService) ──────────────────
     Task<IReadOnlyList<Donation>> GetCampaignDonationsAsync(Guid campaignId);
     Task<IReadOnlyList<Donation>> GetDonationsByUserAsync(Guid userId);
     Task<decimal> GetTotalDonatedAsync(Guid campaignId);

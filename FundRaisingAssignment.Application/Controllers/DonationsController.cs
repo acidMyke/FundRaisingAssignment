@@ -56,7 +56,8 @@ namespace FundRaisingAssignment.Application.Controllers
                 request.CampaignId,
                 request.Amount,
                 request.Message,
-                request.IsAnonymous);
+                request.IsAnonymous,
+                User.FindFirstValue(ClaimTypes.Email));
 
             var result = await donationService.MakeDonationAsync(userId, input, ct);
 

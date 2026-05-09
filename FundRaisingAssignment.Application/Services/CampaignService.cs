@@ -275,38 +275,7 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     public Task<bool> HasUserReviewedAsync(Guid campaignId, Guid userId) =>
         _db.CampaignReviews.AnyAsync(r => r.CampaignId == campaignId && r.ReviewerId == userId);
 
-    // ── Donations (Josh ICampaignService flow) ────────────────────────────────
-
-    public async Task<Donation> DonateAsync(
-        Guid campaignId, Guid? donorId, string donorEmail,
-        decimal amount, string? message, bool isAnonymous)
-    {
-        if (amount <= 0)
-            throw new ArgumentException("Donation amount must be greater than $0.");
-
-        var campaign = await _db.Campaigns.FindAsync(campaignId)
-            ?? throw new InvalidOperationException("Campaign not found.");
-
-        if (!campaign.AcceptsDonations)
-            throw new InvalidOperationException("This campaign is not currently accepting donations.");
-
-        var donation = new Donation
-        {
-            Id = Guid.NewGuid(),
-            CampaignId = campaignId,
-            UserId = donorId,         // maps DonorId → UserId in merged model
-            DonorEmail = isAnonymous ? "Anonymous" : donorEmail,
-            Amount = amount,
-            Message = message,
-            IsAnonymous = isAnonymous,
-            Status = DonationStatus.Completed,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Donations.Add(donation);
-        campaign.CurrentAmount += amount;
-        await _db.SaveChangesAsync();
-        return donation;
-    }
+    // ── Donation queries (writes go through DonationService) ──────────────────
 
     public async Task<IReadOnlyList<Donation>> GetCampaignDonationsAsync(Guid campaignId) =>
         await _db.Donations
