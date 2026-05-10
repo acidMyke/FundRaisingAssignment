@@ -6,6 +6,19 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   FR01 – Set Funding Goal and Deadline        Owner: Zhu Jianshan (Josh)
+// BCE Role:     Boundary
+// Description:  Admin-only full-detail editor for an existing campaign. Edits
+//               title, description, category, location, goal, deadline, and
+//               status. Fundraisers themselves only edit goal+deadline via
+//               the smaller MyBudget / Set Funding Goal page.
+// Notes:        Status options exclude Flagged and PendingReview from the
+//               dropdown so admins can't manually create those transitions
+//               here — those go through the lifecycle handlers in
+//               ManageCampaigns (PM01).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
     /// <summary>
@@ -46,6 +59,10 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             [Display(Name = "Category")]
             public CampaignCategory Category { get; set; } = CampaignCategory.Other;
 
+            [StringLength(100)]
+            [Display(Name = "Location")]
+            public string? Location { get; set; }
+
             [StringLength(500)]
             [Display(Name = "Cover Image URL")]
             public string? CoverImageUrl { get; set; }
@@ -76,6 +93,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 ShortDescription = c.ShortDescription,
                 Description = c.Description,
                 Category = c.Category,
+                Location = c.Location,
                 CoverImageUrl = c.CoverImageUrl,
                 FundingGoal = c.FundingGoal,
                 EndDate = c.EndDate ?? DateTime.Today,
@@ -95,6 +113,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             c.ShortDescription = Input.ShortDescription;
             c.Description = Input.Description;
             c.Category = Input.Category;
+            c.Location = string.IsNullOrWhiteSpace(Input.Location) ? null : Input.Location.Trim();
             c.CoverImageUrl = Input.CoverImageUrl;
             c.FundingGoal = Input.FundingGoal;
             c.TargetAmount = Input.FundingGoal;

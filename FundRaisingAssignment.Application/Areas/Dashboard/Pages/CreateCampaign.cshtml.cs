@@ -6,6 +6,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   FR01 – Set Funding Goal and Deadline        Owner: Zhu Jianshan (Josh)
+// BCE Role:     Boundary
+// Description:  Fundraiser-facing form to create a new campaign. Captures
+//               title, description, category, location, funding goal, and
+//               deadline; persists via ICampaignService.CreateCampaignAsync.
+// Notes:        Status is forced to Draft on the server side. Location field
+//               is non-required (DN01 – Si Kai's search dimension).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
     [Authorize]
@@ -36,6 +46,10 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             [Required]
             [Display(Name = "Category")]
             public CampaignCategory Category { get; set; } = CampaignCategory.Other;
+
+            [StringLength(100)]
+            [Display(Name = "Location (optional)")]
+            public string? Location { get; set; }
 
             [StringLength(500)]
             [Display(Name = "Cover Image URL (optional)")]
@@ -76,6 +90,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
                 ShortDescription = Input.ShortDescription,
                 Description = Input.Description,
                 Category = Input.Category,
+                Location = string.IsNullOrWhiteSpace(Input.Location) ? null : Input.Location.Trim(),
                 CoverImageUrl = Input.CoverImageUrl,
                 FundingGoal = Input.FundingGoal,
                 StartDate = DateTime.Now,

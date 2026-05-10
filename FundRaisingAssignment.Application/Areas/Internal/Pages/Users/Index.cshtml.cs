@@ -4,6 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA01 – User Admin – Add and Manage Users    Owner: Khoo Shi Hao Nicholas
+// BCE Role:     Boundary
+// Description:  Admin user list with search/role/status filters; entry point
+//               for Create / Edit / Delete and lockout actions.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages.Users
 {
     public class IndexModel : PageModel

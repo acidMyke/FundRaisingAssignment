@@ -1,6 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN02 – Set Donation Budget and Target       Owner: Unnikrishna Pillai Karthik
+// BCE Role:     Entity
+// Description:  Per-user donation goal snapshot: budget limit, target amount,
+//               tracking period, and the cached classification (BudgetStatus
+//               and TargetStatus) computed from donation history.
+// Notes:        Snapshot fields (TotalDonated, BudgetStatus, TargetStatus,
+//               LastEvaluatedAt) are recomputed by MyBudgetModel on every GET
+//               and POST so display stays in sync with the donations table.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Models;
 
 

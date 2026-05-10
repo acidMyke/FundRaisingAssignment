@@ -22,6 +22,10 @@
         <span class="badge bg-success-subtle text-success mb-2">
             @Model.Campaign.Status.GetDisplayName()
         </span>
+        @if (!string.IsNullOrWhiteSpace(Model.Campaign.Location))
+        {
+            <span class="badge bg-light text-secondary mb-2 ms-1">📍 @Model.Campaign.Location</span>
+        }
         <h1 class="mb-3">@Model.Campaign.Title</h1>
 
         @if (!string.IsNullOrWhiteSpace(Model.Campaign.ShortDescription))

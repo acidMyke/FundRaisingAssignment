@@ -6,6 +6,20 @@ using FundRaisingAssignment.Application.Boundaries;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// User Story:   PM01 – Review Flagged Campaign              Owner: Zhu Jianshan (Josh)
+// User Story:   PM06 – View Top Donors Leaderboard          Owner: Ho Dan Ze
+// BCE Role:     Boundary
+// Description:  Logged-in campaign details page with three contributions:
+//                 • DN03 — donate form (OnPostDonateAsync) → DonateAsync
+//                 • PM01 — reviews form (OnPostReviewAsync, AddReviewAsync)
+//                 • PM06 — Top Donations tab (GetTopDonationsAsync, top-10
+//                   leaderboard rendered inline next to recent donations)
+// Notes:        PM06 is currently surfaced only as an inline tab here; there
+//               is no dedicated leaderboard page (see Pending list).
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 
 public class CampaignPageModel : PageModel
@@ -89,7 +103,7 @@ public class CampaignPageModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostDonateAsync(Guid id)
+    public async Task<IActionResult> OnPostDonateAsync(Guid id, CancellationToken ct)
     {
         // The Review form isn't on this submit, but the model binder still binds
         // ReviewInput defaults and reports errors under unprefixed keys (Stars,
@@ -103,25 +117,46 @@ public class CampaignPageModel : PageModel
         if (!ModelState.IsValid)
         { await ReloadAsync(id); return Page(); }
 
-        if (Donate.Amount <= 0)
-        {
-            ModelState.AddModelError($"{nameof(Donate)}.{nameof(Donate.Amount)}",
-                "Donation amount must be greater than $0.");
-            await ReloadAsync(id); return Page();
-        }
-
         var user = await _um.GetUserAsync(User);
-        string email = user?.Email ?? "Guest";
 
-        try
+        var result = await _svc.DonateAsync(
+            new MakeDonationInput(
+                CampaignId: id,
+                Amount: Donate.Amount,
+                Message: Donate.Message,
+                IsAnonymous: Donate.IsAnonymous,
+                UserId: user?.Id,
+                DonorEmail: user?.Email ?? "Guest"),
+            ct);
+
+        switch (result)
         {
-            await _svc.DonateAsync(id, user?.Id, email, Donate.Amount, Donate.Message, Donate.IsAnonymous);
-            TempData["DonateSuccess"] = $"Thank you! Your donation of ${Donate.Amount:N2} has been received.";
+            case DonationResult.Success s when s.GoalReached:
+                TempData["DonateSuccess"] =
+                    $"Thank you! Your donation of ${Donate.Amount:N2} pushed this campaign to its goal!";
+                break;
+            case DonationResult.Success:
+                TempData["DonateSuccess"] =
+                    $"Thank you! Your donation of ${Donate.Amount:N2} has been received.";
+                break;
+            case DonationResult.CampaignNotFound:
+                TempData["Error"] = "Campaign not found.";
+                break;
+            case DonationResult.CampaignNotActive na:
+                TempData["Error"] =
+                    $"This campaign is currently '{na.CurrentStatus}' and is not accepting donations.";
+                break;
+            case DonationResult.DeadlinePassed:
+                TempData["Error"] = "The campaign deadline has passed.";
+                break;
+            case DonationResult.InvalidAmount ia:
+                TempData["Error"] = ia.Reason;
+                break;
+            default:
+                TempData["Error"] = "Unable to process donation.";
+                break;
         }
-        catch (InvalidOperationException ex)
-        {
-            TempData["Error"] = ex.Message;
-        }
+
         return RedirectToPage(new { id });
     }
 

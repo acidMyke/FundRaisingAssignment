@@ -6,6 +6,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN05 – View Donation Receipt                Owner: Ho Dan Ze
+// BCE Role:     Boundary
+// Description:  Post-donation receipt page. Loads the donation + campaign,
+//               authorises the donor, and renders confirmation/receipt details.
+// Notes:        Read-only view; the donation has already been committed by
+//               ICampaignService.DonateAsync (DN03). Returns Forbid if the
+//               current user does not own the donation.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Campaigns.Pages;
 
 [Authorize]

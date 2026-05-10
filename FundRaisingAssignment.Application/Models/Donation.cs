@@ -1,6 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// BCE Role:     Entity
+// Description:  Donation aggregate persisted by ICampaignService.DonateAsync.
+//               Carries amount, donor reference, optional message, anonymity
+//               flag, status, payment method, and receipt number.
+// Notes:        Consolidation result of two prior shapes (Karthik's "Id"
+//               primary key + extended fields, and Josh's "DonationId" guest
+//               flow). UserId is nullable so guest donations can persist.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Models
 {
     [Table("Donations")]

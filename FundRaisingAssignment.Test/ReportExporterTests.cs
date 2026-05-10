@@ -50,6 +50,11 @@ public class ReportExporterTests
             new PaymentMethodStat { PaymentMethod = "Card",  DonationCount = 8, TotalRaised = 1000m },
             new PaymentMethodStat { PaymentMethod = "Other", DonationCount = 2, TotalRaised = 234.56m },
         },
+        ByLocation =
+        {
+            new LocationStat { Location = "Singapore",   CampaignCount = 3, DonationCount = 7, TotalRaised = 900m },
+            new LocationStat { Location = "Unspecified", CampaignCount = 2, DonationCount = 3, TotalRaised = 334.56m },
+        },
         TopDonors =
         {
             new TopDonorStat { DonorLabel = "alice@example.com", DonationCount = 3, TotalGiven = 500m },
@@ -98,13 +103,15 @@ public class ReportExporterTests
         Assert.NotEmpty(bytes);
 
         var text = Encoding.UTF8.GetString(bytes);
-        Assert.Contains("Givvn Platform Report", text);
+        Assert.Contains("GiveHive Platform Report", text);
         Assert.Contains("SUMMARY", text);
         Assert.Contains("BY STATUS", text);
         Assert.Contains("DAILY TOTALS", text);
         Assert.Contains("TOP CAMPAIGNS", text);
         Assert.Contains("BY CATEGORY", text);
         Assert.Contains("BY PAYMENT METHOD", text);
+        Assert.Contains("BY LOCATION", text);
+        Assert.Contains("Singapore", text);
         Assert.Contains("TOP DONORS", text);
         Assert.Contains("CAMPAIGN PROGRESS", text);
         Assert.Contains("DONATIONS", text);
@@ -155,7 +162,7 @@ public class ReportExporterTests
                      && e.FullName.EndsWith(".xml", StringComparison.Ordinal))
             .ToList();
 
-        Assert.Equal(9, sheetEntries.Count);
+        Assert.Equal(10, sheetEntries.Count);
 
         // Workbook part lists sheet names — assert all expected names appear
         var workbook = archive.GetEntry("xl/workbook.xml");
@@ -169,6 +176,7 @@ public class ReportExporterTests
         Assert.Contains("Top Campaigns", workbookXml);
         Assert.Contains("By Category", workbookXml);
         Assert.Contains("By Payment Method", workbookXml);
+        Assert.Contains("By Location", workbookXml);
         Assert.Contains("Top Donors", workbookXml);
         Assert.Contains("Campaign Progress", workbookXml);
         Assert.Contains("Donations", workbookXml);

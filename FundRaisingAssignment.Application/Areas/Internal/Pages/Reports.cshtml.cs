@@ -11,10 +11,24 @@ using OfficeOpenXml;
 using OfficeOpenXml.Drawing.Chart;
 using OfficeOpenXml.Style;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA02 – Export Platform Performance and Financial Report
+//                                                          Owner: Unnikrishna Pillai Karthik
+// BCE Role:     Boundary + Control
+// Description:  Admin-only Reports page: aggregates campaign + donation
+//               activity over a date range, previews on-screen with charts,
+//               and exports to CSV or XLSX (with embedded EPPlus charts).
+// Notes:        ExportFile rows are persisted for re-download. CSV/XLSX
+//               header reads "GiveHive Platform Report". Visualisations
+//               cover daily totals, by status, by category, top campaigns,
+//               by payment method, top donors, by location (DN01 dimension),
+//               and campaign progress.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages;
 
 /// <summary>
-/// PageModel for /Internal/Reports — Karthik's user story 2 (User Admin).
+/// PageModel for /Internal/Reports — UA02 (Karthik).
 ///
 /// Three handlers:
 ///   OnGet              → show the empty form
@@ -349,6 +363,46 @@ public class ReportsModel : PageModel
             .OrderByDescending(c => c.TotalRaised)
             .ToList();
 
+        // ---- By location (Karthik) ──────────────────────────────────────────
+        // Donations whose campaign has a Location set, grouped by that string.
+        // Empty/null locations are bucketed as "Unspecified".
+        var donationsByLocationRaw = await donationsQ
+            .Where(d => d.Campaign != null)
+            .GroupBy(d => d.Campaign!.Location ?? "")
+            .Select(g => new
+            {
+                Location = g.Key,
+                DonationCount = g.Count(),
+                TotalRaised = g.Sum(d => d.Amount),
+            })
+            .ToListAsync();
+
+        var campaignsByLocationRaw = await campaignsQ
+            .GroupBy(c => c.Location ?? "")
+            .Select(g => new { Location = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var locationKeys = campaignsByLocationRaw.Select(c => c.Location)
+            .Union(donationsByLocationRaw.Select(d => d.Location))
+            .Distinct();
+
+        var byLocation = locationKeys
+            .Select(loc =>
+            {
+                var camp = campaignsByLocationRaw.FirstOrDefault(x => x.Location == loc);
+                var don = donationsByLocationRaw.FirstOrDefault(x => x.Location == loc);
+                return new LocationStat
+                {
+                    Location = string.IsNullOrWhiteSpace(loc) ? "Unspecified" : loc,
+                    CampaignCount = camp?.Count ?? 0,
+                    DonationCount = don?.DonationCount ?? 0,
+                    TotalRaised = don?.TotalRaised ?? 0m,
+                };
+            })
+            .OrderByDescending(l => l.TotalRaised)
+            .ThenByDescending(l => l.CampaignCount)
+            .ToList();
+
         // ---- By payment method ----
         var byPaymentMethodRaw = await donationsQ
             .GroupBy(d => d.PaymentMethod)
@@ -501,6 +555,7 @@ public class ReportsModel : PageModel
             TopCampaigns = top,
             ByCategory = byCategory,
             ByPaymentMethod = byPaymentMethod,
+            ByLocation = byLocation,
             CampaignProgress = progress,
             TopDonors = topDonors,
             Donations = donationRows,
@@ -521,7 +576,7 @@ public class ReportsModel : PageModel
         var sb = new StringBuilder();
         var inv = CultureInfo.InvariantCulture;
 
-        WriteRow(sb, "Givvn Platform Report");
+        WriteRow(sb, "GiveHive Platform Report");
         WriteRow(sb, $"Period: {r.StartDate:yyyy-MM-dd} to {r.EndDate:yyyy-MM-dd}");
         WriteRow(sb, $"Generated: {r.GeneratedAtUtc:yyyy-MM-dd HH:mm:ss} UTC");
         sb.AppendLine();
@@ -579,6 +634,15 @@ public class ReportsModel : PageModel
             WriteRow(sb, p.PaymentMethod,
                           p.DonationCount.ToString(inv),
                           p.TotalRaised.ToString("F2", inv));
+        sb.AppendLine();
+
+        WriteRow(sb, "BY LOCATION");
+        WriteRow(sb, "Location", "Campaigns", "Donations", "Total Raised");
+        foreach (var l in r.ByLocation)
+            WriteRow(sb, l.Location,
+                          l.CampaignCount.ToString(inv),
+                          l.DonationCount.ToString(inv),
+                          l.TotalRaised.ToString("F2", inv));
         sb.AppendLine();
 
         WriteRow(sb, "TOP DONORS");
@@ -656,7 +720,7 @@ public class ReportsModel : PageModel
         // ---- Sheet 1: Summary --------------------------------------------
         var s1 = pkg.Workbook.Worksheets.Add("Summary");
 
-        s1.Cells["A1"].Value = "Givvn Platform Report";
+        s1.Cells["A1"].Value = "GiveHive Platform Report";
         s1.Cells["A1"].Style.Font.Size = 16;
         s1.Cells["A1"].Style.Font.Bold = true;
         s1.Cells["A2"].Value = $"Period: {r.StartDate:yyyy-MM-dd} -> {r.EndDate:yyyy-MM-dd}";
@@ -814,6 +878,44 @@ public class ReportsModel : PageModel
         }
         s6.Cells.AutoFitColumns();
 
+        if (r.ByPaymentMethod.Any(p => p.TotalRaised > 0))
+        {
+            var lastRow = r.ByPaymentMethod.Count + 1;
+            var pmChart = s6.Drawings.AddChart("PaymentMethodChart", eChartType.Pie);
+            pmChart.Title.Text = "Raised by payment method";
+            var ps = pmChart.Series.Add(s6.Cells[2, 3, lastRow, 3], s6.Cells[2, 1, lastRow, 1]);
+            ps.Header = "Total raised";
+            pmChart.SetPosition(1, 0, 4, 10);
+            pmChart.SetSize(480, 360);
+        }
+
+        // ---- Sheet 6b: By Location (Karthik) -----------------------------
+        var sLoc = pkg.Workbook.Worksheets.Add("By Location");
+        WriteSheetHeader(sLoc, "Location", "Campaigns", "Donations", "Total Raised");
+
+        for (int i = 0; i < r.ByLocation.Count; i++)
+        {
+            var row = i + 2;
+            var l = r.ByLocation[i];
+            sLoc.Cells[row, 1].Value = l.Location;
+            sLoc.Cells[row, 2].Value = l.CampaignCount;
+            sLoc.Cells[row, 3].Value = l.DonationCount;
+            sLoc.Cells[row, 4].Value = l.TotalRaised;
+            sLoc.Cells[row, 4].Style.Numberformat.Format = "$#,##0.00";
+        }
+        sLoc.Cells.AutoFitColumns();
+
+        if (r.ByLocation.Any(l => l.TotalRaised > 0 || l.CampaignCount > 0))
+        {
+            var lastRow = r.ByLocation.Count + 1;
+            var locChart = sLoc.Drawings.AddChart("LocationChart", eChartType.BarClustered);
+            locChart.Title.Text = "Raised by location";
+            var ls = locChart.Series.Add(sLoc.Cells[2, 4, lastRow, 4], sLoc.Cells[2, 1, lastRow, 1]);
+            ls.Header = "Total raised";
+            locChart.SetPosition(1, 0, 5, 10);
+            locChart.SetSize(720, 380);
+        }
+
         // ---- Sheet 7: Top Donors -----------------------------------------
         var s7 = pkg.Workbook.Worksheets.Add("Top Donors");
         WriteSheetHeader(s7, "Donor", "Donations", "Total Given");
@@ -828,6 +930,17 @@ public class ReportsModel : PageModel
             s7.Cells[row, 3].Style.Numberformat.Format = "$#,##0.00";
         }
         s7.Cells.AutoFitColumns();
+
+        if (r.TopDonors.Count > 0)
+        {
+            var lastChartRow = Math.Min(r.TopDonors.Count, 10) + 1;
+            var donorChart = s7.Drawings.AddChart("TopDonorsChart", eChartType.BarClustered);
+            donorChart.Title.Text = "Top donors by total given";
+            var ds = donorChart.Series.Add(s7.Cells[2, 3, lastChartRow, 3], s7.Cells[2, 1, lastChartRow, 1]);
+            ds.Header = "Total given";
+            donorChart.SetPosition(1, 0, 5, 10);
+            donorChart.SetSize(720, 380);
+        }
 
         // ---- Sheet 8: Campaign Progress ----------------------------------
         var s8 = pkg.Workbook.Worksheets.Add("Campaign Progress");
@@ -865,6 +978,17 @@ public class ReportsModel : PageModel
             s8.Cells[row, 13].Value = p.OwnerEmail;
         }
         s8.Cells.AutoFitColumns();
+
+        if (r.CampaignProgress.Count > 0)
+        {
+            var lastChartRow = Math.Min(r.CampaignProgress.Count, 10) + 1;
+            var progChart = s8.Drawings.AddChart("CampaignProgressChart", eChartType.BarClustered);
+            progChart.Title.Text = "% funded — top 10 active campaigns";
+            var pgs = progChart.Series.Add(s8.Cells[2, 7, lastChartRow, 7], s8.Cells[2, 2, lastChartRow, 2]);
+            pgs.Header = "% funded";
+            progChart.SetPosition(1, 0, 14, 10);
+            progChart.SetSize(720, 380);
+        }
 
         // ---- Sheet 9: Donations (raw rows) -------------------------------
         var s9 = pkg.Workbook.Worksheets.Add("Donations");

@@ -26,9 +26,18 @@ public class PlatformReport
 
     public List<CategoryStat> ByCategory { get; set; } = new();
     public List<PaymentMethodStat> ByPaymentMethod { get; set; } = new();
+    public List<LocationStat> ByLocation { get; set; } = new();
     public List<CampaignProgressStat> CampaignProgress { get; set; } = new();
     public List<TopDonorStat> TopDonors { get; set; } = new();
     public List<DonationRow> Donations { get; set; } = new();
+}
+
+public class LocationStat
+{
+    public string Location { get; set; } = "";
+    public int CampaignCount { get; set; }
+    public int DonationCount { get; set; }
+    public decimal TotalRaised { get; set; }
 }
 
 public class CategoryStat

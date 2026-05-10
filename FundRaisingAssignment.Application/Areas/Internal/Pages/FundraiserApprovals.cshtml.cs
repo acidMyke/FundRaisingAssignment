@@ -4,6 +4,17 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   UA01 – User Admin – Add and Manage Users    Owner: Khoo Shi Hao Nicholas
+// BCE Role:     Boundary
+// Description:  Admin queue for users who registered as PendingFundraiser
+//               and are awaiting promotion to Fundraiser (or rejection).
+// Notes:        Added beyond the original UA01 scope to support the
+//               registration → pending-fundraiser → approval pipeline. The
+//               original story only covered direct user CRUD; this is the
+//               approval extension.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages;
 
 [Authorize(Roles = ApplicationRole.Names.Admin)]
