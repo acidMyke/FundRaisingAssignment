@@ -32,22 +32,23 @@ public class CampaignDigestService(ICampaignDigestRepository repository, ILogger
             return;
         }
 
+        var historyContexts = await repository.GetHistoryContextsForUsersAsync(users.Select(u => u.Id));
         var campaignUgencyScores = activeCampaigns.ToDictionary(c => c.Id, c => CalculateCampaignUrgencyScore(c, executionTime));
 
         foreach (var user in users)
         {
             try
             {
-                var scoredCampaigns = new List<CampaignScore>();
-                foreach (var campaign in activeCampaigns)
+                var affinityProfile = UserAffinityProfile.BuildProfile(historyContexts[user.Id]);
+                var digestCampaigns = activeCampaigns.Select(campaign => new CampaignScore
                 {
-                    var urgencyScore = campaignUgencyScores[campaign.Id];
-                    var score = ScoreCampaignForUser(campaign, urgencyScore, user);
-                    if (!score.Suppress && score.Score > 0)
-                    {
-                        scoredCampaigns.Add(score);
-                    }
-                }
+                    Campaign = campaign,
+                    Score = campaignUgencyScores[campaign.Id] + affinityProfile.CalculateAffinityScore(campaign)
+                })
+                .OrderByDescending(cs => cs.Score)
+                .Take(3)
+                .Select(cs => cs.Campaign);
+
             }
             catch (Exception ex)
             {
