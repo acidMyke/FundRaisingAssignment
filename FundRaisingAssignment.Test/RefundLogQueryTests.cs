@@ -57,9 +57,9 @@ public class RefundLogQueryTests
         var campaign = TestSeedHelpers.SeedCampaign(db, target: 10_000m, current: 5_000m);
         var adminId = TestSeedHelpers.SeedUser(db, "admin-d");
 
-        var oldLog   = await CreateRefundAsync(db, campaign, 50m, adminId, "admin", null);
-        var midLog   = await CreateRefundAsync(db, campaign, 60m, adminId, "admin", null);
-        var newLog   = await CreateRefundAsync(db, campaign, 70m, adminId, "admin", null);
+        var oldLog = await CreateRefundAsync(db, campaign, 50m, adminId, "admin", null);
+        var midLog = await CreateRefundAsync(db, campaign, 60m, adminId, "admin", null);
+        var newLog = await CreateRefundAsync(db, campaign, 70m, adminId, "admin", null);
 
         // Force timestamps so the filter window can pick a known subset.
         oldLog.RefundedAt = new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc);
@@ -71,7 +71,7 @@ public class RefundLogQueryTests
         //   StartDate>=2026-05-01 means RefundedAt >= 2026-05-01
         //   EndDate<=2026-05-31  means RefundedAt < 2026-06-01
         var startUtc = DateTime.SpecifyKind(new DateTime(2026, 5, 1), DateTimeKind.Utc);
-        var endUtc   = DateTime.SpecifyKind(new DateTime(2026, 5, 31).AddDays(1), DateTimeKind.Utc);
+        var endUtc = DateTime.SpecifyKind(new DateTime(2026, 5, 31).AddDays(1), DateTimeKind.Utc);
 
         var filtered = await db.Context.RefundLogs.AsNoTracking()
             .Where(l => l.RefundedAt >= startUtc && l.RefundedAt < endUtc)
@@ -87,10 +87,10 @@ public class RefundLogQueryTests
         using var db = new TestDb();
         var campaign = TestSeedHelpers.SeedCampaign(db, target: 10_000m, current: 5_000m);
         var alice = TestSeedHelpers.SeedUser(db, "alice");
-        var bob   = TestSeedHelpers.SeedUser(db, "bob");
+        var bob = TestSeedHelpers.SeedUser(db, "bob");
 
         await CreateRefundAsync(db, campaign, 10m, alice, "alice@platform.io", null);
-        await CreateRefundAsync(db, campaign, 20m, bob,   "bob@platform.io",   null);
+        await CreateRefundAsync(db, campaign, 20m, bob, "bob@platform.io", null);
 
         var needle = "alice".Trim();
         var filtered = await db.Context.RefundLogs.AsNoTracking()
@@ -110,19 +110,19 @@ public class RefundLogQueryTests
         var admin2 = TestSeedHelpers.SeedUser(db, "admin2");
 
         await CreateRefundAsync(db, campaign, 100m, admin1, "admin1", "r1");
-        await CreateRefundAsync(db, campaign, 50m,  admin1, "admin1", "r2");
-        await CreateRefundAsync(db, campaign, 25m,  admin2, "admin2", "r3");
+        await CreateRefundAsync(db, campaign, 50m, admin1, "admin1", "r2");
+        await CreateRefundAsync(db, campaign, 25m, admin2, "admin2", "r3");
 
         var q = db.Context.RefundLogs.AsNoTracking();
-        var totalCount     = await q.CountAsync();
-        var totalAmount    = await q.SumAsync(l => (decimal?)l.Amount) ?? 0m;
-        var uniqueAdmins   = await q.Select(l => l.AdminLabel).Distinct().CountAsync();
+        var totalCount = await q.CountAsync();
+        var totalAmount = await q.SumAsync(l => (decimal?)l.Amount) ?? 0m;
+        var uniqueAdmins = await q.Select(l => l.AdminLabel).Distinct().CountAsync();
         var uniqueCampaigns = await q.Select(l => l.CampaignId).Distinct().CountAsync();
 
-        Assert.Equal(3,    totalCount);
+        Assert.Equal(3, totalCount);
         Assert.Equal(175m, totalAmount);
-        Assert.Equal(2,    uniqueAdmins);
-        Assert.Equal(1,    uniqueCampaigns);
+        Assert.Equal(2, uniqueAdmins);
+        Assert.Equal(1, uniqueCampaigns);
     }
 
     [Fact]

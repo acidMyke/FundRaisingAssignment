@@ -20,7 +20,7 @@ public class TopDonorsTests
     {
         using var db = new TestDb();
         var campaign = TestSeedHelpers.SeedCampaign(db, target: 10_000m);
-        TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 50m,  donorEmail: "small@x.test");
+        TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 50m, donorEmail: "small@x.test");
         TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 500m, donorEmail: "big@x.test");
         TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 250m, donorEmail: "mid@x.test");
         var sut = CreateService(db);
@@ -30,7 +30,7 @@ public class TopDonorsTests
         Assert.Equal(3, top.Count);
         Assert.Equal(500m, top[0].Amount);
         Assert.Equal(250m, top[1].Amount);
-        Assert.Equal(50m,  top[2].Amount);
+        Assert.Equal(50m, top[2].Amount);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class TopDonorsTests
 
         Assert.Equal(5, top.Count);
         Assert.Equal(120m, top[0].Amount);
-        Assert.Equal(80m,  top[4].Amount);
+        Assert.Equal(80m, top[4].Amount);
     }
 
     [Fact]

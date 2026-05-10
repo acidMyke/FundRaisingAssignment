@@ -50,7 +50,7 @@ public class ThankDonorsEligibilityTests
         using var db = new TestDb();
         var campaign = TestSeedHelpers.SeedCampaign(db);
         TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 50m, donorEmail: "ann@x", isAnonymous: false, status: DonationStatus.Completed);
-        TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 30m, donorEmail: "anon@x", isAnonymous: true,  status: DonationStatus.Completed);
+        TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 30m, donorEmail: "anon@x", isAnonymous: true, status: DonationStatus.Completed);
         TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 99m, donorEmail: "pending@x", isAnonymous: false, status: DonationStatus.Pending);
         TestSeedHelpers.SeedDonation(db, campaign.Id, amount: 11m, donorEmail: "refund@x", isAnonymous: false, status: DonationStatus.Refunded);
 
@@ -78,7 +78,7 @@ public class ThankDonorsEligibilityTests
 
         var ann = rows.Single(r => r.Email == "ann@x");
         Assert.Equal(75m, ann.TotalDonated);
-        Assert.Equal(2,   ann.DonationCount);
+        Assert.Equal(2, ann.DonationCount);
         Assert.Equal(new DateTime(2026, 5, 5), ann.LastDonationAt);
         Assert.Contains(rows, r => r.Email == "ben@x");
     }
@@ -129,6 +129,6 @@ public class ThankDonorsEligibilityTests
 
         Assert.Single(rows);
         Assert.Equal(75m, rows[0].TotalDonated);
-        Assert.Equal(2,   rows[0].DonationCount);
+        Assert.Equal(2, rows[0].DonationCount);
     }
 }

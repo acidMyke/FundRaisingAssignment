@@ -21,7 +21,7 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(0,   0)]
+    [InlineData(0, 0)]
     [InlineData(50, -10)]
     public void ClassifyBudget_ZeroOrNegativeLimit_IsNotSet(decimal total, decimal limit)
     {
@@ -29,8 +29,8 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(0,    100)]   // 0%
-    [InlineData(40,   100)]   // 40%
+    [InlineData(0, 100)]   // 0%
+    [InlineData(40, 100)]   // 40%
     [InlineData(79.99, 100)]  // 79.99%
     public void ClassifyBudget_BelowEightyPercent_IsWithinBudget(decimal total, decimal limit)
     {
@@ -38,8 +38,8 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(80,   100)]
-    [InlineData(95,   100)]
+    [InlineData(80, 100)]
+    [InlineData(95, 100)]
     [InlineData(99.99, 100)]
     public void ClassifyBudget_BetweenEightyAndOneHundredPercent_IsNearLimit(decimal total, decimal limit)
     {
@@ -53,8 +53,8 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(101,  100)]
-    [InlineData(150,  100)]
+    [InlineData(101, 100)]
+    [InlineData(150, 100)]
     public void ClassifyBudget_OverLimit_IsExceeded(decimal total, decimal limit)
     {
         Assert.Equal(BudgetStatus.Exceeded, MyBudgetModel.ClassifyBudget(total, limit));
@@ -69,7 +69,7 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(50,  0)]
+    [InlineData(50, 0)]
     [InlineData(50, -1)]
     public void ClassifyTarget_ZeroOrNegativeTarget_IsNotSet(decimal total, decimal target)
     {
@@ -77,7 +77,7 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(0,    100)]
+    [InlineData(0, 100)]
     [InlineData(24.99, 100)]
     public void ClassifyTarget_BelowTwentyFivePercent_IsFarFromTarget(decimal total, decimal target)
     {
@@ -85,8 +85,8 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(25,   100)]
-    [InlineData(50,   100)]
+    [InlineData(25, 100)]
+    [InlineData(50, 100)]
     [InlineData(74.99, 100)]
     public void ClassifyTarget_BetweenTwentyFiveAndSeventyFivePercent_IsInProgress(decimal total, decimal target)
     {
@@ -94,7 +94,7 @@ public class MyBudgetClassifierTests
     }
 
     [Theory]
-    [InlineData(75,   100)]
+    [InlineData(75, 100)]
     [InlineData(99.99, 100)]
     public void ClassifyTarget_BetweenSeventyFiveAndOneHundredPercent_IsNearTarget(decimal total, decimal target)
     {
@@ -132,7 +132,7 @@ public class MyBudgetClassifierTests
         var (start, end) = MyBudgetModel.ComputePeriodWindow(GoalPeriod.Quarterly, now);
 
         Assert.Equal(qStartMonth, start!.Value.Month);
-        Assert.Equal(qEndMonth,   end!.Value.Month);
+        Assert.Equal(qEndMonth, end!.Value.Month);
     }
 
     [Fact]

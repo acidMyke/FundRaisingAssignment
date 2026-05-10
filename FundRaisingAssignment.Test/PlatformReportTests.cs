@@ -51,7 +51,7 @@ public class PlatformReportTests
         var midMay = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc);
         TestSeedHelpers.SeedDonation(db, c1.Id, amount: 100m, donorEmail: "alice@x", createdAt: midMay);
         TestSeedHelpers.SeedDonation(db, c1.Id, amount: 200m, donorEmail: "alice@x", createdAt: midMay);
-        TestSeedHelpers.SeedDonation(db, c2.Id, amount: 50m,  donorEmail: "bob@x",   createdAt: midMay);
+        TestSeedHelpers.SeedDonation(db, c2.Id, amount: 50m, donorEmail: "bob@x", createdAt: midMay);
         // Donation outside range — should be excluded
         TestSeedHelpers.SeedDonation(db, c2.Id, amount: 999m, donorEmail: "out@x",
             createdAt: new DateTime(2026, 4, 1, 12, 0, 0, DateTimeKind.Utc));
@@ -74,15 +74,15 @@ public class PlatformReportTests
         var c = TestSeedHelpers.SeedCampaign(db, target: 1_000m);
 
         var lateOnEndDate = new DateTime(2026, 5, 31, 23, 30, 0, DateTimeKind.Utc);
-        var nextDay       = new DateTime(2026, 6, 1, 0, 30, 0, DateTimeKind.Utc);
-        TestSeedHelpers.SeedDonation(db, c.Id, amount: 40m, donorEmail: "in@x",  createdAt: lateOnEndDate);
+        var nextDay = new DateTime(2026, 6, 1, 0, 30, 0, DateTimeKind.Utc);
+        TestSeedHelpers.SeedDonation(db, c.Id, amount: 40m, donorEmail: "in@x", createdAt: lateOnEndDate);
         TestSeedHelpers.SeedDonation(db, c.Id, amount: 60m, donorEmail: "out@x", createdAt: nextDay);
 
         var model = CreateModel(db);
         var report = await model.GenerateReportAsync(
             new DateTime(2026, 5, 1), new DateTime(2026, 5, 31));
 
-        Assert.Equal(1,   report.TotalDonations);
+        Assert.Equal(1, report.TotalDonations);
         Assert.Equal(40m, report.TotalRaised);
     }
 
@@ -95,8 +95,8 @@ public class PlatformReportTests
 
         var when = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc);
         TestSeedHelpers.SeedDonation(db, hi.Id, amount: 1000m, donorEmail: "a@x", createdAt: when);
-        TestSeedHelpers.SeedDonation(db, hi.Id, amount: 500m,  donorEmail: "b@x", createdAt: when);
-        TestSeedHelpers.SeedDonation(db, lo.Id, amount: 300m,  donorEmail: "c@x", createdAt: when);
+        TestSeedHelpers.SeedDonation(db, hi.Id, amount: 500m, donorEmail: "b@x", createdAt: when);
+        TestSeedHelpers.SeedDonation(db, lo.Id, amount: 300m, donorEmail: "c@x", createdAt: when);
 
         var model = CreateModel(db);
         var report = await model.GenerateReportAsync(
@@ -114,9 +114,9 @@ public class PlatformReportTests
         var c = TestSeedHelpers.SeedCampaign(db, target: 5_000m);
         var when = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc);
         TestSeedHelpers.SeedDonation(db, c.Id, amount: 100m, donorEmail: "alice@x", createdAt: when);
-        TestSeedHelpers.SeedDonation(db, c.Id, amount: 50m,  donorEmail: "alice@x", createdAt: when);
-        TestSeedHelpers.SeedDonation(db, c.Id, amount: 200m, isAnonymous: true,     createdAt: when);
-        TestSeedHelpers.SeedDonation(db, c.Id, amount: 75m,  isAnonymous: true,     createdAt: when);
+        TestSeedHelpers.SeedDonation(db, c.Id, amount: 50m, donorEmail: "alice@x", createdAt: when);
+        TestSeedHelpers.SeedDonation(db, c.Id, amount: 200m, isAnonymous: true, createdAt: when);
+        TestSeedHelpers.SeedDonation(db, c.Id, amount: 75m, isAnonymous: true, createdAt: when);
 
         var model = CreateModel(db);
         var report = await model.GenerateReportAsync(
@@ -143,7 +143,7 @@ public class PlatformReportTests
             new DateTime(2026, 5, 1), new DateTime(2026, 5, 31));
 
         Assert.Contains(report.ByCategory, c => c.Category == "Education" && c.TotalRaised == 100m);
-        Assert.Contains(report.ByCategory, c => c.Category == "Medical"   && c.TotalRaised == 200m);
+        Assert.Contains(report.ByCategory, c => c.Category == "Medical" && c.TotalRaised == 200m);
 
         var sg = report.ByLocation.SingleOrDefault(l => l.Location == "Singapore");
         Assert.NotNull(sg);
@@ -158,11 +158,11 @@ public class PlatformReportTests
         var c = TestSeedHelpers.SeedCampaign(db, target: 5_000m);
         var when = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc);
         var alice = TestSeedHelpers.SeedUser(db, "alice");
-        var bob   = TestSeedHelpers.SeedUser(db, "bob");
+        var bob = TestSeedHelpers.SeedUser(db, "bob");
 
         TestSeedHelpers.SeedDonation(db, c.Id, amount: 10m, userId: alice, donorEmail: "alice@x", createdAt: when);
         TestSeedHelpers.SeedDonation(db, c.Id, amount: 20m, userId: alice, donorEmail: "alice@x", createdAt: when);
-        TestSeedHelpers.SeedDonation(db, c.Id, amount: 30m, userId: bob,   donorEmail: "bob@x",   createdAt: when);
+        TestSeedHelpers.SeedDonation(db, c.Id, amount: 30m, userId: bob, donorEmail: "bob@x", createdAt: when);
 
         var model = CreateModel(db);
         var report = await model.GenerateReportAsync(
