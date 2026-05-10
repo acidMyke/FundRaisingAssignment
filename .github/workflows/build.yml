@@ -35,3 +35,10 @@ jobs:
         working-directory: ./FundRaisingAssignment.Application
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.DB_CONNECTION_STRINGS }}
+      - name: Publish Test Result
+        uses: dorny/test-reporter@v3.0.0
+        if: always()
+        with:
+          name: .NET Tests
+          path: "**/test-results.trx"
+          reporter: dotnet-trx
