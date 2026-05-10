@@ -43,8 +43,44 @@ public class UserAffinityProfile
         var campaignDetailsDict = historyContext.CampaignSummaryContexts?
             .ToDictionary(c => c.Id, c => c) ?? [];
 
-        //TODO: Based on weights and populate Dictionary
+        if (historyContext.PastVisits != null)
+        {
+            foreach (var visit in historyContext.PastVisits)
+            {
+                if (campaignDetailsDict.TryGetValue(visit.CampaignId, out var campaignInfo))
+                {
+                    double score = visit.VisitCount * VisitWeight;
+
+                    AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
+                    AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
+                }
+            }
+        }
+
+        if (historyContext.PastDonations != null)
+        {
+            foreach (var donation in historyContext.PastDonations)
+            {
+                if (campaignDetailsDict.TryGetValue(donation.CampaignId, out var campaignInfo))
+                {
+                    // Base points for donating + slight scaling based on the donation size
+                    double amountScore = Convert.ToDouble(donation.Amount) * DonationAmountMultiplier;
+                    double score = DonationBaseWeight + amountScore;
+
+                    AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
+                    AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
+                }
+            }
+        }
 
         return profile;
+    }
+
+    private static void AddScore<TKey>(Dictionary<TKey, double> dictionary, TKey key, double scoreToAdd) where TKey : notnull
+    {
+        if (dictionary.ContainsKey(key))
+            dictionary[key] += scoreToAdd;
+        else
+            dictionary[key] = scoreToAdd;
     }
 }
