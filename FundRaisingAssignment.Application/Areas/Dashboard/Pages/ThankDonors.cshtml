@@ -1,0 +1,100 @@
+@page
+@model FundRaisingAssignment.Application.Areas.Dashboard.Pages.ThankDonorsModel
+@{
+    ViewData["Title"] = "Thank donors";
+}
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+  <a asp-page="/Campaigns" class="btn btn-link p-0" style="text-decoration:none;color:#64748b;font-size:.9rem;">← My Campaigns</a>
+</div>
+<h1 style="margin:0 0 4px;font-size:1.65rem;font-weight:700;letter-spacing:-0.02em;">Thank your donors</h1>
+@if (Model.Campaign is not null)
+{
+  <p class="text-muted mb-3" style="font-size:.95rem;">@Model.Campaign.Title</p>
+}
+
+@if (Model.ErrorMessage is not null)
+{
+  <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+else
+{
+  @if (TempData["ThankResult"] is string result)
+  {
+    var ok = TempData["ThankSuccess"] as bool? ?? false;
+    <div class="alert @(ok ? "alert-success" : "alert-warning") small">@result</div>
+  }
+
+  @if (Model.Donors.Count == 0)
+  {
+    <div class="alert alert-info">
+      No eligible donors yet. Anonymous donations and donors without an email on file are excluded.
+    </div>
+  }
+  else
+  {
+    <form method="post">
+      <input type="hidden" asp-for="CampaignId"/>
+      <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+      <div class="card mb-3" style="border-radius:12px;border:1px solid #e2e8f0;">
+        <div class="card-header bg-white" style="border-bottom:1px solid #e2e8f0;font-weight:600;">
+          Recipients
+          <span class="text-muted fw-normal small ms-2">@Model.Donors.Count donor@(Model.Donors.Count == 1 ? "" : "s")</span>
+        </div>
+        <div class="card-body p-0">
+          <table class="table mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:38px;"><input type="checkbox" id="checkAll" checked aria-label="Select all"/></th>
+                <th>Donor</th>
+                <th>Email</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Gifts</th>
+                <th>Last gift</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach (var d in Model.Donors)
+              {
+                <tr>
+                  <td><input type="checkbox" name="SelectedEmails" value="@d.Email" checked class="row-check"/></td>
+                  <td style="font-weight:500;">@d.DisplayName</td>
+                  <td class="text-muted small">@d.Email</td>
+                  <td class="text-end">@d.TotalDonated.ToString("C")</td>
+                  <td class="text-end">@d.DonationCount</td>
+                  <td class="text-muted small">@d.LastDonationAt.ToShortDateString()</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mb-3" style="border-radius:12px;border:1px solid #e2e8f0;">
+        <div class="card-body">
+          <div class="mb-3">
+            <label asp-for="Subject" class="form-label fw-medium">Subject</label>
+            <input asp-for="Subject" class="form-control" maxlength="200"/>
+          </div>
+          <div class="mb-2">
+            <label asp-for="Message" class="form-label fw-medium">Message</label>
+            <textarea asp-for="Message" class="form-control" rows="9" maxlength="4000"></textarea>
+            <div class="form-text small">Plain text. Line breaks are preserved. The email is rendered with the GiveHive header.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary fw-semibold">Send thank-you emails</button>
+        <a asp-page="/Campaigns" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+
+    <script>
+      document.getElementById('checkAll')?.addEventListener('change', e => {
+        document.querySelectorAll('.row-check').forEach(c => c.checked = e.target.checked);
+      });
+    </script>
+  }
+}

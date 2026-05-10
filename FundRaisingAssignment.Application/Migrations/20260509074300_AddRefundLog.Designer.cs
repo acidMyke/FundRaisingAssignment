@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FundRaisingAssignment.Application.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260509083010_AddMissingDonationColumns")]
-    partial class AddMissingDonationColumns
+    [Migration("20260509074300_AddRefundLog")]
+    partial class AddRefundLog
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

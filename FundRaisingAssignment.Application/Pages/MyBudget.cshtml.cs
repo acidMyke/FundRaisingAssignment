@@ -7,6 +7,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN02 – Set Donation Budget and Target       Owner: Unnikrishna Pillai Karthik
+// BCE Role:     Boundary + Control
+// Description:  Donee-facing "My Budget" page. Captures budget limit and
+//               donation target per tracking period (monthly / quarterly /
+//               yearly / lifetime), recomputes status from donation history,
+//               and renders the snapshot.
+// Notes:        Sub-flows handled in OnPostSaveAsync: 4a (budget-only update),
+//               7a (target-only update), 9a (no donation records),
+//               12a (budget exceeded), 13a (target progress),
+//               15a (system processing failure). EvaluateAndPersistAsync is
+//               the control-side aggregation that classifies BudgetStatus and
+//               TargetStatus from the period's donation total.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Pages;
 
 

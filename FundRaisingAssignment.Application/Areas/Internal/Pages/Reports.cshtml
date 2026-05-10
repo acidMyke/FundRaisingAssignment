@@ -124,6 +124,26 @@
             else
             {
                 var r = Model.PreviewReport;
+                var jsonOpts = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                };
+
+                var dailyJson    = System.Text.Json.JsonSerializer.Serialize(
+                    r.DailyTotals.Select(d => new {
+                        date = d.Date.ToString("yyyy-MM-dd"),
+                        donations = d.DonationCount,
+                        raised = d.TotalRaised
+                    }), jsonOpts);
+
+                var statusJson   = System.Text.Json.JsonSerializer.Serialize(r.ByStatus, jsonOpts);
+                var categoryJson = System.Text.Json.JsonSerializer.Serialize(r.ByCategory, jsonOpts);
+                var topCampJson  = System.Text.Json.JsonSerializer.Serialize(
+                    r.TopCampaigns.Take(10), jsonOpts);
+                var paymentJson  = System.Text.Json.JsonSerializer.Serialize(r.ByPaymentMethod, jsonOpts);
+                var donorsJson   = System.Text.Json.JsonSerializer.Serialize(
+                    r.TopDonors.Take(10), jsonOpts);
+                var locationJson = System.Text.Json.JsonSerializer.Serialize(r.ByLocation, jsonOpts);
 
                 <!-- Summary -->
                 <div class="card shadow-sm mb-3">
@@ -186,6 +206,53 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Visualisations -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">Visualisations</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <small class="text-muted">Daily totals</small>
+                                <canvas id="chartDaily" height="110"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">By status</small>
+                                <canvas id="chartStatus" height="180"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">By category (raised)</small>
+                                <canvas id="chartCategory" height="180"></canvas>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">Top campaigns (top 10 by raised)</small>
+                                <canvas id="chartTopCampaigns" height="180"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">By payment method (raised)</small>
+                                <canvas id="chartPayment" height="180"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Top donors (top 10 by total given)</small>
+                                <canvas id="chartTopDonors" height="180"></canvas>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">By location (raised)</small>
+                                <canvas id="chartLocation" height="160"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script id="report-data-daily"    type="application/json">@Html.Raw(dailyJson)</script>
+                <script id="report-data-status"   type="application/json">@Html.Raw(statusJson)</script>
+                <script id="report-data-category" type="application/json">@Html.Raw(categoryJson)</script>
+                <script id="report-data-topcamp"  type="application/json">@Html.Raw(topCampJson)</script>
+                <script id="report-data-payment"  type="application/json">@Html.Raw(paymentJson)</script>
+                <script id="report-data-donors"   type="application/json">@Html.Raw(donorsJson)</script>
+                <script id="report-data-location" type="application/json">@Html.Raw(locationJson)</script>
 
                 <!-- By status -->
                 <div class="card shadow-sm mb-3">
@@ -261,6 +328,164 @@
                     </div>
                 </div>
 
+                <!-- By payment method -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">By payment method</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Payment method</th>
+                                    <th class="text-end">Donations</th>
+                                    <th class="text-end">Total raised</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.ByPaymentMethod.Count == 0)
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted">No data.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var p in r.ByPaymentMethod)
+                                    {
+                                        <tr>
+                                            <td>@p.PaymentMethod</td>
+                                            <td class="text-end">@p.DonationCount.ToString("N0")</td>
+                                            <td class="text-end">@p.TotalRaised.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top donors -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">Top donors</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Donor</th>
+                                    <th class="text-end">Donations</th>
+                                    <th class="text-end">Total given</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.TopDonors.Count == 0)
+                                {
+                                    <tr><td colspan="3" class="text-center text-muted">No donations in range.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var d in r.TopDonors)
+                                    {
+                                        <tr>
+                                            <td>@d.DonorLabel</td>
+                                            <td class="text-end">@d.DonationCount.ToString("N0")</td>
+                                            <td class="text-end">@d.TotalGiven.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- By location -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">By location</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Location</th>
+                                    <th class="text-end">Campaigns</th>
+                                    <th class="text-end">Donations</th>
+                                    <th class="text-end">Total raised</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.ByLocation.Count == 0)
+                                {
+                                    <tr><td colspan="4" class="text-center text-muted">No data.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var l in r.ByLocation)
+                                    {
+                                        <tr>
+                                            <td>@l.Location</td>
+                                            <td class="text-end">@l.CampaignCount.ToString("N0")</td>
+                                            <td class="text-end">@l.DonationCount.ToString("N0")</td>
+                                            <td class="text-end">@l.TotalRaised.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Campaign progress -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Campaign progress</h6>
+                        <small class="text-muted">@r.CampaignProgress.Count campaign(s)</small>
+                    </div>
+                    <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Campaign</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Goal</th>
+                                    <th class="text-end">Raised</th>
+                                    <th style="min-width:120px;">% funded</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (r.CampaignProgress.Count == 0)
+                                {
+                                    <tr><td colspan="5" class="text-center text-muted">No data.</td></tr>
+                                }
+                                else
+                                {
+                                    foreach (var p in r.CampaignProgress)
+                                    {
+                                        var pctClamped = Math.Min(100m, Math.Max(0m, p.PercentFunded));
+                                        <tr>
+                                            <td>@p.Title</td>
+                                            <td><span class="badge bg-light text-dark">@p.Status</span></td>
+                                            <td class="text-end">@p.FundingGoal.ToString("C")</td>
+                                            <td class="text-end">@p.CurrentAmount.ToString("C")</td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="progress flex-grow-1" style="height:6px;">
+                                                        <div class="progress-bar bg-success" role="progressbar"
+                                                             style="width:@pctClamped.ToString("F0")%;"
+                                                             aria-valuenow="@pctClamped.ToString("F0")"
+                                                             aria-valuemin="0" aria-valuemax="100"></div>
+                                                    </div>
+                                                    <small class="text-muted" style="min-width:48px;">@p.PercentFunded.ToString("F1")%</small>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Daily totals -->
                 <div class="card shadow-sm">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -303,4 +528,306 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    @if (Model.PreviewReport is not null)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                function readJson(id) {
+                    var el = document.getElementById(id);
+                    if (!el) return null;
+                    try { return JSON.parse(el.textContent || "[]"); }
+                    catch (e) { return null; }
+                }
+
+                var fmtCurrency = function (v) {
+                    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
+                };
+
+                var palette = [
+                    '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                    '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab'
+                ];
+
+                // ---- Daily totals (line + bar combo) ----
+                var daily = readJson('report-data-daily') || [];
+                if (daily.length) {
+                    new Chart(document.getElementById('chartDaily'), {
+                        data: {
+                            labels: daily.map(function (d) { return d.date; }),
+                            datasets: [
+                                {
+                                    type: 'line',
+                                    label: 'Raised',
+                                    data: daily.map(function (d) { return Number(d.raised); }),
+                                    borderColor: palette[0],
+                                    backgroundColor: 'rgba(78, 121, 167, 0.15)',
+                                    fill: true,
+                                    tension: 0.25,
+                                    yAxisID: 'yMoney'
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Donations',
+                                    data: daily.map(function (d) { return d.donations; }),
+                                    backgroundColor: palette[1] + 'cc',
+                                    yAxisID: 'yCount'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            interaction: { mode: 'index', intersect: false },
+                            scales: {
+                                yMoney: {
+                                    type: 'linear', position: 'left', beginAtZero: true,
+                                    ticks: { callback: function (v) { return fmtCurrency(v); } }
+                                },
+                                yCount: {
+                                    type: 'linear', position: 'right', beginAtZero: true,
+                                    grid: { drawOnChartArea: false }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            if (ctx.dataset.label === 'Raised') {
+                                                return 'Raised: ' + fmtCurrency(ctx.parsed.y);
+                                            }
+                                            return 'Donations: ' + ctx.parsed.y;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // ---- By status (stacked bar: campaigns vs donations counts) ----
+                var status = readJson('report-data-status') || [];
+                if (status.length) {
+                    new Chart(document.getElementById('chartStatus'), {
+                        type: 'bar',
+                        data: {
+                            labels: status.map(function (s) { return s.status; }),
+                            datasets: [
+                                {
+                                    label: 'Campaigns',
+                                    data: status.map(function (s) { return s.campaignCount; }),
+                                    backgroundColor: palette[0]
+                                },
+                                {
+                                    label: 'Donations',
+                                    data: status.map(function (s) { return s.donationCount; }),
+                                    backgroundColor: palette[2]
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: { stacked: true },
+                                y: { stacked: true, beginAtZero: true }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        afterBody: function (items) {
+                                            var idx = items[0].dataIndex;
+                                            var s = status[idx];
+                                            return ['Raised: ' + fmtCurrency(s.totalRaised)];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // ---- By category (doughnut of raised) ----
+                var category = readJson('report-data-category') || [];
+                var categoryActive = category.filter(function (c) { return Number(c.totalRaised) > 0; });
+                if (categoryActive.length) {
+                    new Chart(document.getElementById('chartCategory'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: categoryActive.map(function (c) { return c.category; }),
+                            datasets: [{
+                                data: categoryActive.map(function (c) { return Number(c.totalRaised); }),
+                                backgroundColor: categoryActive.map(function (_, i) {
+                                    return palette[i % palette.length];
+                                })
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ctx.label + ': ' + fmtCurrency(ctx.parsed);
+                                        }
+                                    }
+                                },
+                                legend: { position: 'right' }
+                            }
+                        }
+                    });
+                }
+
+                // ---- Top campaigns (horizontal bar, top 10) ----
+                var top = readJson('report-data-topcamp') || [];
+                if (top.length) {
+                    new Chart(document.getElementById('chartTopCampaigns'), {
+                        type: 'bar',
+                        data: {
+                            labels: top.map(function (t) {
+                                return t.title.length > 40 ? t.title.slice(0, 37) + '...' : t.title;
+                            }),
+                            datasets: [{
+                                label: 'Raised',
+                                data: top.map(function (t) { return Number(t.totalRaised); }),
+                                backgroundColor: palette[4]
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: { callback: function (v) { return fmtCurrency(v); } }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return 'Raised: ' + fmtCurrency(ctx.parsed.x);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // ---- By payment method (pie of raised) ----
+                var payment = readJson('report-data-payment') || [];
+                var paymentActive = payment.filter(function (p) { return Number(p.totalRaised) > 0; });
+                if (paymentActive.length) {
+                    new Chart(document.getElementById('chartPayment'), {
+                        type: 'pie',
+                        data: {
+                            labels: paymentActive.map(function (p) { return p.paymentMethod; }),
+                            datasets: [{
+                                data: paymentActive.map(function (p) { return Number(p.totalRaised); }),
+                                backgroundColor: paymentActive.map(function (_, i) {
+                                    return palette[i % palette.length];
+                                })
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ctx.label + ': ' + fmtCurrency(ctx.parsed);
+                                        }
+                                    }
+                                },
+                                legend: { position: 'right' }
+                            }
+                        }
+                    });
+                }
+
+                // ---- Top donors (horizontal bar, top 10 by total given) ----
+                var donors = readJson('report-data-donors') || [];
+                if (donors.length) {
+                    new Chart(document.getElementById('chartTopDonors'), {
+                        type: 'bar',
+                        data: {
+                            labels: donors.map(function (d) {
+                                return d.donorLabel.length > 28 ? d.donorLabel.slice(0, 25) + '...' : d.donorLabel;
+                            }),
+                            datasets: [{
+                                label: 'Total given',
+                                data: donors.map(function (d) { return Number(d.totalGiven); }),
+                                backgroundColor: palette[6]
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: { callback: function (v) { return fmtCurrency(v); } }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return 'Given: ' + fmtCurrency(ctx.parsed.x);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // ---- By location (horizontal bar of raised) ----
+                var location = readJson('report-data-location') || [];
+                var locationActive = location.filter(function (l) {
+                    return Number(l.totalRaised) > 0 || Number(l.campaignCount) > 0;
+                });
+                if (locationActive.length) {
+                    new Chart(document.getElementById('chartLocation'), {
+                        type: 'bar',
+                        data: {
+                            labels: locationActive.map(function (l) { return l.location; }),
+                            datasets: [{
+                                label: 'Total raised',
+                                data: locationActive.map(function (l) { return Number(l.totalRaised); }),
+                                backgroundColor: palette[3]
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: { callback: function (v) { return fmtCurrency(v); } }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            var l = locationActive[ctx.dataIndex];
+                                            return [
+                                                'Raised: ' + fmtCurrency(ctx.parsed.x),
+                                                'Campaigns: ' + l.campaignCount,
+                                                'Donations: ' + l.donationCount
+                                            ];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            })();
+        </script>
+    }
 }

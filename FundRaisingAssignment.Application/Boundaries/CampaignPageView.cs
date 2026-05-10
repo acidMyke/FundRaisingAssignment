@@ -22,6 +22,7 @@ public class CampaignPageView
     public string ShortDesc { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
+    public string? Location { get; set; }
     public string? CoverImageUrl { get; set; }
     public decimal CurrentAmount { get; set; }
     public string OwnerEmail { get; set; } = string.Empty;
@@ -45,6 +46,7 @@ public class CampaignPageView
         ShortDesc = c.ShortDescription;
         Description = c.Description;
         Category = c.Category.ToString();
+        Location = c.Location;
         CoverImageUrl = c.CoverImageUrl;
         CurrentAmount = c.CurrentAmount;
         OwnerEmail = c.Owner?.Email ?? string.Empty;

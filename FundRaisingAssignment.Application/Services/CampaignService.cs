@@ -2,17 +2,36 @@ using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Models;
 using Microsoft.EntityFrameworkCore;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   DN03 – Make a Donation to a Campaign        Owner: Shared
+// User Story:   FR01 – Set Funding Goal and Deadline        Owner: Zhu Jianshan (Josh)
+// User Story:   PM01 – Review Flagged Campaign              Owner: Zhu Jianshan (Josh)
+// User Story:   DN01 – Search Fundraising Campaigns         Owner: Khoo Si Kai
+// User Story:   PM06 – View Top Donors Leaderboard          Owner: Ho Dan Ze
+// BCE Role:     Control
+// Description:  Application service exposing campaign lifecycle, search,
+//               donations (canonical DonateAsync), refunds, reviews, and
+//               leaderboard queries. The single backend behind every Razor
+//               page and the Web API controller.
+// Notes:        DN03 was consolidated from four duplicate implementations
+//               (Razor page, anonymous donate page, Web API controller, and
+//               a deleted DonationService). See git history and the Final
+//               Report § "Donation flow consolidation".
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Services;
 
 /// <summary>
-/// Merged CampaignService: Karthik's SearchCampaigns + Josh's full campaign lifecycle.
-/// Implements ICampaignService (interface).
+/// Merged CampaignService: search filter (DN01 – Si Kai) + full campaign
+/// lifecycle (FR01 / PM01 – Josh) + consolidated donation flow (DN03 – Shared).
+/// Implements <see cref="ICampaignService"/>.
 /// </summary>
-public class CampaignService(ApplicationDbContext db) : ICampaignService
+public class CampaignService(ApplicationDbContext db, ILogger<CampaignService> logger) : ICampaignService
 {
     private readonly ApplicationDbContext _db = db;
+    private readonly ILogger<CampaignService> _logger = logger;
 
-    // ── Campaign CRUD ──────────────────────────────────────────────────────────
+    #region FR01 – Campaign CRUD (Josh)
 
     public async Task<Campaign> CreateCampaignAsync(Campaign campaign)
     {
@@ -70,7 +89,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         return c;
     }
 
-    // ── Search (Karthik's SearchCampaigns adapted to async) ───────────────────
+    #endregion
+
+    #region DN01 – Search (Khoo Si Kai)
 
     public async Task<IReadOnlyList<Campaign>> SearchCampaignsAsync(
         string? keyword, string? category, string? location)
@@ -97,7 +118,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         return await query.ToListAsync();
     }
 
-    // ── Fundraiser workflow ────────────────────────────────────────────────────
+    #endregion
+
+    #region FR01 – Fundraiser workflow (Josh)
 
     public async Task<Campaign> SubmitForReviewAsync(Guid campaignId, Guid ownerId)
     {
@@ -109,7 +132,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         return c;
     }
 
-    // ── Admin workflow ─────────────────────────────────────────────────────────
+    #endregion
+
+    #region PM01 – Admin lifecycle workflow (Josh)
 
     public async Task<Campaign> PublishCampaignAsync(Guid campaignId)
     {
@@ -156,7 +181,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         return c;
     }
 
-    // ── Queries ────────────────────────────────────────────────────────────────
+    #endregion
+
+    #region Shared queries
 
     public Task<Campaign?> GetCampaignAsync(Guid id) =>
         _db.Campaigns.Include(c => c.Owner).FirstOrDefaultAsync(c => c.Id == id);
@@ -192,7 +219,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
 
-    // ── BCE Diagram 2 ──────────────────────────────────────────────────────────
+    #endregion
+
+    #region PM01 – BCE Diagram 2 outcomes (Josh)
 
     public async Task<Campaign> ApproveCampaignAsync(Guid id)
     {
@@ -230,7 +259,9 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         return n;
     }
 
-    // ── Reviews ────────────────────────────────────────────────────────────────
+    #endregion
+
+    #region PM01 – Reviews + auto-flag pipeline (Josh)
 
     public async Task<CampaignReview> AddReviewAsync(
         Guid campaignId, Guid reviewerId, string reviewerEmail, int stars, string? comment)
@@ -260,6 +291,8 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
         if (stats != null)
             campaign.RecalculateRating(stats.Avg, stats.Count);
 
+        campaign.FlagFromLowReview(stars, reviewerEmail);
+
         await _db.SaveChangesAsync();
         return review;
     }
@@ -273,50 +306,133 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     public Task<bool> HasUserReviewedAsync(Guid campaignId, Guid userId) =>
         _db.CampaignReviews.AnyAsync(r => r.CampaignId == campaignId && r.ReviewerId == userId);
 
-    // ── Donations (Josh ICampaignService flow) ────────────────────────────────
+    #endregion
 
-    public async Task<Donation> DonateAsync(
-        Guid campaignId, Guid? donorId, string donorEmail,
-        decimal amount, string? message, bool isAnonymous)
+    #region DN03 – Donations (Shared; canonical consolidated flow)
+    /// <summary>
+    /// Canonical donation entry point. Validates, transactionally records the
+    /// donation, increments the campaign's CurrentAmount, and auto-completes
+    /// the campaign once it reaches its target.
+    /// </summary>
+    /// <remarks>
+    /// User Story: DN03 — Make a Donation to a Campaign.
+    /// Owner: Shared (consolidated from prior Josh + Karthik duplicates).
+    /// </remarks>
+    public async Task<DonationResult> DonateAsync(MakeDonationInput input, CancellationToken ct = default)
     {
-        if (amount <= 0)
-            throw new ArgumentException("Donation amount must be greater than $0.");
+        if (input.Amount <= 0m)
+            return new DonationResult.InvalidAmount("Donation amount must be greater than $0.");
+        if (input.Amount > 1_000_000m)
+            return new DonationResult.InvalidAmount("Donation amount cannot exceed $1,000,000.");
 
-        var campaign = await _db.Campaigns.FindAsync(campaignId)
-            ?? throw new InvalidOperationException("Campaign not found.");
+        var campaign = await _db.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == input.CampaignId, ct);
 
-        if (!campaign.AcceptsDonations)
-            throw new InvalidOperationException("This campaign is not currently accepting donations.");
+        if (campaign is null)
+            return new DonationResult.CampaignNotFound();
 
-        // Generate receipt number: RCPT-YYYYMMDD-XXXX (XXXX = daily counter for this campaign)
-        var now = DateTime.UtcNow;
-        var datePart = now.ToString("yyyyMMdd");
-        var todayStart = now.Date;
-        var todayEnd = todayStart.AddDays(1);
-        // Count donations for this campaign on this date
-        int todayCount = await _db.Donations
-            .Where(d => d.CampaignId == campaignId && d.CreatedAt >= todayStart && d.CreatedAt < todayEnd)
-            .CountAsync();
-        int receiptCounter = todayCount + 1;
-        string receiptNumber = $"RCPT-{datePart}-{receiptCounter:D4}";
+        if (campaign.Status != CampaignStatus.Active)
+            return new DonationResult.CampaignNotActive(campaign.Status);
 
-        var donation = new Donation
+        if (campaign.EndDate.HasValue && campaign.EndDate.Value < DateTime.UtcNow)
+            return new DonationResult.DeadlinePassed();
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Id = Guid.NewGuid(),
-            CampaignId = campaignId,
-            UserId = donorId,         // maps DonorId → UserId in merged model
-            DonorEmail = isAnonymous ? "Anonymous" : donorEmail,
-            Amount = amount,
-            Message = message,
-            IsAnonymous = isAnonymous,
-            Status = DonationStatus.Completed,
-            CreatedAt = now,
-            ReceiptNumber = receiptNumber
-        };
-        _db.Donations.Add(donation);
-        campaign.CurrentAmount += amount;
-        await _db.SaveChangesAsync();
-        return donation;
+            var donation = new Donation
+            {
+                Id = Guid.NewGuid(),
+                CampaignId = campaign.Id,
+                UserId = input.UserId,
+                DonorEmail = input.IsAnonymous
+                    ? "Anonymous"
+                    : (string.IsNullOrWhiteSpace(input.DonorEmail) ? "Guest" : input.DonorEmail),
+                Amount = input.Amount,
+                Message = input.Message,
+                IsAnonymous = input.IsAnonymous,
+                Status = DonationStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                ReceiptNumber = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
+            };
+
+            await _db.Donations.AddAsync(donation, ct);
+            campaign.CurrentAmount += input.Amount;
+
+            bool goalReached = false;
+            if (campaign.CurrentAmount >= campaign.TargetAmount
+                && campaign.Status == CampaignStatus.Active)
+            {
+                campaign.Status = CampaignStatus.Completed;
+                goalReached = true;
+                _logger.LogInformation(
+                    "Campaign {CampaignId} reached its goal and was auto-completed.", campaign.Id);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "Donation {DonationId} of {Amount} recorded for campaign {CampaignId} by donor {DonorId} ({DonorEmail}).",
+                donation.Id, donation.Amount, campaign.Id,
+                input.UserId?.ToString() ?? "guest", donation.DonorEmail);
+
+            // Attach the loaded campaign so callers can read title/etc. without a reload.
+            donation.Campaign = campaign;
+            return new DonationResult.Success(donation, goalReached);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync(ct);
+            _logger.LogError(ex,
+                "Failed to process donation for campaign {CampaignId} by donor {DonorId}.",
+                input.CampaignId, input.UserId?.ToString() ?? "guest");
+            throw;
+        }
+    }
+
+    public async Task<RefundResult> RefundDonationAsync(
+        Guid donationId, Guid? adminId, string adminLabel, string? reason, CancellationToken ct = default)
+    {
+        var donation = await _db.Donations
+            .FirstOrDefaultAsync(d => d.Id == donationId, ct);
+
+        if (donation is null)
+            return new RefundResult.DonationNotFound();
+
+        if (donation.Status != DonationStatus.Completed)
+            return new RefundResult.NotRefundable(donation.Status);
+
+        var campaign = await _db.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == donation.CampaignId, ct);
+
+        var now = DateTime.UtcNow;
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            Refund.ApplyRefund(donation, campaign);
+
+            var log = Refund.BuildRefundLog(donation, adminId, adminLabel, reason, now);
+            await _db.RefundLogs.AddAsync(log, ct);
+
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "Donation {DonationId} ({Amount}) refunded by {Admin}; campaign {CampaignId} adjusted; refund log {RefundId}.",
+                donation.Id, donation.Amount, adminLabel, donation.CampaignId, log.Id);
+
+            return new RefundResult.Success(donation, campaign, log);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync(ct);
+            _logger.LogError(ex,
+                "Failed to refund donation {DonationId} by {Admin}.",
+                donationId, adminLabel);
+            return new RefundResult.TransactionFailed(ex);
+        }
     }
 
     public async Task<IReadOnlyList<Donation>> GetCampaignDonationsAsync(Guid campaignId) =>
@@ -335,7 +451,18 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
     public Task<decimal> GetTotalDonatedAsync(Guid campaignId) =>
         _db.Donations.Where(d => d.CampaignId == campaignId).SumAsync(d => d.Amount);
 
-    /// Gets the top 10 donations for a campaign, ordered by amount (highest first), including user info.
+    #endregion
+
+    #region PM06 – Top Donors Leaderboard (Ho Dan Ze; partial)
+    /// <summary>
+    /// Gets the top donations for a campaign, ordered by amount (highest first),
+    /// including user info. Surfaced inline on CampaignPage; no dedicated
+    /// leaderboard page exists yet.
+    /// </summary>
+    /// <remarks>
+    /// User Story: PM06 — View Top Donors Leaderboard.
+    /// Owner: Ho Dan Ze. Status: partial (no standalone leaderboard page).
+    /// </remarks>
     public async Task<IReadOnlyList<Donation>> GetTopDonationsAsync(Guid campaignId, int count = 10) =>
         await _db.Donations
             .Where(d => d.CampaignId == campaignId)
@@ -344,6 +471,7 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
             .ThenBy(d => d.CreatedAt)
             .Take(count)
             .ToListAsync();
+    #endregion
 
     public async Task TrackUserViewAsync(Campaign campaign, ApplicationUser user)
     {

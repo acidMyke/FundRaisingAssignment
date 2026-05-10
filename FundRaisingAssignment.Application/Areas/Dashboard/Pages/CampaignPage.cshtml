@@ -112,6 +112,8 @@ else
           };
         }
         <span style="background:@sbg;color:@sfg;padding:2px 9px;border-radius:999px;font-size:.75rem;font-weight:600;">@v.Status</span>
+        @if (!string.IsNullOrWhiteSpace(v.Location))
+        { <span style="background:#f1f5f9;color:#475569;padding:2px 9px;border-radius:999px;font-size:.75rem;font-weight:600;">📍 @v.Location</span> }
         @if (v.ReviewCount > 0)
         { <span style="color:#f59e0b;font-size:.85rem;">@Stars(v.AverageRating) <strong>@v.AverageRating.ToString("F1")</strong> <span style="color:#94a3b8;">(@v.ReviewCount)</span></span> }
       </div>

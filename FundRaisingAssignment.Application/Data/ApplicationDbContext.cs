@@ -4,21 +4,30 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Story:   Cross-cutting (persistence layer)           Owner: Team
+// BCE Role:     Entity / persistence
+// Description:  Single EF Core DbContext. Hosts every story's DbSet, the
+//               Identity overrides, FK + index configuration, and the
+//               SGT-aware DateTime value converter.
+// Notes:        Per-entity Format-B regions inside OnModelCreating identify
+//               which user story owns each table's configuration.
+// ─────────────────────────────────────────────────────────────────────────────
+
 namespace FundRaisingAssignment.Application.Data;
 
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
 {
-    // ── Karthik's DbSets ──────────────────────────────────────────────────────
-    public DbSet<Campaign> Campaigns { get; set; }
-    public DbSet<Donee> Donees { get; set; }
-    public DbSet<Donation> Donations { get; set; }
-    public DbSet<DonationGoal> DonationGoals { get; set; }
-    public DbSet<ExportFile> ExportFiles { get; set; }
+    public DbSet<Campaign> Campaigns { get; set; }                 // FR01, PM01, DN01
+    public DbSet<Donee> Donees { get; set; }                       // DN02 — Karthik
+    public DbSet<Donation> Donations { get; set; }                 // DN03 — Shared
+    public DbSet<DonationGoal> DonationGoals { get; set; }         // DN02 — Karthik
+    public DbSet<ExportFile> ExportFiles { get; set; }             // UA02 — Karthik
+    public DbSet<RefundLog> RefundLogs { get; set; }               // DN03 — Shared (refund pipeline)
 
-    // ── Josh's DbSets ─────────────────────────────────────────────────────────
-    public DbSet<CampaignReview> CampaignReviews { get; set; }
-    public DbSet<FundRaiserNotification> FundRaiserNotifications { get; set; }
+    public DbSet<CampaignReview> CampaignReviews { get; set; }     // PM01 — Josh
+    public DbSet<FundRaiserNotification> FundRaiserNotifications { get; set; } // PM01 — Josh
 
     public DbSet<CampaignVisit> CampaignVisits { get; set; }
 
@@ -36,7 +45,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<IdentityRoleClaim<Guid>>(e => e.ToTable("RoleClaims"));
         builder.Entity<IdentityUserToken<Guid>>(e => e.ToTable("UserTokens"));
 
-        // ── Campaign ───────────────────────────────────────────────────────────
+        #region Campaign (FR01, PM01)
         builder.Entity<Campaign>(b =>
         {
             b.HasOne(c => c.Owner)
@@ -44,8 +53,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .HasForeignKey(c => c.OwnerId)
              .OnDelete(DeleteBehavior.Cascade);
         });
+        #endregion
 
-        // ── Donation (Karthik's FK config + Josh's guest-donor support) ────────
+        #region Donation (DN03)
         builder.Entity<Donation>(b =>
         {
             b.HasOne(d => d.Campaign)
@@ -56,7 +66,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             b.HasOne(d => d.User)
              .WithMany()
              .HasForeignKey(d => d.UserId)
-             .IsRequired(false)
+             .IsRequired(false)            // guest donations supported (Josh's flow)
              .OnDelete(DeleteBehavior.Restrict);
 
             b.HasIndex(d => d.CampaignId);
@@ -64,8 +74,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             b.HasIndex(d => d.CreatedAt);
             b.HasIndex(d => new { d.UserId, d.CreatedAt });
         });
+        #endregion
 
-        // ── DonationGoal ───────────────────────────────────────────────────────
+        #region DonationGoal (DN02)
         builder.Entity<DonationGoal>(b =>
         {
             b.HasIndex(g => g.UserId).IsUnique();
@@ -74,8 +85,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .HasForeignKey(g => g.UserId)
              .OnDelete(DeleteBehavior.Cascade);
         });
+        #endregion
 
-        // ── Donee ──────────────────────────────────────────────────────────────
+        #region Donee (DN02)
         builder.Entity<Donee>(e =>
         {
             e.ToTable("Donees");
@@ -87,8 +99,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .HasForeignKey(d => d.UserId)
              .OnDelete(DeleteBehavior.SetNull);
         });
+        #endregion
 
-        // ── ExportFile ─────────────────────────────────────────────────────────
+        #region ExportFile (UA02)
         builder.Entity<ExportFile>(b =>
         {
             b.HasOne(e => e.CreatedByAdmin)
@@ -98,8 +111,37 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             b.HasIndex(e => e.CreatedByAdminId);
             b.HasIndex(e => e.CreatedAt);
         });
+        #endregion
 
-        // ── CampaignReview (Josh) ──────────────────────────────────────────────
+        #region RefundLog (DN03 — refund pipeline)
+        builder.Entity<RefundLog>(b =>
+        {
+            b.HasOne(r => r.Donation)
+             .WithMany()
+             .HasForeignKey(r => r.DonationId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(r => r.Campaign)
+             .WithMany()
+             .HasForeignKey(r => r.CampaignId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(r => r.Admin)
+             .WithMany()
+             .HasForeignKey(r => r.AdminId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+
+            b.Property(r => r.Amount).HasColumnType("numeric(18,2)");
+
+            b.HasIndex(r => r.DonationId);
+            b.HasIndex(r => r.CampaignId);
+            b.HasIndex(r => r.AdminId);
+            b.HasIndex(r => r.RefundedAt);
+        });
+        #endregion
+
+        #region CampaignReview (PM01)
         builder.Entity<CampaignReview>(e =>
         {
             e.HasKey(r => r.ReviewId);
@@ -113,8 +155,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(r => new { r.CampaignId, r.ReviewerId }).IsUnique();
         });
+        #endregion
 
-        // ── FundRaiserNotification (Josh) ──────────────────────────────────────
+        #region FundRaiserNotification (PM01)
         builder.Entity<FundRaiserNotification>(e =>
         {
             e.HasKey(n => n.NotificationId);
@@ -123,6 +166,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .HasForeignKey(n => n.CampaignId)
              .OnDelete(DeleteBehavior.Cascade);
         });
+        #endregion
     }
 
     private static void SetupUtcConverter(ModelBuilder builder)
