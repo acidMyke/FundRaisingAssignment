@@ -352,9 +352,21 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
 
         if (existing == null)
         {
-            _db.CampaignVisits.Add(new CampaignVisit { CampaignId = campaign.Id, UserId = user.Id });
-            await _db.SaveChangesAsync();
+            _db.CampaignVisits.Add(new CampaignVisit
+            {
+                CampaignId = campaign.Id,
+                UserId = user.Id,
+                FirstVisitDate = DateTime.UtcNow,
+                LastVisitDate = DateTime.UtcNow,
+                VisitCount = 1
+            });
         }
+        else
+        {
+            existing.LastVisitDate = DateTime.UtcNow;
+            existing.VisitCount++;
+        }
+        await _db.SaveChangesAsync();
     }
 
 }

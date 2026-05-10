@@ -10,7 +10,7 @@ namespace FundRaisingAssignment.Application.Models
         public Guid Id { get; set; }
 
         public Guid CampaignId { get; set; }
-        
+
         [ForeignKey("CampaignId")]
         public Campaign? Campaign { get; set; }
 
@@ -19,6 +19,8 @@ namespace FundRaisingAssignment.Application.Models
         [ForeignKey("UserId")]
         public ApplicationUser? User { get; set; }
 
-        public DateTime VisitDate { get; set; } = DateTime.UtcNow;
+        public DateTime FirstVisitDate { get; set; } = DateTime.UtcNow;
+        public DateTime LastVisitDate { get; set; } = DateTime.UtcNow;
+        public int VisitCount { get; set; } = 1;
     }
 }
