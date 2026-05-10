@@ -36,6 +36,11 @@ if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !str
     builder.Services.AddTransient<IEmailService, MailjetEmailService>();
     builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>());
 }
+else
+{
+    builder.Services.AddTransient<IEmailService, LoggerEmailService>();
+    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>());
+}
 
 // ── Authorization ─────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthorizationHandler, MinimumJoinTimeHandler>();
