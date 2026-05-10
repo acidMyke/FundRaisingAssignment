@@ -244,7 +244,7 @@ public class MyBudgetModel : PageModel
         };
     }
 
-    private static (DateTime? Start, DateTime? End) ComputePeriodWindow(GoalPeriod period, DateTime nowUtc)
+    internal static (DateTime? Start, DateTime? End) ComputePeriodWindow(GoalPeriod period, DateTime nowUtc)
     {
         switch (period)
         {
@@ -267,7 +267,7 @@ public class MyBudgetModel : PageModel
         }
     }
 
-    private static BudgetStatus ClassifyBudget(decimal total, decimal? limit)
+    internal static BudgetStatus ClassifyBudget(decimal total, decimal? limit)
     {
         if (limit is null or <= 0) return Models.BudgetStatus.NotSet;
         if (total > limit.Value) return Models.BudgetStatus.Exceeded;
@@ -276,7 +276,7 @@ public class MyBudgetModel : PageModel
         return Models.BudgetStatus.WithinBudget;
     }
 
-    private static TargetStatus ClassifyTarget(decimal total, decimal? target)
+    internal static TargetStatus ClassifyTarget(decimal total, decimal? target)
     {
         if (target is null or <= 0) return Models.TargetStatus.NotSet;
         if (total >= target.Value) return Models.TargetStatus.Achieved;
