@@ -55,6 +55,8 @@ namespace FundRaisingAssignment.Application.Models
         public DateTime? EndDate { get; set; }   // nullable for Karthik DB compat
 
         // ── Status ────────────────────────────────────────────────────────────
+        public DateTime? LastDigestSent { get; set; }
+
         public CampaignStatus Status { get; set; } = CampaignStatus.Draft;
 
         [StringLength(500)]
