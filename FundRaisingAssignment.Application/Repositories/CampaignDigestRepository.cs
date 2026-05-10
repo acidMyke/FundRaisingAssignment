@@ -23,6 +23,48 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
         return dbContext.Campaigns.Where(c => c.Status == CampaignStatus.Active).ToListAsync();
     }
 
+    public async Task<Dictionary<Guid, UserHistoryContext>> GetHistoryContextsForUsersAsync(IEnumerable<Guid> userIds)
+    {
+        var userIdsList = userIds.ToList();
+
+        var allPastDonations = await dbContext.Donations
+            .Where(d => d.UserId.HasValue && userIdsList.Contains(d.UserId.Value))
+            .ToListAsync();
+
+        var allPastVisits = await dbContext.CampaignVisits
+            .Where(v => userIdsList.Contains(v.UserId))
+            .ToListAsync();
+
+        var campaignIds = new HashSet<Guid>([.. allPastDonations.Select(d => d.CampaignId), .. allPastVisits.Select(v => v.CampaignId)]);
+
+        var relatedCampaign = await dbContext.Campaigns
+            .Where(c => campaignIds.Contains(c.Id))
+            .Select(c => new CampaignSummaryContext
+            {
+                Id = c.Id,
+                Category = c.Category,
+                OwnerId = c.OwnerId
+            })
+            .ToListAsync();
+
+        var result = new Dictionary<Guid, UserHistoryContext>();
+
+        var donationsGrouped = allPastDonations.ToLookup(d => d.UserId!.Value);
+        var visitsGrouped = allPastVisits.ToLookup(v => v.UserId);
+
+        foreach (var userId in userIdsList)
+        {
+            result[userId] = new UserHistoryContext
+            {
+                PastDonations = [.. donationsGrouped[userId]],
+                PastVisits = [.. visitsGrouped[userId]],
+                CampaignSummaryContexts = relatedCampaign,
+            };
+        }
+
+        return result;
+    }
+
     public Task SaveChangesAsync()
     {
         return dbContext.SaveChangesAsync();
