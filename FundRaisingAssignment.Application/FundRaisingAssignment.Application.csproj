@@ -6,7 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-FundRaisingAssignment.Application-23411d20-1c41-475f-83e4-06e299e749c9</UserSecretsId>
     <ContainerRegistry>ghcr.io</ContainerRegistry>
-    <ContainerRepository>fundraisingassignment-application</ContainerRepository>
+    <ContainerRepository>acidmyke/fundraisingassignment-application</ContainerRepository>
+    <ContainerImageName>fundraisingassignment-application</ContainerImageName>
   </PropertyGroup>
 
   <ItemGroup>
