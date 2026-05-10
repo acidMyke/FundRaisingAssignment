@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-FundRaisingAssignment.Application-23411d20-1c41-475f-83e4-06e299e749c9</UserSecretsId>
+    <ContainerRegistry>ghcr.io</ContainerRegistry>
+    <ContainerRepository>acidmyke/fundraisingassignment</ContainerRepository>
   </PropertyGroup>
 
   <ItemGroup>
