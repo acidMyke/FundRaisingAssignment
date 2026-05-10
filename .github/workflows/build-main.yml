@@ -29,7 +29,7 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.DB_CONNECTION_STRINGS }}
       - name: Test
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.DB_CONNECTION_STRINGS }}
       - name: Publish Test Result
