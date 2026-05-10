@@ -25,7 +25,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Container
         working-directory: ./FundRaisingAssignment.Application
-        run: dotnet publish --os linux --arch x64 /t:PublishContainer
+        run: dotnet publish --os linux --arch x64 /p:ContainerRegistry=ghcr.io /t:PublishContainer
   deploy:
     runs-on: ubuntu-latest
     environment: prod
