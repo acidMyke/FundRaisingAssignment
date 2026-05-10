@@ -79,6 +79,8 @@ public class CampaignPageModel : PageModel
             CanReview = !IsOwner && campaign.Status == CampaignStatus.Active && !AlreadyReviewed;
             // Donations: not owner, campaign Active
             CanDonate = !IsOwner && campaign.AcceptsDonations;
+
+            await _svc.TrackUserViewAsync(campaign, user);
         }
         else
         {

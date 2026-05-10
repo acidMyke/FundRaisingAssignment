@@ -344,4 +344,17 @@ public class CampaignService(ApplicationDbContext db) : ICampaignService
             .ThenBy(d => d.CreatedAt)
             .Take(count)
             .ToListAsync();
+
+    public async Task TrackUserViewAsync(Campaign campaign, ApplicationUser user)
+    {
+        var existing = await _db.CampaignVisits
+            .FirstOrDefaultAsync(v => v.CampaignId == campaign.Id && v.UserId == user.Id);
+
+        if (existing == null)
+        {
+            _db.CampaignVisits.Add(new CampaignVisit { CampaignId = campaign.Id, UserId = user.Id });
+            await _db.SaveChangesAsync();
+        }
+    }
+
 }
