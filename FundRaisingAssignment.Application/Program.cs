@@ -1,12 +1,14 @@
 using FundRaisingAssignment.Application.Data;
+using FundRaisingAssignment.Application.Interfaces;
+using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Repositories;
 using FundRaisingAssignment.Application.Security;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using FundRaisingAssignment.Application.Interfaces;
 using OfficeOpenXml;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +53,9 @@ builder.Services.AddAuthorizationBuilder()
 // ── Application services ──────────────────────────────────────────────────────
 builder.Services.AddScoped<ICampaignService, CampaignService>();   // Josh's interface
 builder.Services.AddScoped<DonationService>();                     // Karthik's donation service
+
+builder.Services.AddScoped<ICampaignDigestRepository, CampaignDigestRepository>();
+builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
