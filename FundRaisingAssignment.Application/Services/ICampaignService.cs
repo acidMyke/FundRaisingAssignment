@@ -53,4 +53,6 @@ public interface ICampaignService
 
     // ── Leaderboard  ───────────────────────────────────────────
     Task<IReadOnlyList<Donation>> GetTopDonationsAsync(Guid campaignId, int topCount);
+    Task TrackUserViewAsync(Campaign campaign, ApplicationUser user);
+
 }
