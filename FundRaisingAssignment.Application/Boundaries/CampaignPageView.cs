@@ -43,7 +43,7 @@ public class CampaignPageView
         FundingGoal = c.FundingGoal;
         DeadlineDate = c.EndDate ?? default;
         Title = c.Title;
-        ShortDesc = c.ShortDescription;
+        ShortDesc = c.ShortDescription ?? string.Empty;
         Description = c.Description;
         Category = c.Category.ToString();
         Location = c.Location;
