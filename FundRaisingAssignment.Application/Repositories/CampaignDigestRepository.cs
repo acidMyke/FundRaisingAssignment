@@ -12,6 +12,7 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
     {
         return dbContext.Users
             .Where(u => u.ReceiveCampaignDigest &&
+                        u.Email != null &&
                         !u.IsEmailBounced &&
                         (!u.UnsubscribeCooldownUntil.HasValue || u.UnsubscribeCooldownUntil.Value <= executionTime) &&
                         (!u.LastCampaignUpdateSent.HasValue || u.LastCampaignUpdateSent.Value <= executionTime.AddDays(-7)))

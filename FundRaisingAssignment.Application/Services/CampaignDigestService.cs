@@ -1,11 +1,16 @@
+using FundRaisingAssignment.Application.Boundaries;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Models.ProcessingModels;
+using Microsoft.AspNetCore.Identity;
 
 namespace FundRaisingAssignment.Application.Services;
 
-public class CampaignDigestService(ICampaignDigestRepository repository, ILogger<CampaignDigestService> logger) : ICampaignDigestService
+public class CampaignDigestService(ICampaignDigestRepository repository,
+                                   ILogger<CampaignDigestService> logger,
+                                   ICampaignDigestEmailTemplateService templateService,
+                                   IEmailService emailService) : ICampaignDigestService
 {
     public class CampaignScore
     {
@@ -47,8 +52,14 @@ public class CampaignDigestService(ICampaignDigestRepository repository, ILogger
                 })
                 .OrderByDescending(cs => cs.Score)
                 .Take(3)
-                .Select(cs => cs.Campaign);
+                .Select(cs => cs.Campaign)
+                .ToList();
 
+                var viewModel = new CampaignDigestEmailViewModel(user, digestCampaigns);
+
+                var subject = templateService.GenerateSubject(viewModel);
+                var htmlBody = templateService.RenderHtmlBody(viewModel);
+                await emailService.SendEmailAsync(user.Email!, subject, htmlBody);
             }
             catch (Exception ex)
             {
@@ -57,16 +68,6 @@ public class CampaignDigestService(ICampaignDigestRepository repository, ILogger
         }
 
         await repository.SaveChangesAsync();
-    }
-
-    private CampaignScore ScoreCampaignForUser(Campaign campaign, double urgencyScore, ApplicationUser user)
-    {
-        var result = new CampaignScore { Campaign = campaign, Score = 0 };
-
-        result.Score += urgencyScore;
-
-
-        return result;
     }
 
     public double CalculateCampaignUrgencyScore(Campaign campaign, DateTime now)
