@@ -42,19 +42,18 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>    // UA01 — u
     .AddRoles<ApplicationRole>()                                   // UA01 — role assignment
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName)); // FR03 — email settings
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName)); // Cross-cutting — email settings
 
 var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
 
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
-    builder.Services.AddTransient<IEmailService, MailjetEmailService>();           // FR03 — Send Thank-You Message (Nicholas)
-    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>()); // FR03 — Identity adapter for the same transport
+    builder.Services.AddTransient<IEmailService, MailjetEmailService>(); // Cross-cutting — Email Service
+    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>()); // Cross-cutting — Identity adapter for the same transport
 }
 else
 {
-    builder.Services.AddTransient<IEmailService, LoggerEmailService>();
-    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>());
+    builder.Services.AddTransient<IEmailService, LoggerEmailService>(); // Cross-cutting — Email Service
 }
 
 // ── Authorization ─────────────────────────────────────────────────────────────
@@ -68,10 +67,11 @@ builder.Services.AddScoped<ICampaignService, CampaignService>();   // DN01, DN03
 
 builder.Services.AddScoped<ICampaignDigestRepository, CampaignDigestRepository>();
 builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
+builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEmailTemplateService>();
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
-builder.Services.AddHttpClient();             // FR03 — Mailjet HTTP client
+builder.Services.AddHttpClient();             // Cross-cutting — Mailjet HTTP client
 builder.Services.AddRazorPages();             // Cross-cutting — Razor Pages host
 
 // ── EPPlus license (UA02) ─────────────────────────────────────────────────────

@@ -51,9 +51,15 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                     Score = campaignUgencyScores[campaign.Id] + affinityProfile.CalculateAffinityScore(campaign)
                 })
                 .OrderByDescending(cs => cs.Score)
+                .Where(cs => cs.Score > 0)
                 .Take(3)
                 .Select(cs => cs.Campaign)
                 .ToList();
+
+                if (digestCampaigns.Count == 0)
+                {
+                    continue;
+                }
 
                 var viewModel = new CampaignDigestEmailViewModel(user, digestCampaigns);
 
