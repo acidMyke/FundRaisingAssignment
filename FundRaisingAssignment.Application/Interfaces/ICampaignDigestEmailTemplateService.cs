@@ -1,4 +1,4 @@
-using FundRaisingAssignment.Application.Boundaries;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 
 namespace FundRaisingAssignment.Application.Interfaces;
 

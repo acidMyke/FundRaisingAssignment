@@ -1,7 +1,5 @@
 
-using FundRaisingAssignment.Application.Models;
-
-namespace FundRaisingAssignment.Application.Boundaries;
+namespace FundRaisingAssignment.Application.Models.ProcessingModels;
 
 public class CampaignDigestEmailViewModel(ApplicationUser user, List<Campaign> campaigns)
 {

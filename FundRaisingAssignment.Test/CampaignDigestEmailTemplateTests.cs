@@ -1,4 +1,4 @@
-using FundRaisingAssignment.Application.Boundaries;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 

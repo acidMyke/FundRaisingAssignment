@@ -1,5 +1,5 @@
 using System.Text;
-using FundRaisingAssignment.Application.Boundaries;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 using FundRaisingAssignment.Application.Interfaces;
 
 namespace FundRaisingAssignment.Application.Services;
