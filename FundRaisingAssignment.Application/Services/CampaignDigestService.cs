@@ -54,6 +54,18 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 .Where(cs => cs.Score > 0)
                 .Take(3)
                 .Select(cs => cs.Campaign)
+                .Select(c => new CampaignDisplayItem
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    SummaryText = !string.IsNullOrEmpty(c.ShortDescription)
+                                    ? c.ShortDescription
+                                    : (c.Description.Length > 150 ? string.Concat(c.Description.AsSpan(0, 147), "...") : c.Description),
+                    FormattedGoal = c.FundingGoal.ToString("N0") + " USD",
+                    FormattedRaised = c.CurrentAmount.ToString("N0") + " USD",
+                    ProgressPercentage = c.GetProgressPercentage()
+
+                })
                 .ToList();
 
                 if (digestCampaigns.Count == 0)
@@ -61,7 +73,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                     continue;
                 }
 
-                var viewModel = new CampaignDigestEmailViewModel(user, digestCampaigns);
+                var viewModel = new CampaignDigestEmailViewModel
+                {
+                    Campaigns = digestCampaigns
+                };
 
                 var subject = templateService.GenerateSubject(viewModel);
                 var htmlBody = templateService.RenderHtmlBody(viewModel);

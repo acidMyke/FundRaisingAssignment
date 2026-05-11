@@ -242,6 +242,13 @@ namespace FundRaisingAssignment.Application.Models
                 FlagReason = $"Auto-flagged: low review ({stars} stars) from {reviewerEmail}.";
             }
         }
+
+
+        public decimal GetProgressPercentage()
+        {
+            if (FundingGoal <= 0) return 0;
+            return Math.Min(100, Math.Round(CurrentAmount / FundingGoal * 100));
+        }
         #endregion
     }
 }

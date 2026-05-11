@@ -1,9 +1,17 @@
 
 namespace FundRaisingAssignment.Application.Models.ProcessingModels;
 
-public class CampaignDigestEmailViewModel(ApplicationUser user, List<Campaign> campaigns)
+public class CampaignDigestEmailViewModel
 {
-    public ApplicationUser User { get; } = user;
-    public List<Campaign> Campaigns { get; } = campaigns;
+    public required List<CampaignDisplayItem> Campaigns { get; set; }
+}
 
+public class CampaignDisplayItem
+{
+    public required Guid Id { get; set; }
+    public required string Title { get; set; }
+    public required string SummaryText { get; set; }
+    public required string FormattedGoal { get; set; }
+    public required string FormattedRaised { get; set; }
+    public decimal ProgressPercentage { get; set; }
 }
