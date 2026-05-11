@@ -27,22 +27,8 @@ public class CampaignDigestEmailTemplateService : ICampaignDigestEmailTemplateSe
         {
             sb.AppendLine("<hr />");
             sb.AppendLine($"<h2>{campaign.Title}</h2>");
-
-            // Fallback truncation logic
-            string summary = !string.IsNullOrEmpty(campaign.ShortDescription)
-                ? campaign.ShortDescription
-                : (campaign.Description.Length > 150 ? string.Concat(campaign.Description.AsSpan(0, 147), "...") : campaign.Description);
-
-            sb.AppendLine($"<p>{summary}</p>");
-
-            // Progress Math
-            decimal progressPercent = 0;
-            if (campaign.FundingGoal > 0)
-            {
-                progressPercent = Math.Min(100, Math.Round(campaign.CurrentAmount / campaign.FundingGoal * 100));
-            }
-
-            sb.AppendLine($"<p>Goal: {campaign.FundingGoal:N0} USD | Raised: {campaign.CurrentAmount:N0} USD ({progressPercent}%)</p>");
+            sb.AppendLine($"<p>{campaign.SummaryText}</p>");
+            sb.AppendLine($"<p>Goal: {campaign.FormattedGoal} | Raised: {campaign.FormattedRaised} ({campaign.ProgressPercentage}%)</p>");
             sb.AppendLine($"<p><a href=\"http://givehive.acidmyke.link/Dashboard/CampaignPage/{campaign.Id}\">View Campaign</a></p>");
         }
 
