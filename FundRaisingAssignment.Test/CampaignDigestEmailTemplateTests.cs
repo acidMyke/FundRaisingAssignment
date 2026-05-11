@@ -29,7 +29,7 @@ public class CampaignEmailDigestTemplateServiceTests
         var result = _service.GenerateSubject(viewModel);
 
         // Assert
-        Assert.Equal("Hey Friend, we found a campaign you'll love: \"Save the Wetlands\"", result);
+        Assert.Equal("We found a campaign you'll love: \"Save the Wetlands\"", result);
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public class CampaignEmailDigestTemplateServiceTests
         var result = _service.GenerateSubject(viewModel);
 
         // Assert
-        Assert.Equal("Hey Friend, we found a campaign you'll love: \"Save the Wetlands\"", result);
+        Assert.Equal("We found a campaign you'll love: \"Save the Wetlands\"", result);
     }
 
     [Fact]
