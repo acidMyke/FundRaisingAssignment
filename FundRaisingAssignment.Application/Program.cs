@@ -58,6 +58,9 @@ builder.Services.AddAuthorizationBuilder()
 
 // ── Application services ──────────────────────────────────────────────────────
 builder.Services.AddScoped<ICampaignService, CampaignService>();   // DN01, DN03, FR01, PM01, PM06 — backbone service
+builder.Services.AddScoped<DashboardService>();   // PM05 — Platform Analytics Dashboard
+builder.Services.AddScoped<AnalyticsService>();   // PM05 — Platform Analytics Dashboard
+
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
@@ -118,6 +121,13 @@ using (var scope = app.Services.CreateScope())
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser is not null && !await userManager.IsInRoleAsync(adminUser, ApplicationRole.Names.Admin))
         await userManager.AddToRoleAsync(adminUser, ApplicationRole.Names.Admin);
+
+    // Assign PlatformManager role to the seed account (change email in appsettings if needed)
+    var pmEmail = builder.Configuration["PlatformManagerSeedEmail"] ?? "manager@example.com";
+    var pmUser = await userManager.FindByEmailAsync(pmEmail);
+    if (pmUser is not null && !await userManager.IsInRoleAsync(pmUser, "PlatformManager"))
+        await userManager.AddToRoleAsync(pmUser, "PlatformManager");
+
 
     // ── Optional one-shot dataset seed (run with `dotnet run -- --seed`) ──────
     if (args.Contains("--seed"))

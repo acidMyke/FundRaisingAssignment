@@ -50,6 +50,13 @@
         ⚑ Flagged Campaigns
       </a>
     }
+    @if (User.IsInRole("PlatformManager"))
+    {
+        <a asp-area="Dashboard" asp-page="/ShowDashboard"
+          class="dash-link @active("/ShowDashboard")">
+            📊 View Analytics Dashboard
+        </a>
+    }
   </div>
 </nav>
 
