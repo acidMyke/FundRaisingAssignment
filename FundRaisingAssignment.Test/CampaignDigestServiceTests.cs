@@ -1,5 +1,6 @@
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
+using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -27,6 +28,33 @@ public class CampaignDigestServiceTests
             _mockTemplateService.Object,
             _mockEmailService.Object
         );
+    }
+
+
+    [Fact]
+    public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
+    {
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+            .ReturnsAsync([]);
+
+        await _service.TriggerDigestProcessingAsync();
+
+        _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task TriggerDigestProcessingAsync_NoCampaigns_DoesNotFetchHistory()
+    {
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+            .ReturnsAsync([new ApplicationUser { Id = Guid.NewGuid() }]);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
+            .ReturnsAsync([]);
+
+        await _service.TriggerDigestProcessingAsync();
+
+        _mockRepository.Verify(r => r.GetHistoryContextsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
 
 }
