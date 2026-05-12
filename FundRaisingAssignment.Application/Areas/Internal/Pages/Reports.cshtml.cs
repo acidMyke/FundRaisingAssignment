@@ -244,7 +244,7 @@ public class ReportsModel : PageModel
     //  based on the foreign key configured in OnModelCreating, so it doesn't
     //  matter whether Campaign.Id is int / Guid / string / long.
     // ======================================================================
-    private async Task<PlatformReport> GenerateReportAsync(DateTime start, DateTime end)
+    internal async Task<PlatformReport> GenerateReportAsync(DateTime start, DateTime end)
     {
         // End-of-day handling: include donations made any time on the end date
         // by using exclusive next-midnight as the upper bound.

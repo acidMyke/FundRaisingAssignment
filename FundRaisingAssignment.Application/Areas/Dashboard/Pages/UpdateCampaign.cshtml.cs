@@ -90,7 +90,7 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
             Input = new InputModel
             {
                 Title = c.Title,
-                ShortDescription = c.ShortDescription,
+                ShortDescription = c.ShortDescription ?? string.Empty,
                 Description = c.Description,
                 Category = c.Category,
                 Location = c.Location,
