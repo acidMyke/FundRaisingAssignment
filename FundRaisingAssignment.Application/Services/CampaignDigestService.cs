@@ -16,7 +16,6 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     {
         public Campaign Campaign { get; set; } = null!;
         public double Score { get; set; }
-        public bool Suppress { get; set; }
     }
 
     public async Task TriggerDigestProcessingAsync()
@@ -53,19 +52,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 .OrderByDescending(cs => cs.Score)
                 .Where(cs => cs.Score > 0)
                 .Take(3)
-                .Select(cs => cs.Campaign)
-                .Select(c => new CampaignDisplayItem
-                {
-                    Id = c.Id,
-                    Title = c.Title,
-                    SummaryText = !string.IsNullOrEmpty(c.ShortDescription)
-                                    ? c.ShortDescription
-                                    : (c.Description.Length > 150 ? string.Concat(c.Description.AsSpan(0, 147), "...") : c.Description),
-                    FormattedGoal = c.FundingGoal.ToString("N0") + " USD",
-                    FormattedRaised = c.CurrentAmount.ToString("N0") + " USD",
-                    ProgressPercentage = c.GetProgressPercentage()
-
-                })
+                .Select(cs => MapCampaignToDisplayItem(cs.Campaign))
                 .ToList();
 
                 if (digestCampaigns.Count == 0)
@@ -107,5 +94,20 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             if (percent >= 0.75m && percent < 1.0m) score += 35;
         }
         return score;
+    }
+
+    public CampaignDisplayItem MapCampaignToDisplayItem(Campaign campaign)
+    {
+        return new CampaignDisplayItem
+        {
+            Id = campaign.Id,
+            Title = campaign.Title,
+            SummaryText = !string.IsNullOrEmpty(campaign.ShortDescription)
+                                    ? campaign.ShortDescription
+                                    : (campaign.Description.Length > 150 ? string.Concat(campaign.Description.AsSpan(0, 147), "...") : campaign.Description),
+            FormattedGoal = campaign.FundingGoal.ToString("N0") + " USD",
+            FormattedRaised = campaign.CurrentAmount.ToString("N0") + " USD",
+            ProgressPercentage = campaign.GetProgressPercentage()
+        };
     }
 }
