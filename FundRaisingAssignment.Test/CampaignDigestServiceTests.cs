@@ -80,6 +80,65 @@ public class CampaignDigestServiceTests
     }
 
     [Fact]
+    public void MapCampaignToDisplayItem_WithShortDescription_UsesShortDescription()
+    {
+        var campaign = new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test Title",
+            ShortDescription = "Short summary",
+            Description = new string('A', 200),
+            FundingGoal = 2500m,
+            CurrentAmount = 1250m
+        };
+
+        var result = _service.MapCampaignToDisplayItem(campaign);
+
+        Assert.Equal(campaign.Id, result.Id);
+        Assert.Equal("Test Title", result.Title);
+        Assert.Equal("Short summary", result.SummaryText);
+        Assert.Equal("2,500 USD", result.FormattedGoal);
+        Assert.Equal("1,250 USD", result.FormattedRaised);
+        Assert.Equal(50m, result.ProgressPercentage);
+    }
+
+    [Fact]
+    public void MapCampaignToDisplayItem_NoShortDescription_UsesFullDescription()
+    {
+        var campaign = new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test Title",
+            ShortDescription = null,
+            Description = "Full Description",
+            FundingGoal = 1000m,
+            CurrentAmount = 0m
+        };
+
+        var result = _service.MapCampaignToDisplayItem(campaign);
+
+        Assert.Equal("Full Description", result.SummaryText);
+    }
+
+    [Fact]
+    public void MapCampaignToDisplayItem_NoShortDescription_LongDescription_Truncates()
+    {
+        var campaign = new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test Title",
+            ShortDescription = null,
+            Description = new string('A', 200),
+            FundingGoal = 1000m,
+            CurrentAmount = 0m
+        };
+
+        var result = _service.MapCampaignToDisplayItem(campaign);
+
+        Assert.Equal(new string('A', 147) + "...", result.SummaryText);
+    }
+
+    [Fact]
     public void BuildProfile_EmptyContext_ReturnsEmptyProfile()
     {
 
