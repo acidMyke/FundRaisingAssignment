@@ -66,6 +66,50 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
         return result;
     }
 
+    public Task<List<UserCampaignInteractionDto>> GetPastDonationsForUsersAsync(IEnumerable<Guid> userIds)
+    {
+        var userIdsList = userIds.ToList();
+        return dbContext.Donations
+            .Where(d => d.UserId.HasValue && userIdsList.Contains(d.UserId.Value))
+            .Select(d => new UserCampaignInteractionDto
+            {
+                UserId = d.UserId!.Value,
+                CampaignId = d.CampaignId,
+                DonationAmount = d.Amount
+            })
+            .ToListAsync();
+    }
+
+    public Task<List<UserCampaignInteractionDto>> GetPastVisitsForUsersAsync(IEnumerable<Guid> userIds)
+    {
+        var userIdsList = userIds.ToList();
+        return dbContext.CampaignVisits
+            .Where(v => userIdsList.Contains(v.UserId))
+            .Select(v => new UserCampaignInteractionDto
+            {
+                UserId = v.UserId,
+                CampaignId = v.CampaignId,
+                VisitCount = v.VisitCount
+            })
+            .ToListAsync();
+    }
+
+    public async Task<Dictionary<Guid, CampaignSummaryContext>> GetCampaignSummariesAsync(IEnumerable<Guid> campaignIds)
+    {
+        var campaignIdsList = campaignIds.ToList();
+        var campaigns = await dbContext.Campaigns
+            .Where(c => campaignIdsList.Contains(c.Id))
+            .Select(c => new CampaignSummaryContext
+            {
+                Id = c.Id,
+                Category = c.Category,
+                OwnerId = c.OwnerId
+            })
+            .ToListAsync();
+
+        return campaigns.ToDictionary(c => c.Id);
+    }
+
     public Task SaveChangesAsync()
     {
         return dbContext.SaveChangesAsync();
