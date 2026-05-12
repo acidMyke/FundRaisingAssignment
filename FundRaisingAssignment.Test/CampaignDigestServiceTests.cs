@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
@@ -58,6 +59,7 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
+
     [Theory]
     [InlineData(12, 0, 1000, 50)]
     [InlineData(48, 0, 1000, 30)]
@@ -272,5 +274,83 @@ public class CampaignDigestServiceTests
         var score = _service.CalculateAffinityScore(profile, candidateCampaign);
 
         Assert.Equal(0.0, score);
+    }
+
+    [Fact]
+    public void GetTopCampaignsForUser_ReturnsTopThreeByScore()
+    {
+        // Arrange
+        var profile = new CampaignDigestService.UserAffinityProfile();
+        var campaigns = Enumerable.Range(1, 5).Select(i => new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = $"C{i}",
+            Category = (CampaignCategory)(i % 3)
+        }).ToList();
+
+        var urgencyScores = campaigns.ToDictionary(c => c.Id, c => (double)campaigns.IndexOf(c));
+
+        // Act
+        var result = _service.GetTopCampaignsForUser(profile, campaigns, urgencyScores).ToList();
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal("C5", result[0].Title); // Score 4
+        Assert.Equal("C4", result[1].Title); // Score 3
+        Assert.Equal("C3", result[2].Title); // Score 2
+    }
+
+    [Fact]
+    public void GetTopCampaignsForUser_ExcludesZeroOrNegativeScores()
+    {
+        // Arrange
+        var profile = new CampaignDigestService.UserAffinityProfile();
+        var campaigns = Enumerable.Range(1, 3).Select(i => new Campaign { Id = Guid.NewGuid(), Title = $"C{i}" }).ToList();
+        var urgencyScores = new Dictionary<Guid, double>
+        {
+            { campaigns[0].Id, 10.0 },
+            { campaigns[1].Id, 0.0 },
+            { campaigns[2].Id, -5.0 }
+        };
+
+        // Act
+        var result = _service.GetTopCampaignsForUser(profile, campaigns, urgencyScores).ToList();
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("C1", result[0].Title);
+    }
+
+    [Fact]
+    public async Task SendDigestEmailAsync_EmptyCampaigns_DoesNotSendEmail()
+    {
+        // Arrange
+        var user = new ApplicationUser { Email = "" };
+
+        // Act
+        await _service.SendDigestEmailAsync(user, []);
+
+        // Assert
+        _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendDigestEmailAsync_WithCampaigns_SendsEmailWithCorrectDetails()
+    {
+        // Arrange
+        const string EMAIL = "test@example.com";
+        const string SUBJECT = "Test Subject";
+        const string BODY = "Test Body";
+        var user = new ApplicationUser { Email = EMAIL };
+        var campaigns = new List<Campaign> { new() { Id = Guid.NewGuid(), Title = "", Description = "" } };
+
+        _mockTemplateService.Setup(t => t.GenerateSubject(It.IsAny<CampaignDigestEmailViewModel>())).Returns(SUBJECT);
+        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
+
+        // Act
+        await _service.SendDigestEmailAsync(user, campaigns);
+
+        // Assert
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
     }
 }

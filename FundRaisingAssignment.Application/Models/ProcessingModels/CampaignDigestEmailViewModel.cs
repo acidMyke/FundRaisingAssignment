@@ -3,7 +3,7 @@ namespace FundRaisingAssignment.Application.Models.ProcessingModels;
 
 public class CampaignDigestEmailViewModel
 {
-    public required List<CampaignDisplayItem> Campaigns { get; set; }
+    public required IEnumerable<CampaignDisplayItem> Campaigns { get; set; }
 }
 
 public class CampaignDisplayItem

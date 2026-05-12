@@ -1,9 +1,7 @@
-using FundRaisingAssignment.Application.Boundaries;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Models.ProcessingModels;
-using Microsoft.AspNetCore.Identity;
 
 namespace FundRaisingAssignment.Application.Services;
 
@@ -56,8 +54,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             .Concat(allPastDonations.Select(d => d.CampaignId))
         );
         var campaignSummaries = await repository.GetCampaignSummariesAsync(relevantCampaignIds);
-
-        var campaignUgencyScores = activeCampaigns.ToDictionary(c => c.Id, c => CalculateCampaignUrgencyScore(c, executionTime));
+        var campaignUrgencyScores = activeCampaigns.ToDictionary(c => c.Id, c => CalculateCampaignUrgencyScore(c, executionTime));
 
         var visitsGrouped = allPastVisits.ToLookup(v => v.UserId);
         var donationsGrouped = allPastDonations.ToLookup(d => d.UserId);
@@ -67,41 +64,44 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             try
             {
                 var userInteractions = visitsGrouped[user.Id].Concat(donationsGrouped[user.Id]);
-
                 var affinityProfile = BuildProfile(userInteractions, campaignSummaries);
+                var digestCampaigns = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores);
 
-                var digestCampaigns = activeCampaigns.Select(campaign => new CampaignScore
-                {
-                    Campaign = campaign,
-                    Score = campaignUgencyScores[campaign.Id] + CalculateAffinityScore(affinityProfile, campaign)
-                })
-                .OrderByDescending(cs => cs.Score)
-                .Where(cs => cs.Score > 0)
-                .Take(3)
-                .Select(cs => MapCampaignToDisplayItem(cs.Campaign))
-                .ToList();
-
-                if (digestCampaigns.Count == 0)
-                {
-                    continue;
-                }
-
-                var viewModel = new CampaignDigestEmailViewModel
-                {
-                    Campaigns = digestCampaigns
-                };
-
-                var subject = templateService.GenerateSubject(viewModel);
-                var htmlBody = templateService.RenderHtmlBody(viewModel);
-                await emailService.SendEmailAsync(user.Email!, subject, htmlBody);
+                await SendDigestEmailAsync(user, digestCampaigns);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to process digest for user {UserId}", user.Id);
             }
         }
+    }
 
-        await repository.SaveChangesAsync();
+    public IEnumerable<Campaign> GetTopCampaignsForUser(UserAffinityProfile affinityProfile,
+                                                        List<Campaign> activeCampaigns,
+                                                        Dictionary<Guid, double> campaignUrgencyScores)
+    {
+        return activeCampaigns.Select(campaign => new CampaignScore
+        {
+            Campaign = campaign,
+            Score = campaignUrgencyScores[campaign.Id] + CalculateAffinityScore(affinityProfile, campaign)
+        })
+        .OrderByDescending(cs => cs.Score)
+        .Where(cs => cs.Score > 0)
+        .Take(3)
+        .Select(cs => cs.Campaign);
+    }
+
+    public async Task SendDigestEmailAsync(ApplicationUser user, IEnumerable<Campaign> digestCampaigns)
+    {
+        if (!digestCampaigns.Any())
+        {
+            return;
+        }
+
+        var viewModel = new CampaignDigestEmailViewModel { Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem) };
+        var subject = templateService.GenerateSubject(viewModel);
+        var htmlBody = templateService.RenderHtmlBody(viewModel);
+        await emailService.SendEmailAsync(user.Email!, subject, htmlBody);
     }
 
     public UserAffinityProfile BuildProfile(IEnumerable<UserCampaignInteractionDto> interactions,
@@ -154,7 +154,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         return totalScore;
     }
 
-    private void AddScore<TKey>(Dictionary<TKey, double> dictionary, TKey key, double scoreToAdd) where TKey : notnull
+    private static void AddScore<TKey>(Dictionary<TKey, double> dictionary, TKey key, double scoreToAdd) where TKey : notnull
     {
         if (dictionary.ContainsKey(key))
             dictionary[key] += scoreToAdd;
