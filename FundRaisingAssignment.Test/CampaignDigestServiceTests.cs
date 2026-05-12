@@ -1,6 +1,7 @@
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -57,4 +58,164 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
 
+    [Fact]
+    public void BuildProfile_EmptyContext_ReturnsEmptyProfile()
+    {
+
+        Assert.Empty(profile.CategoryAffinities);
+        Assert.Empty(profile.OwnerAffinities);
+    }
+
+    [Fact]
+    public void BuildProfile_WithVisits_CalculatesScoresCorrectly()
+    {
+        var campaignId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var context = new UserHistoryContext
+        {
+            CampaignSummaryContexts =
+            [
+                new() { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId }
+            ],
+            PastVisits =
+            [
+                new() { CampaignId = campaignId, VisitCount = 3 }
+            ]
+        };
+
+        var profile = _service.BuildProfile(context);
+
+        Assert.Contains(CampaignCategory.Education, profile.CategoryAffinities);
+        Assert.Contains(ownerId, profile.OwnerAffinities);
+        Assert.Equal(3.0, profile.CategoryAffinities[CampaignCategory.Education]);
+        Assert.Equal(3.0, profile.OwnerAffinities[ownerId]);
+    }
+
+    [Fact]
+    public void BuildProfile_WithDonations_CalculatesScoresCorrectly()
+    {
+        var campaignId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var context = new UserHistoryContext
+        {
+            CampaignSummaryContexts =
+            [
+                new() { Id = campaignId, Category = CampaignCategory.Medical, OwnerId = ownerId }
+            ],
+            PastDonations =
+            [
+                new() { CampaignId = campaignId, Amount = 100m }
+            ]
+        };
+
+        var profile = _service.BuildProfile(context);
+
+        Assert.Contains(CampaignCategory.Medical, profile.CategoryAffinities);
+        Assert.Contains(ownerId, profile.OwnerAffinities);
+        Assert.Equal(12.0, profile.CategoryAffinities[CampaignCategory.Medical]);
+        Assert.Equal(12.0, profile.OwnerAffinities[ownerId]);
+    }
+
+    [Fact]
+    public void BuildProfile_AccumulatesScoresCorrectly()
+    {
+        var campaign1Id = Guid.NewGuid();
+        var campaign2Id = Guid.NewGuid();
+        var owner1Id = Guid.NewGuid();
+        var owner2Id = Guid.NewGuid();
+
+        var context = new UserHistoryContext
+        {
+            CampaignSummaryContexts =
+            [
+                new() { Id = campaign1Id, Category = CampaignCategory.Environment, OwnerId = owner1Id },
+                new() { Id = campaign2Id, Category = CampaignCategory.Environment, OwnerId = owner2Id }
+            ],
+            PastVisits =
+            [
+                new() { CampaignId = campaign1Id, VisitCount = 2 }
+            ],
+            PastDonations =
+            [
+                new() { CampaignId = campaign2Id, Amount = 50m }
+            ]
+        };
+
+        var profile = _service.BuildProfile(context);
+
+        Assert.Contains(CampaignCategory.Environment, profile.CategoryAffinities);
+        Assert.Contains(owner1Id, profile.OwnerAffinities);
+        Assert.Contains(owner2Id, profile.OwnerAffinities);
+
+        Assert.Equal(13.0, profile.CategoryAffinities[CampaignCategory.Environment]);
+        Assert.Equal(2.0, profile.OwnerAffinities[owner1Id]);
+        Assert.Equal(11.0, profile.OwnerAffinities[owner2Id]);
+    }
+
+    [Fact]
+    public void BuildProfile_UnknownCampaigns_Ignored()
+    {
+        var context = new UserHistoryContext
+        {
+            CampaignSummaryContexts = [],
+            PastVisits =
+            [
+                new() { CampaignId = Guid.NewGuid(), VisitCount = 3 }
+            ],
+            PastDonations =
+            [
+                new() { CampaignId = Guid.NewGuid(), Amount = 100m }
+            ]
+        };
+
+        var profile = _service.BuildProfile(context);
+
+        Assert.Empty(profile.CategoryAffinities);
+        Assert.Empty(profile.OwnerAffinities);
+    }
+
+    [Fact]
+    public void CalculateAffinityScore_MatchesCategoryAndOwner_ReturnsSum()
+    {
+        var ownerId = Guid.NewGuid();
+        var context = new UserHistoryContext
+        {
+            CampaignSummaryContexts =
+            [
+                new() { Id = Guid.NewGuid(), Category = CampaignCategory.Education, OwnerId = ownerId }
+            ]
+        };
+        context.PastVisits =
+        [
+            new() { CampaignId = context.CampaignSummaryContexts[0].Id, VisitCount = 3 }
+        ];
+
+        var profile = _service.BuildProfile(context);
+
+        var candidateCampaign = new Campaign
+        {
+            Category = CampaignCategory.Education,
+            OwnerId = ownerId
+        };
+
+        var score = _service.CalculateAffinityScore(profile, candidateCampaign);
+
+        Assert.Equal(6.0, score);
+    }
+
+    [Fact]
+    public void CalculateAffinityScore_NoMatches_ReturnsZero()
+    {
+        var context = new UserHistoryContext();
+        var profile = _service.BuildProfile(context);
+        var candidateCampaign = new Campaign
+        {
+            Category = CampaignCategory.Education,
+            OwnerId = Guid.NewGuid()
+        };
+
+        var score = _service.CalculateAffinityScore(profile, candidateCampaign);
+
+        Assert.Equal(0.0, score);
+    }
 }

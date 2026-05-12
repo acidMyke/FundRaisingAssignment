@@ -18,6 +18,16 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         public double Score { get; set; }
     }
 
+    public class UserAffinityProfile
+    {
+        public Dictionary<CampaignCategory, double> CategoryAffinities { get; } = [];
+        public Dictionary<Guid, double> OwnerAffinities { get; } = [];
+    }
+
+    private const double VisitWeight = 1.0;
+    private const double DonationBaseWeight = 10.0;
+    private const double DonationAmountMultiplier = 0.02;
+
     public async Task TriggerDigestProcessingAsync()
     {
         var executionTime = DateTime.UtcNow;
@@ -43,11 +53,11 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         {
             try
             {
-                var affinityProfile = UserAffinityProfile.BuildProfile(historyContexts[user.Id]);
+                var affinityProfile = BuildProfile(historyContexts[user.Id]);
                 var digestCampaigns = activeCampaigns.Select(campaign => new CampaignScore
                 {
                     Campaign = campaign,
-                    Score = campaignUgencyScores[campaign.Id] + affinityProfile.CalculateAffinityScore(campaign)
+                    Score = campaignUgencyScores[campaign.Id] + CalculateAffinityScore(affinityProfile, campaign)
                 })
                 .OrderByDescending(cs => cs.Score)
                 .Where(cs => cs.Score > 0)
@@ -76,6 +86,70 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         }
 
         await repository.SaveChangesAsync();
+    }
+
+    public UserAffinityProfile BuildProfile(UserHistoryContext historyContext)
+    {
+        var profile = new UserAffinityProfile();
+
+        var campaignDetailsDict = historyContext.CampaignSummaryContexts?
+            .ToDictionary(c => c.Id, c => c) ?? [];
+
+        if (historyContext.PastVisits != null)
+        {
+            foreach (var visit in historyContext.PastVisits)
+            {
+                if (campaignDetailsDict.TryGetValue(visit.CampaignId, out var campaignInfo))
+                {
+                    double score = visit.VisitCount * VisitWeight;
+
+                    AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
+                    AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
+                }
+            }
+        }
+
+        if (historyContext.PastDonations != null)
+        {
+            foreach (var donation in historyContext.PastDonations)
+            {
+                if (campaignDetailsDict.TryGetValue(donation.CampaignId, out var campaignInfo))
+                {
+                    double amountScore = Convert.ToDouble(donation.Amount) * DonationAmountMultiplier;
+                    double score = DonationBaseWeight + amountScore;
+
+                    AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
+                    AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
+                }
+            }
+        }
+
+        return profile;
+    }
+
+    public double CalculateAffinityScore(UserAffinityProfile profile, Campaign candidateCampaign)
+    {
+        double totalScore = 0;
+
+        if (profile.CategoryAffinities.TryGetValue(candidateCampaign.Category, out double categoryScore))
+        {
+            totalScore += categoryScore;
+        }
+
+        if (profile.OwnerAffinities.TryGetValue(candidateCampaign.OwnerId, out double ownerScore))
+        {
+            totalScore += ownerScore;
+        }
+
+        return totalScore;
+    }
+
+    private void AddScore<TKey>(Dictionary<TKey, double> dictionary, TKey key, double scoreToAdd) where TKey : notnull
+    {
+        if (dictionary.ContainsKey(key))
+            dictionary[key] += scoreToAdd;
+        else
+            dictionary[key] = scoreToAdd;
     }
 
     public double CalculateCampaignUrgencyScore(Campaign campaign, DateTime now)
