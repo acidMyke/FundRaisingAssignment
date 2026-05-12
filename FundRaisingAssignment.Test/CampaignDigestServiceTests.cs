@@ -57,6 +57,27 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.GetHistoryContextsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
+    [Theory]
+    [InlineData(12, 0, 1000, 50)]
+    [InlineData(48, 0, 1000, 30)]
+    [InlineData(120, 0, 1000, 10)]
+    [InlineData(-1, 0, 1000, 0)]
+    [InlineData(200, 800, 1000, 35)]
+    [InlineData(12, 800, 1000, 85)]
+    public void CalculateCampaignUrgencyScore_ReturnsExpectedScore(int hoursRemaining, decimal currentAmount, decimal targetAmount, double expectedScore)
+    {
+        var now = DateTime.UtcNow;
+        var campaign = new Campaign
+        {
+            EndDate = now.AddHours(hoursRemaining),
+            CurrentAmount = currentAmount,
+            TargetAmount = targetAmount
+        };
+
+        var score = _service.CalculateCampaignUrgencyScore(campaign, now);
+
+        Assert.Equal(expectedScore, score);
+    }
 
     [Fact]
     public void BuildProfile_EmptyContext_ReturnsEmptyProfile()
