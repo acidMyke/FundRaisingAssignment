@@ -31,7 +31,6 @@ public class CampaignDigestServiceTests
         );
     }
 
-
     [Fact]
     public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
     {
@@ -54,7 +53,9 @@ public class CampaignDigestServiceTests
 
         await _service.TriggerDigestProcessingAsync();
 
-        _mockRepository.Verify(r => r.GetHistoryContextsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.GetPastVisitsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
     [Theory]
@@ -141,6 +142,7 @@ public class CampaignDigestServiceTests
     [Fact]
     public void BuildProfile_EmptyContext_ReturnsEmptyProfile()
     {
+        var profile = _service.BuildProfile([], new Dictionary<Guid, CampaignSummaryContext>());
 
         Assert.Empty(profile.CategoryAffinities);
         Assert.Empty(profile.OwnerAffinities);
@@ -151,19 +153,14 @@ public class CampaignDigestServiceTests
     {
         var campaignId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
-        var context = new UserHistoryContext
-        {
-            CampaignSummaryContexts =
-            [
-                new() { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId }
-            ],
-            PastVisits =
-            [
-                new() { CampaignId = campaignId, VisitCount = 3 }
-            ]
-        };
 
-        var profile = _service.BuildProfile(context);
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
+        };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3 } };
+
+        var profile = _service.BuildProfile(interactions, summaries);
 
         Assert.Contains(CampaignCategory.Education, profile.CategoryAffinities);
         Assert.Contains(ownerId, profile.OwnerAffinities);
@@ -176,19 +173,14 @@ public class CampaignDigestServiceTests
     {
         var campaignId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
-        var context = new UserHistoryContext
-        {
-            CampaignSummaryContexts =
-            [
-                new() { Id = campaignId, Category = CampaignCategory.Medical, OwnerId = ownerId }
-            ],
-            PastDonations =
-            [
-                new() { CampaignId = campaignId, Amount = 100m }
-            ]
-        };
 
-        var profile = _service.BuildProfile(context);
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Medical, OwnerId = ownerId } }
+        };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, DonationAmount = 100m } };
+
+        var profile = _service.BuildProfile(interactions, summaries);
 
         Assert.Contains(CampaignCategory.Medical, profile.CategoryAffinities);
         Assert.Contains(ownerId, profile.OwnerAffinities);
@@ -204,24 +196,19 @@ public class CampaignDigestServiceTests
         var owner1Id = Guid.NewGuid();
         var owner2Id = Guid.NewGuid();
 
-        var context = new UserHistoryContext
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
         {
-            CampaignSummaryContexts =
-            [
-                new() { Id = campaign1Id, Category = CampaignCategory.Environment, OwnerId = owner1Id },
-                new() { Id = campaign2Id, Category = CampaignCategory.Environment, OwnerId = owner2Id }
-            ],
-            PastVisits =
-            [
-                new() { CampaignId = campaign1Id, VisitCount = 2 }
-            ],
-            PastDonations =
-            [
-                new() { CampaignId = campaign2Id, Amount = 50m }
-            ]
+            { campaign1Id, new CampaignSummaryContext { Id = campaign1Id, Category = CampaignCategory.Environment, OwnerId = owner1Id } },
+            { campaign2Id, new CampaignSummaryContext { Id = campaign2Id, Category = CampaignCategory.Environment, OwnerId = owner2Id } }
         };
 
-        var profile = _service.BuildProfile(context);
+        var interactions = new List<UserCampaignInteractionDto>
+        {
+            new() { CampaignId = campaign1Id, VisitCount = 2 },
+            new() { CampaignId = campaign2Id, DonationAmount = 50m }
+        };
+
+        var profile = _service.BuildProfile(interactions, summaries);
 
         Assert.Contains(CampaignCategory.Environment, profile.CategoryAffinities);
         Assert.Contains(owner1Id, profile.OwnerAffinities);
@@ -235,20 +222,13 @@ public class CampaignDigestServiceTests
     [Fact]
     public void BuildProfile_UnknownCampaigns_Ignored()
     {
-        var context = new UserHistoryContext
+        var interactions = new List<UserCampaignInteractionDto>
         {
-            CampaignSummaryContexts = [],
-            PastVisits =
-            [
-                new() { CampaignId = Guid.NewGuid(), VisitCount = 3 }
-            ],
-            PastDonations =
-            [
-                new() { CampaignId = Guid.NewGuid(), Amount = 100m }
-            ]
+            new() { CampaignId = Guid.NewGuid(), VisitCount = 3 },
+            new() { CampaignId = Guid.NewGuid(), DonationAmount = 100m }
         };
 
-        var profile = _service.BuildProfile(context);
+        var profile = _service.BuildProfile(interactions, new Dictionary<Guid, CampaignSummaryContext>());
 
         Assert.Empty(profile.CategoryAffinities);
         Assert.Empty(profile.OwnerAffinities);
@@ -258,19 +238,15 @@ public class CampaignDigestServiceTests
     public void CalculateAffinityScore_MatchesCategoryAndOwner_ReturnsSum()
     {
         var ownerId = Guid.NewGuid();
-        var context = new UserHistoryContext
-        {
-            CampaignSummaryContexts =
-            [
-                new() { Id = Guid.NewGuid(), Category = CampaignCategory.Education, OwnerId = ownerId }
-            ]
-        };
-        context.PastVisits =
-        [
-            new() { CampaignId = context.CampaignSummaryContexts[0].Id, VisitCount = 3 }
-        ];
+        var campaignId = Guid.NewGuid();
 
-        var profile = _service.BuildProfile(context);
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
+        };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3 } };
+
+        var profile = _service.BuildProfile(interactions, summaries);
 
         var candidateCampaign = new Campaign
         {
@@ -286,8 +262,7 @@ public class CampaignDigestServiceTests
     [Fact]
     public void CalculateAffinityScore_NoMatches_ReturnsZero()
     {
-        var context = new UserHistoryContext();
-        var profile = _service.BuildProfile(context);
+        var profile = _service.BuildProfile([], new Dictionary<Guid, CampaignSummaryContext>());
         var candidateCampaign = new Campaign
         {
             Category = CampaignCategory.Education,

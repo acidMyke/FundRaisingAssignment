@@ -46,14 +46,30 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             return;
         }
 
-        var historyContexts = await repository.GetHistoryContextsForUsersAsync(users.Select(u => u.Id));
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var allPastVisits = await repository.GetPastVisitsForUsersAsync(userIds);
+        var allPastDonations = await repository.GetPastDonationsForUsersAsync(userIds);
+
+        var relevantCampaignIds = new HashSet<Guid>(
+            allPastVisits.Select(v => v.CampaignId)
+            .Concat(allPastDonations.Select(d => d.CampaignId))
+        );
+        var campaignSummaries = await repository.GetCampaignSummariesAsync(relevantCampaignIds);
+
         var campaignUgencyScores = activeCampaigns.ToDictionary(c => c.Id, c => CalculateCampaignUrgencyScore(c, executionTime));
+
+        var visitsGrouped = allPastVisits.ToLookup(v => v.UserId);
+        var donationsGrouped = allPastDonations.ToLookup(d => d.UserId);
 
         foreach (var user in users)
         {
             try
             {
-                var affinityProfile = BuildProfile(historyContexts[user.Id]);
+                var userInteractions = visitsGrouped[user.Id].Concat(donationsGrouped[user.Id]);
+
+                var affinityProfile = BuildProfile(userInteractions, campaignSummaries);
+
                 var digestCampaigns = activeCampaigns.Select(campaign => new CampaignScore
                 {
                     Campaign = campaign,
@@ -88,36 +104,30 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         await repository.SaveChangesAsync();
     }
 
-    public UserAffinityProfile BuildProfile(UserHistoryContext historyContext)
+    public UserAffinityProfile BuildProfile(IEnumerable<UserCampaignInteractionDto> interactions,
+                                            Dictionary<Guid, CampaignSummaryContext> campaignSummaries)
     {
         var profile = new UserAffinityProfile();
 
-        var campaignDetailsDict = historyContext.CampaignSummaryContexts?
-            .ToDictionary(c => c.Id, c => c) ?? [];
-
-        if (historyContext.PastVisits != null)
+        foreach (var interaction in interactions)
         {
-            foreach (var visit in historyContext.PastVisits)
+            if (campaignSummaries.TryGetValue(interaction.CampaignId, out var campaignInfo))
             {
-                if (campaignDetailsDict.TryGetValue(visit.CampaignId, out var campaignInfo))
-                {
-                    double score = visit.VisitCount * VisitWeight;
+                double score = 0;
 
-                    AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
-                    AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
+                if (interaction.VisitCount > 0)
+                {
+                    score += interaction.VisitCount * VisitWeight;
                 }
-            }
-        }
 
-        if (historyContext.PastDonations != null)
-        {
-            foreach (var donation in historyContext.PastDonations)
-            {
-                if (campaignDetailsDict.TryGetValue(donation.CampaignId, out var campaignInfo))
+                if (interaction.DonationAmount > 0)
                 {
-                    double amountScore = Convert.ToDouble(donation.Amount) * DonationAmountMultiplier;
-                    double score = DonationBaseWeight + amountScore;
+                    double amountScore = Convert.ToDouble(interaction.DonationAmount) * DonationAmountMultiplier;
+                    score += DonationBaseWeight + amountScore;
+                }
 
+                if (score > 0)
+                {
                     AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
                     AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
                 }
