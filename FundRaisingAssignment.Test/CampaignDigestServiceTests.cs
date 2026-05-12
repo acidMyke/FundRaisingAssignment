@@ -353,4 +353,57 @@ public class CampaignDigestServiceTests
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
     }
+
+    [Fact]
+    public async Task TriggerDigestProcessingAsync_GoldenFlow_ValidUsersAndCampaigns_SendsEmail()
+    {
+        // Arrange
+        const string EMAIL = "test@example.com";
+        const string SUBJECT = "Test Subject";
+        const string BODY = "Test Body";
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var users = new List<ApplicationUser>
+        {
+            new ApplicationUser { Id = userId, Email = EMAIL }
+        };
+
+        var campaigns = new List<Campaign>
+        {
+            new Campaign
+            {
+                Id = campaignId,
+                Title = "",
+                Description = "",
+                FundingGoal = 1000m,
+                CurrentAmount = 500m,
+                TargetAmount = 1000m,
+                EndDate = now.AddHours(10)
+            }
+        };
+
+        var visits = new List<UserCampaignInteractionDto>();
+        var donations = new List<UserCampaignInteractionDto>();
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>();
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+
+        Expression<Func<IEnumerable<Guid>, bool>> containingUserId = ids => ids != null && ids.Contains(userId);
+        Expression<Func<IEnumerable<Guid>, bool>> containingCampaignId = ids => ids != null && ids.Contains(campaignId);
+
+        _mockRepository.Setup(r => r.GetPastVisitsForUsersAsync(It.Is(containingUserId))).ReturnsAsync(visits);
+        _mockRepository.Setup(r => r.GetPastDonationsForUsersAsync(It.Is(containingUserId))).ReturnsAsync(donations);
+        _mockRepository.Setup(r => r.GetCampaignSummariesAsync(It.Is(containingCampaignId))).ReturnsAsync(summaries);
+        _mockTemplateService.Setup(t => t.GenerateSubject(It.IsAny<CampaignDigestEmailViewModel>())).Returns(SUBJECT);
+        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
+
+        // Act
+        await _service.TriggerDigestProcessingAsync();
+
+        // Assert
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+    }
 }
