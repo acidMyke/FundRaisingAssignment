@@ -1,0 +1,91 @@
+@page
+@model FundRaisingAssignment.Application.Areas.Dashboard.Pages.ShowDashboardModel
+@{
+    ViewData["Title"] = "Platform Analytics Dashboard";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form method="get" class="mb-3">
+  <div class="row mb-2">
+    <div class="col-md-3">
+      <label>Start Date:</label>
+      <input type="date" asp-for="Filters.StartDate" class="form-control" />
+    </div>
+    <div class="col-md-3">
+      <label>End Date:</label>
+      <input type="date" asp-for="Filters.EndDate" class="form-control" />
+    </div>
+  </div>
+  <div class="row mb-2">
+    <div class="col-md-3">
+      <label>Category:</label>
+      <input type="text" asp-for="Filters.Category" class="form-control" placeholder="e.g. Education" />
+    </div>
+    <div class="col-md-3">
+      <label>Region:</label>
+      <input type="text" asp-for="Filters.Region" class="form-control" placeholder="e.g. Singapore" />
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary">Apply Filters</button>
+</form>
+
+
+@if (Model.ViewModel.KPIs.Any())
+{
+    <h3>KPIs</h3>
+    <ul>
+        @foreach (var kpi in Model.ViewModel.KPIs)
+        {
+            <li>@kpi.Name: @kpi.Value</li>
+        }
+    </ul>
+
+    <h3>Donation Growth</h3>
+    <canvas id="donationChart"></canvas>
+}
+
+@if (Model.ViewModel.Trends.Any())
+{
+    <h3>Trends</h3>
+    <ul>
+        @foreach (var trend in Model.ViewModel.Trends)
+        {
+            <li>@trend.Title - @trend.Description</li>
+        }
+    </ul>
+}
+
+@if (Model.ViewModel.Issues.Any())
+{
+    <h3>Issues</h3>
+    <ul>
+        @foreach (var issue in Model.ViewModel.Issues)
+        {
+            <li>@issue.Title - @issue.Description</li>
+        }
+    </ul>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        var ctx = document.getElementById('donationChart').getContext('2d');
+
+        var donationChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+                    Model.ViewModel.Trends.Select(t => t.Title))),
+                datasets: [{
+                    label: 'Donation Growth',
+                    data: @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+                        Model.ViewModel.Trends.Select(t => t.Value))),
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    fill: false
+                }]
+            }
+        });
+    </script>
+}
+
