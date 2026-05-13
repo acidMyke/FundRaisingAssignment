@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -16,6 +17,11 @@ namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages;
 /// POST                            → validateGoal + validateDeadline + saveGoalAndDeadline
 ///                                   → displayGoalAndCountdown (redirect to CampaignPage)
 /// </summary>
+// Only approved Fundraisers may set / edit funding goals.
+[Authorize(Roles = ApplicationRole.Names.Fundraiser + "," +
+                   ApplicationRole.Names.Admin + "," +
+                   ApplicationRole.Names.PlatformManager + "," +
+                   ApplicationRole.Names.CampaignManager)]
 public class IndexModel : PageModel
 {
     private readonly ICampaignService _svc;

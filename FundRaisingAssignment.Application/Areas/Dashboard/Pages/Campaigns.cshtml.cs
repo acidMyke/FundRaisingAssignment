@@ -17,13 +17,26 @@ public class CampaignsModel : PageModel
         _um = um;
     }
 
+    /// <summary>
+    /// True when the user has applied as a fundraiser but admin has not yet approved.
+    /// The view uses this to show a pending-approval notice and hide campaign-creation.
+    /// </summary>
+    public bool IsPendingFundraiser { get; private set; }
+
     public IReadOnlyList<Campaign> Campaigns { get; private set; } = [];
 
     public async Task OnGetAsync()
     {
         var user = await _um.GetUserAsync(User);
-        if (user is not null)
-            Campaigns = await _svc.GetCampaignsByOwnerAsync(user.Id);
+        if (user is null) return;
+
+        // Set the pending flag so the view can show an approval notice.
+        IsPendingFundraiser = await _um.IsInRoleAsync(user, ApplicationRole.Names.PendingFundraiser)
+                           && !await _um.IsInRoleAsync(user, ApplicationRole.Names.Fundraiser)
+                           && !await _um.IsInRoleAsync(user, ApplicationRole.Names.Admin)
+                           && !await _um.IsInRoleAsync(user, ApplicationRole.Names.PlatformManager);
+
+        Campaigns = await _svc.GetCampaignsByOwnerAsync(user.Id);
     }
 
     /// <summary>Fundraiser submits a Draft campaign to platform management for review.</summary>

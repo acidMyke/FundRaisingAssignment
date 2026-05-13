@@ -78,7 +78,9 @@
 <footer class="border-top footer text-muted">
     <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 0;">
         <span>&copy; 2026 GiveHive</span>
-        @if (User.Identity?.IsAuthenticated == true)
+        @if (User.Identity?.IsAuthenticated == true &&
+             !User.IsInRole("PendingFundraiser") &&
+             (User.IsInRole("Fundraiser") || User.IsInRole("Admin") || User.IsInRole("PlatformManager") || User.IsInRole("CampaignManager")))
         {
             <div style="display:flex;gap:16px;font-size:.85rem;">
                 <a asp-area="Dashboard" asp-page="/CreateCampaign" style="color:#6366f1;text-decoration:none;">Start a Campaign</a>

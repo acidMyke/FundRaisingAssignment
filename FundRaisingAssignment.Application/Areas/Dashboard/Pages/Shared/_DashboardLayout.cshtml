@@ -1,3 +1,4 @@
+@using FundRaisingAssignment.Application.Models
 @using Microsoft.AspNetCore.Authorization
 @using FundRaisingAssignment.Application.Security
 @inject IAuthorizationService AuthorizationService
@@ -9,6 +10,10 @@
 
     var page = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
     bool isAdmin = User.IsInRole("Admin");
+    bool isPendingFundraiser = User.IsInRole(ApplicationRole.Names.PendingFundraiser)
+                             && !User.IsInRole(ApplicationRole.Names.Fundraiser)
+                             && !User.IsInRole(ApplicationRole.Names.Admin)
+                             && !User.IsInRole(ApplicationRole.Names.PlatformManager);
 
     string active(string p) => page.Contains(p) ? "active" : "";
 }
@@ -35,10 +40,13 @@
        class="dash-link @active("/Campaigns")">
       📋 My Campaigns
     </a>
-    <a asp-area="Dashboard" asp-page="/CreateCampaign"
-       class="dash-link @active("/CreateCampaign")">
-      ✚ Create Campaign
-    </a>
+    @if (!isPendingFundraiser)
+    {
+      <a asp-area="Dashboard" asp-page="/CreateCampaign"
+         class="dash-link @active("/CreateCampaign")">
+        ✚ Create Campaign
+      </a>
+    }
     @if (isAdmin)
     {
       <a asp-area="Dashboard" asp-page="/ManageCampaigns"
@@ -59,6 +67,18 @@
     }
   </div>
 </nav>
+
+@if (isPendingFundraiser)
+{
+  <div style="background:#fef3c7;border-bottom:1px solid #fbbf24;padding:10px 20px;display:flex;gap:10px;align-items:center;font-size:.85rem;color:#92400e;">
+    <span>⏳</span>
+    <span>
+      <strong>Your fundraiser account is pending approval.</strong>
+      Campaign creation is locked until an Admin approves your application.
+      Check the <a asp-area="Internal" asp-page="/FundraiserApprovals"         style="color:#92400e;font-weight:600;">Fundraiser Approvals</a> page if you are an admin.
+    </span>
+  </div>
+}
 
 @RenderBody()
 @section Scripts { @RenderSection("Scripts", required: false) }

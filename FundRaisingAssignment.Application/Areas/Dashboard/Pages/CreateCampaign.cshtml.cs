@@ -18,7 +18,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FundRaisingAssignment.Application.Areas.Dashboard.Pages
 {
-    [Authorize]
+    // Only approved Fundraisers (and admins) may create campaigns.
+    // PendingFundraiser accounts are blocked until an Admin approves them.
+    [Authorize(Roles = ApplicationRole.Names.Fundraiser + "," +
+                       ApplicationRole.Names.Admin + "," +
+                       ApplicationRole.Names.PlatformManager + "," +
+                       ApplicationRole.Names.CampaignManager)]
     public class CreateCampaignModel(ICampaignService svc, UserManager<ApplicationUser> um) : PageModel
     {
         private readonly ICampaignService _svc = svc;
