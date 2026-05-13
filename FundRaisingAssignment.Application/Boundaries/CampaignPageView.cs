@@ -26,6 +26,7 @@ public class CampaignPageView
     public string? CoverImageUrl { get; set; }
     public decimal CurrentAmount { get; set; }
     public string OwnerEmail { get; set; } = string.Empty;
+    public string? OwnerUserName { get; set; }
     public CampaignStatus Status { get; set; }
     public double AverageRating { get; set; }
     public int ReviewCount { get; set; }
@@ -50,6 +51,7 @@ public class CampaignPageView
         CoverImageUrl = c.CoverImageUrl;
         CurrentAmount = c.CurrentAmount;
         OwnerEmail = c.Owner?.Email ?? string.Empty;
+        OwnerUserName = c.Owner?.UserName;
         Status = c.Status;
         AverageRating = c.AverageRating;
         ReviewCount = c.ReviewCount;

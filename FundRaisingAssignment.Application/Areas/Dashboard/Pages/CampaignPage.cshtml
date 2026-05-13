@@ -138,7 +138,7 @@ else
       <div class="card-box" style="margin-bottom:18px;">
         <h2 style="margin:0 0 10px;font-size:1.05rem;font-weight:700;">About this campaign</h2>
         <p style="white-space:pre-wrap;line-height:1.75;color:#374151;margin:0;">@v.Description</p>
-        <p style="font-size:.8rem;color:#94a3b8;margin:14px 0 0;">Organised by <strong>@v.OwnerEmail</strong></p>
+        <p style="font-size:.8rem;color:#94a3b8;margin:14px 0 0;">Organised by <strong>@(v.OwnerUserName ?? v.OwnerEmail)</strong></p>
       </div>
 
       @* Owner actions *@
@@ -183,7 +183,7 @@ else
               <div class="donation-row">
                 <div>
                   <div style="font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:4px;">
-                    @(d.IsAnonymous ? "Anonymous" : d.DonorEmail)
+                    @(d.IsAnonymous ? "Anonymous" : (d.User?.UserName ?? d.DonorEmail))
                     @if (!d.IsAnonymous && d.UserId.HasValue && Model.UserSelectedBadgeIcons.ContainsKey(d.UserId.Value))
                     {
                       foreach (var badge in Model.UserSelectedBadgeIcons[d.UserId.Value])
@@ -218,7 +218,7 @@ else
               <div class="donation-row">
                 <div style="font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:4px;">
                   <span style="color:#4f46e5;font-weight:700;margin-right:7px;">@(i+1).</span>
-                  @(d.IsAnonymous ? "Anonymous" : d.DonorEmail)
+                  @(d.IsAnonymous ? "Anonymous" : (d.User?.UserName ?? d.DonorEmail))
                     @if (!d.IsAnonymous && d.UserId.HasValue && Model.UserSelectedBadgeIcons.ContainsKey(d.UserId.Value))
                     {
                       foreach (var badge in Model.UserSelectedBadgeIcons[d.UserId.Value])
