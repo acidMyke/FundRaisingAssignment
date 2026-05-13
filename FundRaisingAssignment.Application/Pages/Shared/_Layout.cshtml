@@ -54,6 +54,10 @@
                             <a class="nav-link text-dark @ActiveIf("", "/MyBudget")"
                                asp-page="/MyBudget">My Budget</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark @ActiveIf("Dashboard", "/MyBadges")"
+                               asp-area="Dashboard" asp-page="/MyBadges">My Badges</a>
+                        </li>
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">

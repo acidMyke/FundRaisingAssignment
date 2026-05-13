@@ -1,0 +1,121 @@
+@page
+@using FundRaisingAssignment.Application.Models
+@model FundRaisingAssignment.Application.Areas.Dashboard.Pages.MyBadgesModel
+@{
+    ViewData["Title"] = "My Badges";
+}
+
+<div style="display:flex;justify-content:center;padding-top:32px;">
+    <div style="width:100%;max-width:800px;">
+        <h1 style="font-size:2rem;font-weight:800;margin-bottom:18px;">My Badges</h1>
+        @if (Model.Badges == null || !Model.Badges.Any())
+        {
+                <div style="color:#94a3b8;font-size:1.1rem;background:#fff;padding:32px 0;text-align:center;border-radius:12px;">No badges yet. Start donating to earn your first badge!</div>
+        }
+        else
+        {
+            <div style="margin-bottom:32px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px 36px 24px 36px;box-shadow:0 2px 8px 0 rgba(16,30,54,0.04);">
+        <form method="post" id="badgeForm">
+            <div style="font-size:1.08rem;font-weight:600;margin-bottom:10px;">Select up to 2 badges to display next to your name:</div>
+            <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;">
+                <div>
+                    <label for="SelectedBadge1Type" style="font-weight:500;">Badge 1:</label><br />
+                    <select asp-for="SelectedBadge1Type" id="badge1" style="padding:7px 12px;border-radius:7px;border:1px solid #e2e8f0;min-width:120px;">
+                        <option value="">(None)</option>
+                        @foreach (var badge in Model.Badges.Where(b =>
+                            (b.Type == BadgeType.HugeSupporter ? b.Progress >= 100 :
+                             b.Tier == BadgeTier.Special ? b.Progress >= 1 :
+                             b.Progress >= 1)))
+                        {
+                            <option value="@((int)badge.Type)" selected="@(Model.SelectedBadge1Type == (int)badge.Type ? "selected" : null)" data-icon="@badge.Icon" data-name="@badge.Name" data-border="@badge.BorderColor">@badge.Icon @badge.Name</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label for="SelectedBadge2Type" style="font-weight:500;">Badge 2:</label><br />
+                    <select asp-for="SelectedBadge2Type" id="badge2" style="padding:7px 12px;border-radius:7px;border:1px solid #e2e8f0;min-width:120px;">
+                        <option value="">(None)</option>
+                        @foreach (var badge in Model.Badges.Where(b =>
+                            (b.Type == BadgeType.HugeSupporter ? b.Progress >= 100 :
+                             b.Tier == BadgeTier.Special ? b.Progress >= 1 :
+                             b.Progress >= 1)))
+                        {
+                            <option value="@((int)badge.Type)" selected="@(Model.SelectedBadge2Type == (int)badge.Type ? "selected" : null)" data-icon="@badge.Icon" data-name="@badge.Name" data-border="@badge.BorderColor">@badge.Icon @badge.Name</option>
+                        }
+                    </select>
+                </div>
+                <button type="submit" style="align-self:end;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:7px;font-size:.95rem;font-weight:600;cursor:pointer;margin-left:10px;">Save</button>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.SaveMessage))
+            {
+                var isError = Model.SaveMessage.Contains("two different badges") || Model.SaveMessage.Contains("Invalid badge selection");
+                <div style="color:@(isError ? "#dc2626" : "#059669");font-size:.98rem;margin-bottom:10px;">@Model.SaveMessage</div>
+            }
+        </form>
+        <div id="badgePreview" style="margin-top:10px;padding:12px 18px;background:#fff;border-radius:8px;display:inline-flex;align-items:center;gap:10px;font-size:1.1rem;border:1px solid #e2e8f0;">
+            <span style="font-weight:700;">@User.Identity?.Name</span>
+            <span id="previewBadge1"></span>
+            <span id="previewBadge2"></span>
+        </div>
+        <script>
+        // Badge data for JS
+        const badgeData = {
+            @foreach (var badge in Model.Badges)
+            {
+                <text>'@((int)badge.Type)': { icon: '@badge.Icon', name: '@badge.Name', border: '@badge.BorderColor' },</text>
+            }
+        };
+        function updatePreview() {
+            const b1 = document.getElementById('badge1').value;
+            const b2 = document.getElementById('badge2').value;
+            const pb1 = document.getElementById('previewBadge1');
+            const pb2 = document.getElementById('previewBadge2');
+            pb1.innerHTML = '';
+            pb2.innerHTML = '';
+            if (b1 && badgeData[b1]) {
+                pb1.innerHTML = `<span title="${badgeData[b1].name}" style="font-size:1.3em;border:2.5px solid ${badgeData[b1].border};border-radius:50%;padding:2px 7px 2px 7px;margin-left:2px;">${badgeData[b1].icon}</span>`;
+            }
+            if (b2 && badgeData[b2]) {
+                pb2.innerHTML = `<span title="${badgeData[b2].name}" style="font-size:1.3em;border:2.5px solid ${badgeData[b2].border};border-radius:50%;padding:2px 7px 2px 7px;margin-left:2px;">${badgeData[b2].icon}</span>`;
+            }
+        }
+        document.getElementById('badge1').addEventListener('change', updatePreview);
+        document.getElementById('badge2').addEventListener('change', updatePreview);
+        window.addEventListener('DOMContentLoaded', updatePreview);
+        </script>
+    </div>
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        @foreach (var badge in Model.Badges)
+        {
+            var isUnachieved = badge.Tier == null;
+            var borderColor = isUnachieved ? "#e5e7eb" : badge.BorderColor;
+            var iconStyle = isUnachieved ? "filter: grayscale(1) opacity(0.5);" : "";
+            <div style="display:flex;align-items:center;gap:18px;padding:18px 24px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;box-shadow:0 1px 4px 0 rgba(16,30,54,0.03);">
+                <div style="width:54px;height:54px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:2.2rem;border:3px solid @borderColor;border-radius:50%;padding:2px 10px;@iconStyle">@badge.Icon</span>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:1.1rem;font-weight:700;">@badge.Name</div>
+                    <div style="color:#64748b;font-size:.97rem;margin-bottom:4px;">@badge.Description</div>
+                    <div style="font-size:.93rem;">
+                        @if (isUnachieved)
+                        {
+                            <span style="color:#94a3b8;">Progress: @badge.Progress/@badge.NextTierRequirement</span>
+                        }
+                        else if (badge.NextTierRequirement > 0 && badge.Tier != BadgeTier.Gold)
+                        {
+                            <span style="color:#94a3b8;">Progress: @badge.Progress/@badge.NextTierRequirement</span>
+                        }
+                        else if (badge.Tier == BadgeTier.Gold && badge.NextTierRequirement == 0)
+                        {
+                            <span style="color:#22c55e;margin-left:10px;font-weight:600;">Completed!</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+      </div>
+    }
+  </div>
+</div>
+}

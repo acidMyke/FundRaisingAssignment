@@ -182,7 +182,16 @@ else
             {
               <div class="donation-row">
                 <div>
-                  <div style="font-weight:600;font-size:.85rem;">@(d.IsAnonymous ? "Anonymous" : d.DonorEmail)</div>
+                  <div style="font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:4px;">
+                    @(d.IsAnonymous ? "Anonymous" : d.DonorEmail)
+                    @if (!d.IsAnonymous && d.UserId.HasValue && Model.UserSelectedBadgeIcons.ContainsKey(d.UserId.Value))
+                    {
+                      foreach (var badge in Model.UserSelectedBadgeIcons[d.UserId.Value])
+                      {
+                        <span title="@badge.Name" style="font-size:1.15em;vertical-align:middle;border:2.5px solid @badge.BorderColor;border-radius:50%;padding:1.5px 6px 1.5px 6px;margin-left:2px;">@badge.Icon</span>
+                      }
+                    }
+                  </div>
                   @if (!string.IsNullOrEmpty(d.Message))
                   { <div style="color:#64748b;font-size:.78rem;">"@d.Message"</div> }
                 </div>
@@ -207,9 +216,16 @@ else
             {
               var d = Model.TopDonations[i];
               <div class="donation-row">
-                <div style="font-weight:600;font-size:.85rem;">
+                <div style="font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:4px;">
                   <span style="color:#4f46e5;font-weight:700;margin-right:7px;">@(i+1).</span>
                   @(d.IsAnonymous ? "Anonymous" : d.DonorEmail)
+                    @if (!d.IsAnonymous && d.UserId.HasValue && Model.UserSelectedBadgeIcons.ContainsKey(d.UserId.Value))
+                    {
+                      foreach (var badge in Model.UserSelectedBadgeIcons[d.UserId.Value])
+                      {
+                        <span title="@badge.Name" style="font-size:1.15em;vertical-align:middle;border:2.5px solid @badge.BorderColor;border-radius:50%;padding:1.5px 6px 1.5px 6px;margin-left:2px;">@badge.Icon</span>
+                      }
+                    }
                 </div>
                 <div style="text-align:right;">
                   <div style="font-weight:700;color:#059669;font-size:.92rem;">+$@d.Amount.ToString("N2")</div>

@@ -26,11 +26,13 @@ public class CampaignPageModel : PageModel
 {
     private readonly ICampaignService _svc;
     private readonly UserManager<ApplicationUser> _um;
+    private readonly BadgeService _badgeService;
 
-    public CampaignPageModel(ICampaignService svc, UserManager<ApplicationUser> um)
+    public CampaignPageModel(ICampaignService svc, UserManager<ApplicationUser> um, BadgeService badgeService)
     {
         _svc = svc;
         _um = um;
+        _badgeService = badgeService;
     }
 
     public CampaignPageView PageView { get; private set; } = new();
@@ -42,6 +44,15 @@ public class CampaignPageModel : PageModel
     public bool AlreadyReviewed { get; private set; }
     public bool CanDonate { get; private set; }
     public bool IsAdmin { get; private set; }
+
+    // Maps UserId to their selected badges (icon and name)
+    public class BadgeDisplay
+    {
+        public string Icon { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string BorderColor { get; set; } = string.Empty;
+    }
+    public Dictionary<Guid, List<BadgeDisplay>> UserSelectedBadgeIcons { get; private set; } = new();
 
     [BindProperty] public ReviewInput Review { get; set; } = new();
     [BindProperty] public DonateInput Donate { get; set; } = new();
@@ -100,6 +111,35 @@ public class CampaignPageModel : PageModel
             CanDonate = campaign.AcceptsDonations;
         }
 
+        // Gather selected badge icons for all users in Donations and TopDonations
+        var userIds = Donations.Concat(TopDonations)
+            .Where(d => d.UserId.HasValue)
+            .Select(d => d.UserId.Value)
+            .Distinct()
+            .ToList();
+
+        // If _um.Users is not IQueryable, use .ToList() instead of .ToListAsync()
+        var usersQuery = _um.Users.Where(u => userIds.Contains(u.Id));
+        var users = (usersQuery is IQueryable<ApplicationUser>)
+            ? await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync((IQueryable<ApplicationUser>)usersQuery)
+            : usersQuery.ToList();
+        foreach (var u in users)
+        {
+            var badges = new List<BadgeDisplay>();
+            var badgeProgress = await _badgeService.GetUserBadgesAsync(u.Id);
+            if (u.SelectedBadge1Type.HasValue)
+            {
+                var b1 = badgeProgress.Badges.FirstOrDefault(b => (int)b.Type == u.SelectedBadge1Type.Value);
+                if (b1 != null) badges.Add(new BadgeDisplay { Icon = b1.Icon, Name = b1.Name, BorderColor = b1.BorderColor });
+            }
+            if (u.SelectedBadge2Type.HasValue)
+            {
+                var b2 = badgeProgress.Badges.FirstOrDefault(b => (int)b.Type == u.SelectedBadge2Type.Value);
+                if (b2 != null) badges.Add(new BadgeDisplay { Icon = b2.Icon, Name = b2.Name, BorderColor = b2.BorderColor });
+            }
+            UserSelectedBadgeIcons[u.Id] = badges;
+        }
+
         return Page();
     }
 
@@ -129,15 +169,20 @@ public class CampaignPageModel : PageModel
                 DonorEmail: user?.Email ?? "Guest"),
             ct);
 
+
         switch (result)
         {
             case DonationResult.Success s when s.GoalReached:
                 TempData["DonateSuccess"] =
                     $"Thank you! Your donation of ${Donate.Amount:N2} pushed this campaign to its goal!";
+                if (user != null)
+                    await _badgeService.UpdateUserMetricsAsync(user.Id, id, Donate.Amount);
                 break;
             case DonationResult.Success:
                 TempData["DonateSuccess"] =
                     $"Thank you! Your donation of ${Donate.Amount:N2} has been received.";
+                if (user != null)
+                    await _badgeService.UpdateUserMetricsAsync(user.Id, id, Donate.Amount);
                 break;
             case DonationResult.CampaignNotFound:
                 TempData["Error"] = "Campaign not found.";

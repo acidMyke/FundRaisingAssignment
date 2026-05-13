@@ -57,7 +57,8 @@ builder.Services.AddAuthorizationBuilder()
         policy => policy.Requirements.Add(new MinimumJoinTimeRequirement(TimeSpan.FromSeconds(10)))); // Cross-cutting — guard policy
 
 // ── Application services ──────────────────────────────────────────────────────
-builder.Services.AddScoped<ICampaignService, CampaignService>();   // DN01, DN03, FR01, PM01, PM06 — backbone service
+builder.Services.AddScoped<ICampaignService, CampaignService>();   // DN01, DN03, FR01, PM01, PM06 — backbone service                 // Karthik's donation service
+builder.Services.AddScoped<BadgeService>();                        // Register BadgeService for DI
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
