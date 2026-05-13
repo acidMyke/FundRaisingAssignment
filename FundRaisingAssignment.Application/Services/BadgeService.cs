@@ -155,5 +155,5 @@ namespace FundRaisingAssignment.Application.Services
             await _db.SaveChangesAsync();
         }
     }
-    
+
 }
