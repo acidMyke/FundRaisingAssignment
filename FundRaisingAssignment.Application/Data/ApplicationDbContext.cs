@@ -26,8 +26,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ExportFile> ExportFiles { get; set; }             // UA02 — Karthik
     public DbSet<RefundLog> RefundLogs { get; set; }               // DN03 — Shared (refund pipeline)
 
+
     public DbSet<CampaignReview> CampaignReviews { get; set; }     // PM01 — Josh
     public DbSet<FundRaiserNotification> FundRaiserNotifications { get; set; } // PM01 — Josh
+
+    // ── Badge Metrics ─────────────────────────────────────────────
+    public DbSet<UserMetrics> UserMetrics { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
