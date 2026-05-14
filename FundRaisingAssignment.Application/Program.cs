@@ -38,7 +38,14 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();        // Cross-cutt
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>    // UA01 — user accounts
-    options.SignIn.RequireConfirmedAccount = true)
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequiredLength = 6;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequiredUniqueChars = 2;
+    })
     .AddRoles<ApplicationRole>()                                   // UA01 — role assignment
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
