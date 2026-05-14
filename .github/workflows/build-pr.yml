@@ -1,8 +1,6 @@
 name: Build
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
     branches: ["main"]
 
@@ -31,7 +29,13 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.DB_CONNECTION_STRINGS }}
       - name: Test
-        run: dotnet test --no-build --verbosity normal
-        working-directory: ./FundRaisingAssignment.Application
+        run: dotnet test --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.DB_CONNECTION_STRINGS }}
+      - name: Publish Test Result
+        uses: dorny/test-reporter@v3.0.0
+        if: always()
+        with:
+          name: .NET Tests
+          path: "**/test-results.trx"
+          reporter: dotnet-trx
