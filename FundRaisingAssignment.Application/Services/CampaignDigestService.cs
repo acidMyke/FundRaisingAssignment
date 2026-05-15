@@ -180,7 +180,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         var viewModel = new CampaignDigestEmailViewModel { Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem) };
         var subject = templateService.GenerateSubject(viewModel);
         var htmlBody = templateService.RenderHtmlBody(viewModel);
-        await emailService.SendEmailAsync(user.Email!, subject, htmlBody);
+        await emailService.SendEmailAsync(user.Email!, subject, htmlBody, emailId.ToString());
     }
 
     public UserAffinityProfile BuildProfile(IEnumerable<UserCampaignInteractionDto> interactions,

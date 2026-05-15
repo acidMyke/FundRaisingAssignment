@@ -337,19 +337,21 @@ public class CampaignDigestServiceTests
     public async Task SendDigestEmailAsync_EmptyCampaigns_DoesNotSendEmail()
     {
         // Arrange
+        var emailId = Guid.NewGuid();
         var user = new ApplicationUser { Email = "" };
 
         // Act
-        await _service.SendDigestEmailAsync(user, [], Guid.NewGuid());
+        await _service.SendDigestEmailAsync(user, [], emailId);
 
         // Assert
-        _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), emailId.ToString()), Times.Never);
     }
 
     [Fact]
     public async Task SendDigestEmailAsync_WithCampaigns_SendsEmailWithCorrectDetails()
     {
         // Arrange
+        var emailId = Guid.NewGuid();
         const string EMAIL = "test@example.com";
         const string SUBJECT = "Test Subject";
         const string BODY = "Test Body";
@@ -360,10 +362,10 @@ public class CampaignDigestServiceTests
         _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
 
         // Act
-        await _service.SendDigestEmailAsync(user, campaigns, Guid.NewGuid());
+        await _service.SendDigestEmailAsync(user, campaigns, emailId);
 
         // Assert
-        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, emailId.ToString()), Times.Once);
     }
 
     [Fact]
@@ -419,7 +421,7 @@ public class CampaignDigestServiceTests
         await _service.ProcessAsync(batchId);
 
         // Assert
-        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, It.IsAny<string>()), Times.Once);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
         Assert.Equal(DigestBatchStatus.Processed, batch.Status);
     }
@@ -543,6 +545,7 @@ public class CampaignDigestServiceTests
         Assert.All(batch.Entries, e => Assert.Equal(user.Id, e.UserId));
         Assert.All(batch.Entries, e => Assert.Equal(emailId, e.EmailId));
         Assert.All(batch.Entries, e => Assert.Equal(DigestEmailStatus.Initial, e.EmailStatus));
+        Assert.All(batch.Entries, e => Assert.NotNull(e.EmailId));
         Assert.Contains(batch.Entries, e => e.CampaignId == campaigns[0].Id);
         Assert.Contains(batch.Entries, e => e.CampaignId == campaigns[1].Id);
     }
@@ -565,6 +568,7 @@ public class CampaignDigestServiceTests
         Assert.Equal(user.Id, entry.UserId);
         Assert.Null(entry.EmailId);
         Assert.Null(entry.CampaignId);
+        Assert.Null(entry.SentAt);
         Assert.Equal(DigestEmailStatus.Bypass, entry.EmailStatus);
     }
 }
