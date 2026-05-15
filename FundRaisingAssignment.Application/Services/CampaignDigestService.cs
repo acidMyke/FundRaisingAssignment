@@ -69,7 +69,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         }
 
         var activeCampaigns = await repository.GetActiveCampaignsAsync();
-        digestBatchInfo.UserCount = activeCampaigns.Count;
+        digestBatchInfo.CampaignCount = activeCampaigns.Count;
         if (activeCampaigns.Count == 0)
         {
             logger.LogInformation("No active campaigns to include in digest.");
@@ -105,14 +105,55 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 var affinityProfile = BuildProfile(userInteractions, campaignSummaries);
                 var digestCampaigns = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores);
 
-                await SendDigestEmailAsync(user, digestCampaigns);
+                var emailId = Guid.NewGuid();
+                await UpdateDigestBatch(digestBatchInfo, user, digestCampaigns, emailId);
+                await SendDigestEmailAsync(user, digestCampaigns, emailId);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to process digest for user {UserId}", user.Id);
             }
         }
+
+        digestBatchInfo.Status = DigestBatchStatus.Processed;
+        digestBatchInfo.StatusUpdatedAt = executionTime;
+        await repository.SaveChangesAsync();
     }
+
+    public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, IEnumerable<Campaign> digestCampaigns, Guid emailId)
+    {
+        if (!digestCampaigns.Any())
+        {
+            digestBatchInfo.Entries.Add(new DigestEntry
+            {
+                Id = Guid.NewGuid(),
+                DigestBatchId = digestBatchInfo.Id,
+                UserId = user.Id,
+                CampaignId = null,
+                EmailId = null,
+                EmailStatus = DigestEmailStatus.Bypass,
+            });
+        }
+        else
+        {
+            foreach (var campaign in digestCampaigns)
+            {
+                digestBatchInfo.Entries.Add(new DigestEntry
+                {
+                    Id = Guid.NewGuid(),
+                    DigestBatchId = digestBatchInfo.Id,
+                    UserId = user.Id,
+                    CampaignId = campaign.Id,
+                    EmailId = emailId,
+                    EmailStatus = DigestEmailStatus.Initial,
+                    SentAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        await repository.SaveChangesAsync();
+    }
+
 
     public IEnumerable<Campaign> GetTopCampaignsForUser(UserAffinityProfile affinityProfile,
                                                         List<Campaign> activeCampaigns,
@@ -129,7 +170,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         .Select(cs => cs.Campaign);
     }
 
-    public async Task SendDigestEmailAsync(ApplicationUser user, IEnumerable<Campaign> digestCampaigns)
+    public async Task SendDigestEmailAsync(ApplicationUser user, IEnumerable<Campaign> digestCampaigns, Guid emailId)
     {
         if (!digestCampaigns.Any())
         {

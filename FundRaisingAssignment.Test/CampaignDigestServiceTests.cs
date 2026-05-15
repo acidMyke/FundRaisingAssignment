@@ -340,7 +340,7 @@ public class CampaignDigestServiceTests
         var user = new ApplicationUser { Email = "" };
 
         // Act
-        await _service.SendDigestEmailAsync(user, []);
+        await _service.SendDigestEmailAsync(user, [], Guid.NewGuid());
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -360,7 +360,7 @@ public class CampaignDigestServiceTests
         _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
 
         // Act
-        await _service.SendDigestEmailAsync(user, campaigns);
+        await _service.SendDigestEmailAsync(user, campaigns, Guid.NewGuid());
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
@@ -421,7 +421,7 @@ public class CampaignDigestServiceTests
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
-        Assert.Equal(DigestBatchStatus.Processing, batch.Status);
+        Assert.Equal(DigestBatchStatus.Processed, batch.Status);
     }
 
     [Fact]
@@ -519,5 +519,52 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.AddDigestBatchRecord(It.IsAny<DigestBatch>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
         Assert.Equal("No active campaigns to include in digest.", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateDigestBatch_WithCampaigns_AddsCorrectEntries()
+    {
+        // Arrange
+        var batch = new DigestBatch { Id = Guid.NewGuid() };
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        var emailId = Guid.NewGuid();
+        var campaigns = new List<Campaign>
+        {
+            new Campaign { Id = Guid.NewGuid(), Title = "C1", Description = "" },
+            new Campaign { Id = Guid.NewGuid(), Title = "C2", Description = "" }
+        };
+
+        // Act
+        await _service.UpdateDigestBatch(batch, user, campaigns, emailId);
+
+        // Assert
+        Assert.Equal(2, batch.Entries.Count);
+        Assert.All(batch.Entries, e => Assert.Equal(batch.Id, e.DigestBatchId));
+        Assert.All(batch.Entries, e => Assert.Equal(user.Id, e.UserId));
+        Assert.All(batch.Entries, e => Assert.Equal(emailId, e.EmailId));
+        Assert.All(batch.Entries, e => Assert.Equal(DigestEmailStatus.Initial, e.EmailStatus));
+        Assert.Contains(batch.Entries, e => e.CampaignId == campaigns[0].Id);
+        Assert.Contains(batch.Entries, e => e.CampaignId == campaigns[1].Id);
+    }
+
+    [Fact]
+    public async Task UpdateDigestBatch_NoCampaigns_AddsBypassEntry()
+    {
+        // Arrange
+        var batch = new DigestBatch { Id = Guid.NewGuid() };
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        var emailId = Guid.NewGuid();
+
+        // Act
+        await _service.UpdateDigestBatch(batch, user, [], emailId);
+
+        // Assert
+        Assert.Single(batch.Entries);
+        var entry = batch.Entries[0];
+        Assert.Equal(batch.Id, entry.DigestBatchId);
+        Assert.Equal(user.Id, entry.UserId);
+        Assert.Null(entry.EmailId);
+        Assert.Null(entry.CampaignId);
+        Assert.Equal(DigestEmailStatus.Bypass, entry.EmailStatus);
     }
 }
