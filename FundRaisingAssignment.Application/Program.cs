@@ -54,6 +54,7 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(Email
 
 var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
 
+builder.Services.AddSingleton<EmailEventHub>();
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
     builder.Services.AddTransient<IEmailService, MailjetEmailService>(); // Cross-cutting — Email Service
@@ -82,7 +83,7 @@ builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
 builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEmailTemplateService>();
 
 // Campaign digest background queue & worker
-builder.Services.AddSingleton<DigestJobQueue>();
+builder.Services.AddSingleton<IDigestJobQueue, DigestJobQueue>();
 builder.Services.AddHostedService<DigestBackgroundWorker>();
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────

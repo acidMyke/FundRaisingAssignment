@@ -11,9 +11,9 @@ public class DigestJobQueue : IDigestJobQueue
     public IAsyncEnumerable<Guid> DequeueJobs(CancellationToken ct) => _queue.Reader.ReadAllAsync(ct);
 }
 
-public class DigestBackgroundWorker(DigestJobQueue queue, IServiceScopeFactory scopeFactory) : BackgroundService
+public class DigestBackgroundWorker(IDigestJobQueue queue, IServiceScopeFactory scopeFactory) : BackgroundService
 {
-    private readonly DigestJobQueue _queue = queue;
+    private readonly IDigestJobQueue _queue = queue;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
