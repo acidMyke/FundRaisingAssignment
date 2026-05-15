@@ -29,8 +29,8 @@ public class DigestBatch
 {
     public required Guid Id { get; set; }
     public DigestBatchStatus Status { get; set; } = DigestBatchStatus.Pending;
-    public int UserCount { get; set; }
-    public int CampaignCount { get; set; }
+    public int? UserCount { get; set; }
+    public int? CampaignCount { get; set; }
     public DateTime TriggeredAt { get; set; } = DateTime.Now;
     public DateTime? StatusUpdatedAt { get; set; }
     public List<DigestEntry> Entries { get; set; } = [];
