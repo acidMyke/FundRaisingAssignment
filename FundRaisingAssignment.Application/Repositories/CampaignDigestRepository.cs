@@ -81,4 +81,9 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
     }
 
     public Task<DigestBatch?> GetDigestBatchByIdAsync(Guid id) => dbContext.DigestBatches.Where(b => b.Id == id).FirstOrDefaultAsync();
+
+    public Task UpdateDigestEntryStatusAsync(Guid emailId, DigestEmailStatus status, string? reason) =>
+        dbContext.DigestEntries
+                 .Where(e => e.EmailId == emailId)
+                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.EmailStatus, status).SetProperty(e => e.EmailReason, reason));
 }

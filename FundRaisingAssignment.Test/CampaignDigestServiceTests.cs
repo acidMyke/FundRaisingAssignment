@@ -571,4 +571,28 @@ public class CampaignDigestServiceTests
         Assert.Null(entry.SentAt);
         Assert.Equal(DigestEmailStatus.Bypass, entry.EmailStatus);
     }
+
+    [Theory]
+    [InlineData(EmailStatus.Sent, DigestEmailStatus.Sent)]
+    [InlineData(EmailStatus.Delivered, DigestEmailStatus.Sent)]
+    [InlineData(EmailStatus.Opened, DigestEmailStatus.Open)]
+    [InlineData(EmailStatus.Clicked, DigestEmailStatus.Click)]
+    [InlineData(EmailStatus.Bounced, DigestEmailStatus.Bounce)]
+    [InlineData(EmailStatus.Spam, DigestEmailStatus.Spam)]
+    [InlineData(EmailStatus.Unknown, DigestEmailStatus.Unknown)]
+    public async Task OnEmailReceivedAsync_StatusMapping_CallsRepositoryWithCorrectStatus(EmailStatus inputStatus, DigestEmailStatus expectedStatus)
+    {
+        // Arrange
+        var emailId = Guid.NewGuid();
+        var emailEvent = new EmailEvent("test@example.com", inputStatus, "Mailjet")
+        {
+            MessageId = emailId.ToString()
+        };
+
+        // Act
+        await _service.OnEmailReceivedAsync(emailEvent);
+
+        // Assert
+        _mockRepository.Verify(r => r.UpdateDigestEntryStatusAsync(emailId, expectedStatus, It.IsAny<string>()), Times.Once);
+    }
 }

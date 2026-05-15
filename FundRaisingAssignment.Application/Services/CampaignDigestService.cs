@@ -9,7 +9,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                                    ILogger<CampaignDigestService> logger,
                                    ICampaignDigestEmailTemplateService templateService,
                                    IEmailService emailService,
-                                   IDigestJobQueue digestJobQueue) : ICampaignDigestService
+                                   IDigestJobQueue digestJobQueue) : ICampaignDigestService, IEmailEventListener
 {
     public class CampaignScore
     {
@@ -273,4 +273,24 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             ProgressPercentage = campaign.GetProgressPercentage()
         };
     }
+
+    public async Task OnEmailReceivedAsync(EmailEvent e)
+    {
+        if (string.IsNullOrEmpty(e.MessageId) || !Guid.TryParse(e.MessageId, out var emailId))
+            return;
+
+        var status = e.Status switch
+        {
+            EmailStatus.Sent => DigestEmailStatus.Sent,
+            EmailStatus.Delivered => DigestEmailStatus.Sent,
+            EmailStatus.Opened => DigestEmailStatus.Open,
+            EmailStatus.Clicked => DigestEmailStatus.Click,
+            EmailStatus.Bounced => DigestEmailStatus.Bounce,
+            EmailStatus.Spam => DigestEmailStatus.Spam,
+            _ => DigestEmailStatus.Unknown
+        };
+
+        await repository.UpdateDigestEntryStatusAsync(emailId, status, e.Reason);
+    }
+
 }

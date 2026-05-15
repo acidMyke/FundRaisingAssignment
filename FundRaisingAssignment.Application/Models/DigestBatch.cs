@@ -20,7 +20,8 @@ public enum DigestEmailStatus
     Click,
     Bounce,
     Spam,
-    Blocked
+    Blocked,
+    Unknown,
 }
 
 [Table("DigestBatches")]
@@ -47,6 +48,7 @@ public class DigestEntry
     public Guid? CampaignId { get; set; }
     public Guid? EmailId { get; set; }
     public DigestEmailStatus EmailStatus { get; set; } = DigestEmailStatus.Initial;
+    public string? EmailReason { get; set; }
     public DateTime? SentAt { get; set; }
 
     [ForeignKey(nameof(DigestBatchId))]
