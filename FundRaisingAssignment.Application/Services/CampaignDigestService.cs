@@ -108,6 +108,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 var emailId = Guid.NewGuid();
                 await UpdateDigestBatch(digestBatchInfo, user, digestCampaigns, emailId);
                 await SendDigestEmailAsync(user, digestCampaigns, emailId);
+                await Task.Delay(250);
             }
             catch (Exception ex)
             {

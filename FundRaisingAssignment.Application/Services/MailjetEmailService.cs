@@ -103,9 +103,14 @@ namespace FundRaisingAssignment.Application.Services
             var emailService = scope.ServiceProvider.GetService<IEmailService>();
             if (emailService is MailjetEmailService)
             {
-                app.MapPost("/webhooks/mailjet", async (MailjetEmailService svc, MailjetEventDto dto) =>
+                app.MapPost("/webhooks/mailjet", (IServiceProvider serviceProvider, HttpContext context, MailjetEventDto dto) =>
                 {
-                    await svc.ProcessMailjetEventAsync(dto);
+                    context.Response.OnCompleted(async () =>
+                    {
+                        using var innerScope = serviceProvider.CreateScope();
+                        var svc = innerScope.ServiceProvider.GetRequiredService<MailjetEmailService>();
+                        await svc.ProcessMailjetEventAsync(dto);
+                    });
                     return Results.Ok();
                 });
             }
