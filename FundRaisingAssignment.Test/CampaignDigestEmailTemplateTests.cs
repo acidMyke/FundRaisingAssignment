@@ -73,6 +73,6 @@ public class CampaignEmailDigestTemplateServiceTests
         var html = _service.RenderHtmlBody(viewModel);
 
         // Assert
-        Assert.Contains($"http://givehive.acidmyke.link/Dashboard/CampaignPage/{campaignId}", html);
+        Assert.Contains($"https://givehive.acidmyke.link//Dashboard/CampaignPage/{campaignId}", html);
     }
 }
