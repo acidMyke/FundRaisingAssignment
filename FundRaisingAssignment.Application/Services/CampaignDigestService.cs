@@ -55,19 +55,32 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     {
         var executionTime = DateTime.UtcNow;
 
+        var digestBatchInfo = await repository.GetDigestBatchByIdAsync(batchId) ?? throw new InvalidOperationException("Unable to find batch record in DB");
+
         var users = await repository.GetUsersEligibleForDigestAsync(executionTime, 10);
+        digestBatchInfo.UserCount = users.Count;
         if (users.Count == 0)
         {
             logger.LogInformation("No users eligible for digest processing at this time.");
+            digestBatchInfo.Status = DigestBatchStatus.Failed;
+            digestBatchInfo.StatusUpdatedAt = executionTime;
+            await repository.SaveChangesAsync();
             return;
         }
 
         var activeCampaigns = await repository.GetActiveCampaignsAsync();
+        digestBatchInfo.UserCount = activeCampaigns.Count;
         if (activeCampaigns.Count == 0)
         {
             logger.LogInformation("No active campaigns to include in digest.");
+            digestBatchInfo.Status = DigestBatchStatus.Failed;
+            digestBatchInfo.StatusUpdatedAt = executionTime;
+            await repository.SaveChangesAsync();
             return;
         }
+
+        digestBatchInfo.Status = DigestBatchStatus.Processing;
+        await repository.SaveChangesAsync();
 
         var userIds = users.Select(u => u.Id).ToList();
 

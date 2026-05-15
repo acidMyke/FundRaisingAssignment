@@ -36,31 +36,40 @@ public class CampaignDigestServiceTests
     }
 
     [Fact]
-    public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
+    public async Task ProcessAsync_NoUsers_UpdatesBatchStatusToFailed()
     {
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Pending };
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
         _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10))
             .ReturnsAsync([]);
 
-        await _service.ProcessAsync(Guid.NewGuid());
+        await _service.ProcessAsync(batchId);
 
         _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
-        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+        Assert.Equal(DigestBatchStatus.Failed, batch.Status);
+        Assert.Equal(0, batch.UserCount);
     }
 
     [Fact]
-    public async Task TriggerDigestProcessingAsync_NoCampaigns_DoesNotFetchHistory()
+    public async Task ProcessAsync_NoCampaigns_UpdatesBatchStatusToFailed()
     {
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Pending };
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
         _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10))
             .ReturnsAsync([new ApplicationUser { Id = Guid.NewGuid() }]);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
             .ReturnsAsync([]);
 
-        await _service.ProcessAsync(Guid.NewGuid());
+        await _service.ProcessAsync(batchId);
 
         _mockRepository.Verify(r => r.GetPastVisitsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
-        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        Assert.Equal(DigestBatchStatus.Failed, batch.Status);
     }
 
     [Theory]
@@ -358,7 +367,7 @@ public class CampaignDigestServiceTests
     }
 
     [Fact]
-    public async Task TriggerDigestProcessingAsync_GoldenFlow_ValidUsersAndCampaigns_SendsEmail()
+    public async Task ProcessAsync_GoldenFlow_UpdatesBatchStatusToProcessingAndSendsEmails()
     {
         // Arrange
         const string EMAIL = "test@example.com";
@@ -367,6 +376,8 @@ public class CampaignDigestServiceTests
         var userId = Guid.NewGuid();
         var campaignId = Guid.NewGuid();
         var now = DateTime.UtcNow;
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Pending };
 
         var users = new List<ApplicationUser>
         {
@@ -391,6 +402,7 @@ public class CampaignDigestServiceTests
         var donations = new List<UserCampaignInteractionDto>();
         var summaries = new Dictionary<Guid, CampaignSummaryContext>();
 
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
         _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
 
@@ -404,10 +416,12 @@ public class CampaignDigestServiceTests
         _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
 
         // Act
-        await _service.ProcessAsync(Guid.NewGuid());
+        await _service.ProcessAsync(batchId);
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        Assert.Equal(DigestBatchStatus.Processing, batch.Status);
     }
 
     [Fact]

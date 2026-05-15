@@ -80,4 +80,5 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
         dbContext.Add(record);
     }
 
+    public Task<DigestBatch?> GetDigestBatchByIdAsync(Guid id) => dbContext.DigestBatches.Where(b => b.Id == id).FirstOrDefaultAsync();
 }

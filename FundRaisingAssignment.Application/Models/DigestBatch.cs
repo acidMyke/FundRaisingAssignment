@@ -14,6 +14,7 @@ public enum DigestBatchStatus
 public enum DigestEmailStatus
 {
     Initial,
+    Bypass,
     Sent,
     Open,
     Click,
@@ -43,10 +44,10 @@ public class DigestEntry
     public Guid Id { get; set; }
     public Guid DigestBatchId { get; set; }
     public Guid UserId { get; set; }
-    public Guid CampaignId { get; set; }
-    public Guid EmailId { get; set; }
+    public Guid? CampaignId { get; set; }
+    public Guid? EmailId { get; set; }
     public DigestEmailStatus EmailStatus { get; set; } = DigestEmailStatus.Initial;
-    public DateTime SentAt { get; set; }
+    public DateTime? SentAt { get; set; }
 
     [ForeignKey(nameof(DigestBatchId))]
     public DigestBatch Batch { get; set; } = null!;
