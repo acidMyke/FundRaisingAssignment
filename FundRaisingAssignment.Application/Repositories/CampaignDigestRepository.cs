@@ -8,15 +8,17 @@ namespace FundRaisingAssignment.Application.Repositories;
 
 public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaignDigestRepository
 {
-    public Task<List<ApplicationUser>> GetUsersEligibleForDigestAsync(DateTime executionTime)
+    public Task<List<ApplicationUser>> GetUsersEligibleForDigestAsync(DateTime executionTime, int? limit)
     {
-        return dbContext.Users
+        var query = dbContext.Users
             .Where(u => u.ReceiveCampaignDigest &&
                         u.Email != null &&
                         !u.IsEmailBounced &&
-                        (!u.UnsubscribeCooldownUntil.HasValue || u.UnsubscribeCooldownUntil.Value <= executionTime) &&
-                        (!u.LastCampaignUpdateSent.HasValue || u.LastCampaignUpdateSent.Value <= executionTime.AddDays(-7)))
-            .ToListAsync();
+                        (!u.UnsubscribeCooldownUntil.HasValue || u.UnsubscribeCooldownUntil.Value <= executionTime));
+
+        if (limit.HasValue) query = query.Take(limit.Value);
+
+        return query.OrderBy(u => u.LastCampaignUpdateSent).ToListAsync();
     }
 
     public Task<List<Campaign>> GetActiveCampaignsAsync()

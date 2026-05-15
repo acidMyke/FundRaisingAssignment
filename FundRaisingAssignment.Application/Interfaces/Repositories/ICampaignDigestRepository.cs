@@ -6,7 +6,7 @@ namespace FundRaisingAssignment.Application.Interfaces.Repositories;
 public interface ICampaignDigestRepository
 {
     Task SaveChangesAsync();
-    Task<List<ApplicationUser>> GetUsersEligibleForDigestAsync(DateTime executionTime);
+    Task<List<ApplicationUser>> GetUsersEligibleForDigestAsync(DateTime executionTime, int? limit);
     Task<List<Campaign>> GetActiveCampaignsAsync();
     Task<List<UserCampaignInteractionDto>> GetPastDonationsForUsersAsync(IEnumerable<Guid> userIds);
     Task<List<UserCampaignInteractionDto>> GetPastVisitsForUsersAsync(IEnumerable<Guid> userIds);

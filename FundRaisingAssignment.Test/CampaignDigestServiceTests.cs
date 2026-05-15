@@ -38,7 +38,7 @@ public class CampaignDigestServiceTests
     [Fact]
     public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
     {
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null))
             .ReturnsAsync([]);
 
         await _service.ProcessAsync(Guid.NewGuid());
@@ -50,7 +50,7 @@ public class CampaignDigestServiceTests
     [Fact]
     public async Task TriggerDigestProcessingAsync_NoCampaigns_DoesNotFetchHistory()
     {
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null))
             .ReturnsAsync([new ApplicationUser { Id = Guid.NewGuid() }]);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
             .ReturnsAsync([]);
@@ -391,7 +391,7 @@ public class CampaignDigestServiceTests
         var donations = new List<UserCampaignInteractionDto>();
         var summaries = new Dictionary<Guid, CampaignSummaryContext>();
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
 
         Expression<Func<IEnumerable<Guid>, bool>> containingUserId = ids => ids != null && ids.Contains(userId);
@@ -437,7 +437,7 @@ public class CampaignDigestServiceTests
             }
         };
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
         _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
         // Act
@@ -469,7 +469,7 @@ public class CampaignDigestServiceTests
             }
         ];
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
         _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
         // Act
@@ -489,7 +489,7 @@ public class CampaignDigestServiceTests
         List<ApplicationUser> users = [new ApplicationUser() { Id = userId, Email = "" }];
         List<Campaign> campaigns = [];
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
         _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
         // Act

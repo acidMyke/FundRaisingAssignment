@@ -31,7 +31,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     {
         var executionTime = DateTime.UtcNow;
 
-        var users = await repository.GetUsersEligibleForDigestAsync(executionTime);
+        var users = await repository.GetUsersEligibleForDigestAsync(executionTime, 1);
         if (users.Count == 0)
         {
             throw new DomainException("No users eligible for digest processing at this time.");
@@ -52,7 +52,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     {
         var executionTime = DateTime.UtcNow;
 
-        var users = await repository.GetUsersEligibleForDigestAsync(executionTime);
+        var users = await repository.GetUsersEligibleForDigestAsync(executionTime, 10);
         if (users.Count == 0)
         {
             logger.LogInformation("No users eligible for digest processing at this time.");
