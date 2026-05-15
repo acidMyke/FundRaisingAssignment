@@ -5,7 +5,7 @@ namespace FundRaisingAssignment.Application.Services;
 
 public class EmailEventHub(IServiceProvider serviceProvider)
 {
-    public async Task PublishAsync(EmailEvent e)
+    public virtual async Task PublishAsync(EmailEvent e)
     {
         using var scope = serviceProvider.CreateScope();
         var listeners = scope.ServiceProvider.GetServices<IEmailEventListener>();

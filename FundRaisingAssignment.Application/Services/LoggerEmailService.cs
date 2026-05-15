@@ -1,15 +1,18 @@
 using FundRaisingAssignment.Application.Interfaces;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 
 namespace FundRaisingAssignment.Application.Services
 {
     public class LoggerEmailService : IEmailService
     {
         private readonly ILogger<LoggerEmailService> _logger;
+        private readonly EmailEventHub _emailEventHub;
         private readonly List<(string Email, string Subject, string Message)> _sentEmails = new();
 
-        public LoggerEmailService(ILogger<LoggerEmailService> logger)
+        public LoggerEmailService(ILogger<LoggerEmailService> logger, EmailEventHub hub)
         {
             _logger = logger;
+            _emailEventHub = hub;
         }
 
         public Task SendEmailAsync(string email, string subject, string htmlMessage) => SendEmailAsync(email, subject, htmlMessage, Guid.NewGuid().ToString());
@@ -27,6 +30,7 @@ namespace FundRaisingAssignment.Application.Services
             }
 
             await Task.Delay(5000);
+            await _emailEventHub.PublishAsync(new(email, EmailStatus.Sent, "Logger"));
         }
 
         /// <summary>
