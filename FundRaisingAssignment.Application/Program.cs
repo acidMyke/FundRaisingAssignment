@@ -118,6 +118,9 @@ app.MapControllers();
 app.MapRazorPages()
    .WithStaticAssets();
 
+// Mailjet Webhook
+app.MapMailjetWebhookIfRegistered();
+
 // ── Database initialisation & role seeding ────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {

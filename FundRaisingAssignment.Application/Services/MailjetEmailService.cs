@@ -94,4 +94,23 @@ namespace FundRaisingAssignment.Application.Services
             await _emailEventHub.PublishAsync(emailEvent);
         }
     }
+
+    public static class MailjetWebhookExtensions
+    {
+        public static IEndpointRouteBuilder MapMailjetWebhookIfRegistered(this IEndpointRouteBuilder app)
+        {
+            using var scope = app.ServiceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetService<IEmailService>();
+            if (emailService is MailjetEmailService)
+            {
+                app.MapPost("/webhooks/mailjet", async (MailjetEmailService svc, MailjetEventDto dto) =>
+                {
+                    await svc.ProcessMailjetEventAsync(dto);
+                    return Results.Ok();
+                });
+            }
+
+            return app;
+        }
+    }
 }
