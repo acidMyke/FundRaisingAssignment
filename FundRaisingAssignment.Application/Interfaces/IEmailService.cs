@@ -5,6 +5,7 @@ namespace FundRaisingAssignment.Application.Interfaces;
 
 public interface IEmailService : IEmailSender
 {
+    Task SendEmailAsync(string email, string subject, string htmlMessage, string messageId);
 }
 
 public interface IEmailEventListener

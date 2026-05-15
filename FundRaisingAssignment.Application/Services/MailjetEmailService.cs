@@ -12,7 +12,9 @@ namespace FundRaisingAssignment.Application.Services
         private readonly EmailSettings _settings = settings.Value;
         private readonly HttpClient _httpClient = httpClient;
 
-        public async Task SendEmailAsync(string email, string subject, string htmlMessage)
+        public Task SendEmailAsync(string email, string subject, string htmlMessage) => SendEmailAsync(email, subject, htmlMessage, Guid.NewGuid().ToString());
+
+        public async Task SendEmailAsync(string email, string subject, string htmlMessage, string messageId)
         {
             if (string.IsNullOrEmpty(_settings.ApiKey) || string.IsNullOrEmpty(_settings.ApiSecret))
             {
@@ -39,7 +41,8 @@ namespace FundRaisingAssignment.Application.Services
                             }
                         },
                         Subject = subject,
-                        HTMLPart = htmlMessage
+                        HTMLPart = htmlMessage,
+                        CustomId = messageId,
                     }
                 }
             };

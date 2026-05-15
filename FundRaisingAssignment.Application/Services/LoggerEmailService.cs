@@ -12,7 +12,8 @@ namespace FundRaisingAssignment.Application.Services
             _logger = logger;
         }
 
-        public Task SendEmailAsync(string email, string subject, string htmlMessage)
+        public Task SendEmailAsync(string email, string subject, string htmlMessage) => SendEmailAsync(email, subject, htmlMessage, Guid.NewGuid().ToString());
+        public async Task SendEmailAsync(string email, string subject, string htmlMessage, string messageId)
         {
             _logger.LogInformation("--- MOCK EMAIL SENT ---");
             _logger.LogInformation("To: {Email}", email);
@@ -25,7 +26,7 @@ namespace FundRaisingAssignment.Application.Services
                 _sentEmails.Add((email, subject, htmlMessage));
             }
 
-            return Task.CompletedTask;
+            await Task.Delay(5000);
         }
 
         /// <summary>
