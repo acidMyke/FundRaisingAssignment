@@ -443,7 +443,7 @@ public class CampaignDigestServiceTests
         // Act
         var batchId = await _service.ValidateAndEnqueueAsync();
         // Assert
-        _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Once);
+        _mockJobQueue.Verify(e => e.QueueJob(batchId), Times.Once);
     }
 
     [Fact]
