@@ -34,6 +34,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<UserMetrics> UserMetrics { get; set; }
 
     public DbSet<CampaignVisit> CampaignVisits { get; set; }
+    public DbSet<DigestBatch> DigestBatches { get; set; }
+    public DbSet<DigestEntry> DigestEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -171,6 +173,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
              .OnDelete(DeleteBehavior.Cascade);
         });
         #endregion
+
+        builder.Entity<DigestBatch>()
+                .Property(e => e.Status).HasConversion<string>();
+
+        builder.Entity<DigestEntry>()
+            .Property(e => e.EmailStatus).HasConversion<string>();
     }
 
     private static void SetupUtcConverter(ModelBuilder builder)
