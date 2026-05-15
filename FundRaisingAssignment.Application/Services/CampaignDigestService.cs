@@ -26,7 +26,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     private const double DonationBaseWeight = 10.0;
     private const double DonationAmountMultiplier = 0.02;
 
-    public async Task TriggerDigestProcessingAsync()
+    public async Task ProcessAsync(Guid batchId)
     {
         var executionTime = DateTime.UtcNow;
 
@@ -193,5 +193,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             FormattedRaised = campaign.CurrentAmount.ToString("N0") + " USD",
             ProgressPercentage = campaign.GetProgressPercentage()
         };
+    }
+
+    public Task<Guid> ValidateAndEnqueue()
+    {
+        throw new NotImplementedException();
     }
 }

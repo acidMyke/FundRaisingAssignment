@@ -38,7 +38,7 @@ public class CampaignDigestServiceTests
         _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
             .ReturnsAsync([]);
 
-        await _service.TriggerDigestProcessingAsync();
+        await _service.ProcessAsync(Guid.NewGuid());
 
         _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
@@ -52,7 +52,7 @@ public class CampaignDigestServiceTests
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
             .ReturnsAsync([]);
 
-        await _service.TriggerDigestProcessingAsync();
+        await _service.ProcessAsync(Guid.NewGuid());
 
         _mockRepository.Verify(r => r.GetPastVisitsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
@@ -401,7 +401,7 @@ public class CampaignDigestServiceTests
         _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
 
         // Act
-        await _service.TriggerDigestProcessingAsync();
+        await _service.ProcessAsync(Guid.NewGuid());
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);

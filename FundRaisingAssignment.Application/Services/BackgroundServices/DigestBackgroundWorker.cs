@@ -21,7 +21,7 @@ public class DigestBackgroundWorker(DigestJobQueue queue, IServiceScopeFactory s
         {
             using var scope = _scopeFactory.CreateScope();
             var digestService = scope.ServiceProvider.GetRequiredService<ICampaignDigestService>();
-            await digestService.TriggerDigestProcessingAsync();
+            await digestService.ProcessAsync(batchId);
         }
     }
 }

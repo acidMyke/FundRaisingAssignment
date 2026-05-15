@@ -2,5 +2,6 @@ namespace FundRaisingAssignment.Application.Interfaces;
 
 public interface ICampaignDigestService
 {
-    Task TriggerDigestProcessingAsync();
+    Task<Guid> ValidateAndEnqueue();
+    Task ProcessAsync(Guid batchId);
 }
