@@ -74,4 +74,10 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
     {
         return dbContext.SaveChangesAsync();
     }
+
+    public void AddDigestBatchRecord(DigestBatch record)
+    {
+        dbContext.Add(record);
+    }
+
 }

@@ -43,9 +43,12 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             throw new DomainException("No active campaigns to include in digest.");
         }
 
-        var jobId = Guid.NewGuid();
-        digestJobQueue.QueueJob(jobId);
-        return jobId;
+        var batchId = Guid.NewGuid();
+        var digestBatch = new DigestBatch { Id = batchId };
+        repository.AddDigestBatchRecord(digestBatch);
+        await repository.SaveChangesAsync();
+        digestJobQueue.QueueJob(batchId);
+        return batchId;
     }
 
     public async Task ProcessAsync(Guid batchId)

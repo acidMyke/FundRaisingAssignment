@@ -1,6 +1,3 @@
-
-
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,11 +25,11 @@ public enum DigestEmailStatus
 [Table("DigestBatches")]
 public class DigestBatch
 {
-    public Guid Id { get; set; }
+    public required Guid Id { get; set; }
     public DigestBatchStatus Status { get; set; } = DigestBatchStatus.Pending;
     public int UserCount { get; set; }
     public int CampaignCount { get; set; }
-    public DateTime TriggeredAt { get; set; }
+    public DateTime TriggeredAt { get; set; } = DateTime.Now;
     public DateTime? StatusUpdatedAt { get; set; }
     public List<DigestEntry> Entries { get; set; } = [];
 }

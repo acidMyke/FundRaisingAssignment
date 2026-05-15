@@ -11,4 +11,5 @@ public interface ICampaignDigestRepository
     Task<List<UserCampaignInteractionDto>> GetPastDonationsForUsersAsync(IEnumerable<Guid> userIds);
     Task<List<UserCampaignInteractionDto>> GetPastVisitsForUsersAsync(IEnumerable<Guid> userIds);
     Task<Dictionary<Guid, CampaignSummaryContext>> GetCampaignSummariesAsync(IEnumerable<Guid> campaignIds);
+    void AddDigestBatchRecord(DigestBatch record);
 }

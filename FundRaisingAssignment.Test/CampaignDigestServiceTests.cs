@@ -38,7 +38,7 @@ public class CampaignDigestServiceTests
     [Fact]
     public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
     {
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null))
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10))
             .ReturnsAsync([]);
 
         await _service.ProcessAsync(Guid.NewGuid());
@@ -50,7 +50,7 @@ public class CampaignDigestServiceTests
     [Fact]
     public async Task TriggerDigestProcessingAsync_NoCampaigns_DoesNotFetchHistory()
     {
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null))
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10))
             .ReturnsAsync([new ApplicationUser { Id = Guid.NewGuid() }]);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
             .ReturnsAsync([]);
@@ -391,7 +391,7 @@ public class CampaignDigestServiceTests
         var donations = new List<UserCampaignInteractionDto>();
         var summaries = new Dictionary<Guid, CampaignSummaryContext>();
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
 
         Expression<Func<IEnumerable<Guid>, bool>> containingUserId = ids => ids != null && ids.Contains(userId);
@@ -437,12 +437,16 @@ public class CampaignDigestServiceTests
             }
         };
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 1)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
         _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+
         // Act
         var batchId = await _service.ValidateAndEnqueueAsync();
+
         // Assert
+        _mockRepository.Verify(r => r.AddDigestBatchRecord(It.Is<DigestBatch>(b => b.Id == batchId)), Times.Once);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
         _mockJobQueue.Verify(e => e.QueueJob(batchId), Times.Once);
     }
 
@@ -469,13 +473,15 @@ public class CampaignDigestServiceTests
             }
         ];
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 1)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
         _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
         // Act
         var exception = await Assert.ThrowsAsync<DomainException>(() => _service.ValidateAndEnqueueAsync());
         // Assert
         _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(r => r.AddDigestBatchRecord(It.IsAny<DigestBatch>()), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
         Assert.Equal("No users eligible for digest processing at this time.", exception.Message);
     }
 
@@ -489,13 +495,15 @@ public class CampaignDigestServiceTests
         List<ApplicationUser> users = [new ApplicationUser() { Id = userId, Email = "" }];
         List<Campaign> campaigns = [];
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), null)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 1)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
         _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
         // Act
         var exception = await Assert.ThrowsAsync<DomainException>(() => _service.ValidateAndEnqueueAsync());
         // Assert
         _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(r => r.AddDigestBatchRecord(It.IsAny<DigestBatch>()), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
         Assert.Equal("No active campaigns to include in digest.", exception.Message);
     }
 }
