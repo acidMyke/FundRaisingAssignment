@@ -30,7 +30,12 @@ namespace FundRaisingAssignment.Application.Services
             }
 
             await Task.Delay(5000);
-            await _emailEventHub.PublishAsync(new(email, EmailStatus.Sent, "Logger"));
+            await _emailEventHub.PublishAsync(new(email, EmailStatus.Sent, "Logger")
+            {
+                Timestamp = DateTime.UtcNow,
+                MessageId = messageId,
+                Reason = "",
+            });
         }
 
         /// <summary>

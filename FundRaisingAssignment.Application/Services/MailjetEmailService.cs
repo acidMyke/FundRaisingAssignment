@@ -3,14 +3,17 @@ using System.Text;
 using System.Text.Json;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Models.Dto;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 using Microsoft.Extensions.Options;
 
 namespace FundRaisingAssignment.Application.Services
 {
-    public class MailjetEmailService(IOptions<EmailSettings> settings, HttpClient httpClient) : IEmailService
+    public class MailjetEmailService(IOptions<EmailSettings> settings, HttpClient httpClient, EmailEventHub hub) : IEmailService
     {
         private readonly EmailSettings _settings = settings.Value;
         private readonly HttpClient _httpClient = httpClient;
+        private readonly EmailEventHub _emailEventHub = hub;
 
         public Task SendEmailAsync(string email, string subject, string htmlMessage) => SendEmailAsync(email, subject, htmlMessage, Guid.NewGuid().ToString());
 
@@ -60,6 +63,35 @@ namespace FundRaisingAssignment.Application.Services
                 var error = await response.Content.ReadAsStringAsync();
                 throw new Exception($"Failed to send email via Mailjet: {response.StatusCode} - {error}");
             }
+        }
+
+        public async Task ProcessMailjetEventAsync(MailjetEventDto dto)
+        {
+            ArgumentNullException.ThrowIfNull(dto);
+            ArgumentException.ThrowIfNullOrEmpty(dto.Email);
+            if (!dto.MessageId.HasValue)
+            {
+                throw new ArgumentNullException(nameof(dto), "MessageId cannot be null");
+            }
+
+            var status = dto.Event?.ToLower() switch
+            {
+                "sent" => EmailStatus.Sent,
+                "open" => EmailStatus.Opened,
+                "click" => EmailStatus.Clicked,
+                "bounce" => EmailStatus.Bounced,
+                "spam" => EmailStatus.Spam,
+                _ => EmailStatus.Unknown
+            };
+
+            var emailEvent = new EmailEvent(dto.Email, status, "Mailjet")
+            {
+                Timestamp = DateTimeOffset.FromUnixTimeSeconds(dto.Time).UtcDateTime,
+                MessageId = dto.MessageId.ToString(),
+                Reason = dto.Error
+            };
+
+            await _emailEventHub.PublishAsync(emailEvent);
         }
     }
 }
