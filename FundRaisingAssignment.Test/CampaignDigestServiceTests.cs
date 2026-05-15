@@ -409,4 +409,93 @@ public class CampaignDigestServiceTests
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
     }
+
+    [Fact]
+    public async Task ValidateAndEnqueueAsync_Positive_ShouldQueueJobAndReturnJobId()
+    {
+        // Arrange
+        const string EMAIL = "test@example.com";
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var users = new List<ApplicationUser>
+        {
+            new ApplicationUser { Id = userId, Email = EMAIL }
+        };
+
+        var campaigns = new List<Campaign>
+        {
+            new Campaign
+            {
+                Id = campaignId,
+                Title = "",
+                Description = "",
+                FundingGoal = 1000m,
+                CurrentAmount = 500m,
+                TargetAmount = 1000m,
+                EndDate = now.AddHours(10)
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+        _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+        // Act
+        var batchId = await _service.ValidateAndEnqueueAsync();
+        // Assert
+        _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ValidateAndEnqueueAsync_Negative_WhenNoUserFound_ShouldThrowError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        List<ApplicationUser> users = [];
+
+        List<Campaign> campaigns =
+        [
+            new Campaign
+            {
+                Id = campaignId,
+                Title = "",
+                Description = "",
+                FundingGoal = 1000m,
+                CurrentAmount = 500m,
+                TargetAmount = 1000m,
+                EndDate = now.AddHours(10)
+            }
+        ];
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+        _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+        // Act
+        var exception = await Assert.ThrowsAsync<DomainException>(() => _service.ValidateAndEnqueueAsync());
+        // Assert
+        _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Never);
+        Assert.Equal("No users eligible for digest processing at this time.", exception.Message);
+    }
+
+    [Fact]
+    public async Task ValidateAndEnqueueAsync_Negative_WhenNoCampaignFound_ShouldThrowError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        List<ApplicationUser> users = [new ApplicationUser() { Id = userId, Email = "" }];
+        List<Campaign> campaigns = [];
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+        _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+        // Act
+        var exception = await Assert.ThrowsAsync<DomainException>(() => _service.ValidateAndEnqueueAsync());
+        // Assert
+        _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Never);
+        Assert.Equal("No active campaigns to include in digest.", exception.Message);
+    }
 }

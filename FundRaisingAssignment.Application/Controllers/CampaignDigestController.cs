@@ -14,7 +14,7 @@ namespace FundRaisingAssignment.Application.Controllers
         {
             try
             {
-                var batchId = await digestService.ValidateAndEnqueue();
+                var batchId = await digestService.ValidateAndEnqueueAsync();
                 return Ok(new { message = "Digest processing started successfully.", BatchId = batchId });
             }
             catch (Exception ex)

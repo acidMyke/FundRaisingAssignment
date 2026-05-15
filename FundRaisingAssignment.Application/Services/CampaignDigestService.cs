@@ -196,7 +196,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         };
     }
 
-    public Task<Guid> ValidateAndEnqueue()
+    public Task<Guid> ValidateAndEnqueueAsync()
     {
         throw new NotImplementedException();
     }
