@@ -6,6 +6,7 @@ using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Repositories;
 using FundRaisingAssignment.Application.Security;
 using FundRaisingAssignment.Application.Services;
+using FundRaisingAssignment.Application.Services.BackgroundServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -79,6 +80,10 @@ builder.Services.AddScoped<BadgeService>();       // Register BadgeService for D
 builder.Services.AddScoped<ICampaignDigestRepository, CampaignDigestRepository>();
 builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
 builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEmailTemplateService>();
+
+// Campaign digest background queue & worker
+builder.Services.AddSingleton<DigestJobQueue>();
+builder.Services.AddHostedService<DigestBackgroundWorker>();
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
