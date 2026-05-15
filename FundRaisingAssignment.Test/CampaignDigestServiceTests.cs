@@ -1,0 +1,409 @@
+using System.Linq.Expressions;
+using FundRaisingAssignment.Application.Interfaces;
+using FundRaisingAssignment.Application.Interfaces.Repositories;
+using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
+using FundRaisingAssignment.Application.Services;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+namespace FundRaisingAssignment.Test;
+
+public class CampaignDigestServiceTests
+{
+    private readonly Mock<ICampaignDigestRepository> _mockRepository;
+    private readonly Mock<ILogger<CampaignDigestService>> _mockLogger;
+    private readonly Mock<ICampaignDigestEmailTemplateService> _mockTemplateService;
+    private readonly Mock<IEmailService> _mockEmailService;
+    private readonly CampaignDigestService _service;
+
+    public CampaignDigestServiceTests()
+    {
+        _mockRepository = new Mock<ICampaignDigestRepository>();
+        _mockLogger = new Mock<ILogger<CampaignDigestService>>();
+        _mockTemplateService = new Mock<ICampaignDigestEmailTemplateService>();
+        _mockEmailService = new Mock<IEmailService>();
+
+        _service = new CampaignDigestService(
+            _mockRepository.Object,
+            _mockLogger.Object,
+            _mockTemplateService.Object,
+            _mockEmailService.Object
+        );
+    }
+
+    [Fact]
+    public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
+    {
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+            .ReturnsAsync([]);
+
+        await _service.TriggerDigestProcessingAsync();
+
+        _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task TriggerDigestProcessingAsync_NoCampaigns_DoesNotFetchHistory()
+    {
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+            .ReturnsAsync([new ApplicationUser { Id = Guid.NewGuid() }]);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
+            .ReturnsAsync([]);
+
+        await _service.TriggerDigestProcessingAsync();
+
+        _mockRepository.Verify(r => r.GetPastVisitsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(12, 0, 1000, 50)]
+    [InlineData(48, 0, 1000, 30)]
+    [InlineData(120, 0, 1000, 10)]
+    [InlineData(-1, 0, 1000, 0)]
+    [InlineData(200, 800, 1000, 35)]
+    [InlineData(12, 800, 1000, 85)]
+    public void CalculateCampaignUrgencyScore_ReturnsExpectedScore(int hoursRemaining, decimal currentAmount, decimal targetAmount, double expectedScore)
+    {
+        var now = DateTime.UtcNow;
+        var campaign = new Campaign
+        {
+            EndDate = now.AddHours(hoursRemaining),
+            CurrentAmount = currentAmount,
+            TargetAmount = targetAmount
+        };
+
+        var score = _service.CalculateCampaignUrgencyScore(campaign, now);
+
+        Assert.Equal(expectedScore, score);
+    }
+
+    [Fact]
+    public void MapCampaignToDisplayItem_WithShortDescription_UsesShortDescription()
+    {
+        var campaign = new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test Title",
+            ShortDescription = "Short summary",
+            Description = new string('A', 200),
+            FundingGoal = 2500m,
+            CurrentAmount = 1250m
+        };
+
+        var result = _service.MapCampaignToDisplayItem(campaign);
+
+        Assert.Equal(campaign.Id, result.Id);
+        Assert.Equal("Test Title", result.Title);
+        Assert.Equal("Short summary", result.SummaryText);
+        Assert.Equal("2,500 USD", result.FormattedGoal);
+        Assert.Equal("1,250 USD", result.FormattedRaised);
+        Assert.Equal(50m, result.ProgressPercentage);
+    }
+
+    [Fact]
+    public void MapCampaignToDisplayItem_NoShortDescription_UsesFullDescription()
+    {
+        var campaign = new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test Title",
+            ShortDescription = null,
+            Description = "Full Description",
+            FundingGoal = 1000m,
+            CurrentAmount = 0m
+        };
+
+        var result = _service.MapCampaignToDisplayItem(campaign);
+
+        Assert.Equal("Full Description", result.SummaryText);
+    }
+
+    [Fact]
+    public void MapCampaignToDisplayItem_NoShortDescription_LongDescription_Truncates()
+    {
+        var campaign = new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test Title",
+            ShortDescription = null,
+            Description = new string('A', 200),
+            FundingGoal = 1000m,
+            CurrentAmount = 0m
+        };
+
+        var result = _service.MapCampaignToDisplayItem(campaign);
+
+        Assert.Equal(new string('A', 147) + "...", result.SummaryText);
+    }
+
+    [Fact]
+    public void BuildProfile_EmptyContext_ReturnsEmptyProfile()
+    {
+        var profile = _service.BuildProfile([], new Dictionary<Guid, CampaignSummaryContext>());
+
+        Assert.Empty(profile.CategoryAffinities);
+        Assert.Empty(profile.OwnerAffinities);
+    }
+
+    [Fact]
+    public void BuildProfile_WithVisits_CalculatesScoresCorrectly()
+    {
+        var campaignId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
+        };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3 } };
+
+        var profile = _service.BuildProfile(interactions, summaries);
+
+        Assert.Contains(CampaignCategory.Education, profile.CategoryAffinities);
+        Assert.Contains(ownerId, profile.OwnerAffinities);
+        Assert.Equal(3.0, profile.CategoryAffinities[CampaignCategory.Education]);
+        Assert.Equal(3.0, profile.OwnerAffinities[ownerId]);
+    }
+
+    [Fact]
+    public void BuildProfile_WithDonations_CalculatesScoresCorrectly()
+    {
+        var campaignId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Medical, OwnerId = ownerId } }
+        };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, DonationAmount = 100m } };
+
+        var profile = _service.BuildProfile(interactions, summaries);
+
+        Assert.Contains(CampaignCategory.Medical, profile.CategoryAffinities);
+        Assert.Contains(ownerId, profile.OwnerAffinities);
+        Assert.Equal(12.0, profile.CategoryAffinities[CampaignCategory.Medical]);
+        Assert.Equal(12.0, profile.OwnerAffinities[ownerId]);
+    }
+
+    [Fact]
+    public void BuildProfile_AccumulatesScoresCorrectly()
+    {
+        var campaign1Id = Guid.NewGuid();
+        var campaign2Id = Guid.NewGuid();
+        var owner1Id = Guid.NewGuid();
+        var owner2Id = Guid.NewGuid();
+
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaign1Id, new CampaignSummaryContext { Id = campaign1Id, Category = CampaignCategory.Environment, OwnerId = owner1Id } },
+            { campaign2Id, new CampaignSummaryContext { Id = campaign2Id, Category = CampaignCategory.Environment, OwnerId = owner2Id } }
+        };
+
+        var interactions = new List<UserCampaignInteractionDto>
+        {
+            new() { CampaignId = campaign1Id, VisitCount = 2 },
+            new() { CampaignId = campaign2Id, DonationAmount = 50m }
+        };
+
+        var profile = _service.BuildProfile(interactions, summaries);
+
+        Assert.Contains(CampaignCategory.Environment, profile.CategoryAffinities);
+        Assert.Contains(owner1Id, profile.OwnerAffinities);
+        Assert.Contains(owner2Id, profile.OwnerAffinities);
+
+        Assert.Equal(13.0, profile.CategoryAffinities[CampaignCategory.Environment]);
+        Assert.Equal(2.0, profile.OwnerAffinities[owner1Id]);
+        Assert.Equal(11.0, profile.OwnerAffinities[owner2Id]);
+    }
+
+    [Fact]
+    public void BuildProfile_UnknownCampaigns_Ignored()
+    {
+        var interactions = new List<UserCampaignInteractionDto>
+        {
+            new() { CampaignId = Guid.NewGuid(), VisitCount = 3 },
+            new() { CampaignId = Guid.NewGuid(), DonationAmount = 100m }
+        };
+
+        var profile = _service.BuildProfile(interactions, new Dictionary<Guid, CampaignSummaryContext>());
+
+        Assert.Empty(profile.CategoryAffinities);
+        Assert.Empty(profile.OwnerAffinities);
+    }
+
+    [Fact]
+    public void CalculateAffinityScore_MatchesCategoryAndOwner_ReturnsSum()
+    {
+        var ownerId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
+        };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3 } };
+
+        var profile = _service.BuildProfile(interactions, summaries);
+
+        var candidateCampaign = new Campaign
+        {
+            Category = CampaignCategory.Education,
+            OwnerId = ownerId
+        };
+
+        var score = _service.CalculateAffinityScore(profile, candidateCampaign);
+
+        Assert.Equal(6.0, score);
+    }
+
+    [Fact]
+    public void CalculateAffinityScore_NoMatches_ReturnsZero()
+    {
+        var profile = _service.BuildProfile([], new Dictionary<Guid, CampaignSummaryContext>());
+        var candidateCampaign = new Campaign
+        {
+            Category = CampaignCategory.Education,
+            OwnerId = Guid.NewGuid()
+        };
+
+        var score = _service.CalculateAffinityScore(profile, candidateCampaign);
+
+        Assert.Equal(0.0, score);
+    }
+
+    [Fact]
+    public void GetTopCampaignsForUser_ReturnsTopThreeByScore()
+    {
+        // Arrange
+        var profile = new CampaignDigestService.UserAffinityProfile();
+        var campaigns = Enumerable.Range(1, 5).Select(i => new Campaign
+        {
+            Id = Guid.NewGuid(),
+            Title = $"C{i}",
+            Category = (CampaignCategory)(i % 3)
+        }).ToList();
+
+        var urgencyScores = campaigns.ToDictionary(c => c.Id, c => (double)campaigns.IndexOf(c));
+
+        // Act
+        var result = _service.GetTopCampaignsForUser(profile, campaigns, urgencyScores).ToList();
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        Assert.Equal("C5", result[0].Title); // Score 4
+        Assert.Equal("C4", result[1].Title); // Score 3
+        Assert.Equal("C3", result[2].Title); // Score 2
+    }
+
+    [Fact]
+    public void GetTopCampaignsForUser_ExcludesZeroOrNegativeScores()
+    {
+        // Arrange
+        var profile = new CampaignDigestService.UserAffinityProfile();
+        var campaigns = Enumerable.Range(1, 3).Select(i => new Campaign { Id = Guid.NewGuid(), Title = $"C{i}" }).ToList();
+        var urgencyScores = new Dictionary<Guid, double>
+        {
+            { campaigns[0].Id, 10.0 },
+            { campaigns[1].Id, 0.0 },
+            { campaigns[2].Id, -5.0 }
+        };
+
+        // Act
+        var result = _service.GetTopCampaignsForUser(profile, campaigns, urgencyScores).ToList();
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("C1", result[0].Title);
+    }
+
+    [Fact]
+    public async Task SendDigestEmailAsync_EmptyCampaigns_DoesNotSendEmail()
+    {
+        // Arrange
+        var user = new ApplicationUser { Email = "" };
+
+        // Act
+        await _service.SendDigestEmailAsync(user, []);
+
+        // Assert
+        _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendDigestEmailAsync_WithCampaigns_SendsEmailWithCorrectDetails()
+    {
+        // Arrange
+        const string EMAIL = "test@example.com";
+        const string SUBJECT = "Test Subject";
+        const string BODY = "Test Body";
+        var user = new ApplicationUser { Email = EMAIL };
+        var campaigns = new List<Campaign> { new() { Id = Guid.NewGuid(), Title = "", Description = "" } };
+
+        _mockTemplateService.Setup(t => t.GenerateSubject(It.IsAny<CampaignDigestEmailViewModel>())).Returns(SUBJECT);
+        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
+
+        // Act
+        await _service.SendDigestEmailAsync(user, campaigns);
+
+        // Assert
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+    }
+
+    [Fact]
+    public async Task TriggerDigestProcessingAsync_GoldenFlow_ValidUsersAndCampaigns_SendsEmail()
+    {
+        // Arrange
+        const string EMAIL = "test@example.com";
+        const string SUBJECT = "Test Subject";
+        const string BODY = "Test Body";
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var users = new List<ApplicationUser>
+        {
+            new ApplicationUser { Id = userId, Email = EMAIL }
+        };
+
+        var campaigns = new List<Campaign>
+        {
+            new Campaign
+            {
+                Id = campaignId,
+                Title = "",
+                Description = "",
+                FundingGoal = 1000m,
+                CurrentAmount = 500m,
+                TargetAmount = 1000m,
+                EndDate = now.AddHours(10)
+            }
+        };
+
+        var visits = new List<UserCampaignInteractionDto>();
+        var donations = new List<UserCampaignInteractionDto>();
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>();
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+
+        Expression<Func<IEnumerable<Guid>, bool>> containingUserId = ids => ids != null && ids.Contains(userId);
+        Expression<Func<IEnumerable<Guid>, bool>> containingCampaignId = ids => ids != null && ids.Contains(campaignId);
+
+        _mockRepository.Setup(r => r.GetPastVisitsForUsersAsync(It.Is(containingUserId))).ReturnsAsync(visits);
+        _mockRepository.Setup(r => r.GetPastDonationsForUsersAsync(It.Is(containingUserId))).ReturnsAsync(donations);
+        _mockRepository.Setup(r => r.GetCampaignSummariesAsync(It.Is(containingCampaignId))).ReturnsAsync(summaries);
+        _mockTemplateService.Setup(t => t.GenerateSubject(It.IsAny<CampaignDigestEmailViewModel>())).Returns(SUBJECT);
+        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
+
+        // Act
+        await _service.TriggerDigestProcessingAsync();
+
+        // Assert
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+    }
+}

@@ -33,6 +33,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     // ── Badge Metrics ─────────────────────────────────────────────
     public DbSet<UserMetrics> UserMetrics { get; set; }
 
+    public DbSet<CampaignVisit> CampaignVisits { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
