@@ -8,7 +8,8 @@ namespace FundRaisingAssignment.Application.Services;
 public class CampaignDigestService(ICampaignDigestRepository repository,
                                    ILogger<CampaignDigestService> logger,
                                    ICampaignDigestEmailTemplateService templateService,
-                                   IEmailService emailService) : ICampaignDigestService
+                                   IEmailService emailService,
+                                   IDigestJobQueue digestJobQueue) : ICampaignDigestService
 {
     public class CampaignScore
     {

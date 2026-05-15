@@ -4,10 +4,10 @@ using FundRaisingAssignment.Application.Interfaces;
 namespace FundRaisingAssignment.Application.Services.BackgroundServices;
 
 // Should be a siingleton service, only one shared instance push & read from same queue
-public class DigestJobQueue
+public class DigestJobQueue : IDigestJobQueue
 {
     private readonly Channel<Guid> _queue = Channel.CreateUnbounded<Guid>();
-    public void QueueJob(Guid batchId) => _queue.Writer.TryWrite(batchId);
+    public bool QueueJob(Guid batchId) => _queue.Writer.TryWrite(batchId);
     public IAsyncEnumerable<Guid> DequeueJobs(CancellationToken ct) => _queue.Reader.ReadAllAsync(ct);
 }
 
