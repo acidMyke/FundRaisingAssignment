@@ -4,6 +4,7 @@ using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Models.ProcessingModels;
 using FundRaisingAssignment.Application.Services;
+using FundRaisingAssignment.Application.Hubs;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -16,6 +17,7 @@ public class CampaignDigestServiceTests
     private readonly Mock<ICampaignDigestEmailTemplateService> _mockTemplateService;
     private readonly Mock<IEmailService> _mockEmailService;
     private readonly Mock<IDigestJobQueue> _mockJobQueue;
+    private readonly Mock<IDigestSyncPublisher> _mockSyncPublisher;
     private readonly CampaignDigestService _service;
 
     public CampaignDigestServiceTests()
@@ -25,13 +27,15 @@ public class CampaignDigestServiceTests
         _mockTemplateService = new Mock<ICampaignDigestEmailTemplateService>();
         _mockEmailService = new Mock<IEmailService>();
         _mockJobQueue = new Mock<IDigestJobQueue>();
+        _mockSyncPublisher = new Mock<IDigestSyncPublisher>();
 
         _service = new CampaignDigestService(
             _mockRepository.Object,
             _mockLogger.Object,
             _mockTemplateService.Object,
             _mockEmailService.Object,
-            _mockJobQueue.Object
+            _mockJobQueue.Object,
+            _mockSyncPublisher.Object
         );
     }
 
@@ -423,6 +427,8 @@ public class CampaignDigestServiceTests
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, It.IsAny<string>()), Times.Once);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Processed")), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.AtLeastOnce);
         Assert.Equal(DigestBatchStatus.Processed, batch.Status);
     }
 
@@ -587,15 +593,21 @@ public class CampaignDigestServiceTests
     {
         // Arrange
         var emailId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Processing };
         var emailEvent = new EmailEvent("test@example.com", inputStatus, "Mailjet")
         {
             MessageId = emailId.ToString()
         };
+
+        _mockRepository.Setup(r => r.GetDigestBatchIdByEmailIdAsync(emailId)).ReturnsAsync(batchId);
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
 
         // Act
         await _service.OnEmailReceivedAsync(emailEvent);
 
         // Assert
         _mockRepository.Verify(r => r.UpdateDigestEntryStatusAsync(emailId, expectedStatus, It.IsAny<string>()), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.Once);
     }
 }

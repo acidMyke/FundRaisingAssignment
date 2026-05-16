@@ -1,3 +1,4 @@
+using FundRaisingAssignment.Application.Hubs;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
@@ -10,7 +11,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                                    ILogger<CampaignDigestService> logger,
                                    ICampaignDigestEmailTemplateService templateService,
                                    IEmailService emailService,
-                                   IDigestJobQueue digestJobQueue) : ICampaignDigestService, IEmailEventListener
+                                   IDigestJobQueue digestJobQueue,
+                                   IDigestSyncPublisher syncPublisher) : ICampaignDigestService, IEmailEventListener
 {
     public class CampaignAffinityScore
     {
@@ -131,6 +133,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         return viewModel;
     }
 
+    private static DigestSyncData PrepareSyncData(DigestBatch batch) => new(batch.Id, batch.Status.ToString(), GetBatchStatusBadgeClass(batch.Status));
+
     #endregion
 
     #region Batch processing business logic
@@ -165,6 +169,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
 
         digestBatchInfo.Status = DigestBatchStatus.Processing;
         await repository.SaveChangesAsync();
+        syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
 
         var userIds = users.Select(u => u.Id).ToList();
 
@@ -194,6 +199,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 await UpdateDigestBatch(digestBatchInfo, user, digestScores, emailId);
                 await SendDigestEmailAsync(user, digestCampaigns, emailId);
                 await Task.Delay(250);
+
+                syncPublisher.PublishDetailsSync(batchId);
             }
             catch (Exception ex)
             {
@@ -204,6 +211,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         digestBatchInfo.Status = DigestBatchStatus.Processed;
         digestBatchInfo.StatusUpdatedAt = executionTime;
         await repository.SaveChangesAsync();
+
+        syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
     }
 
     public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, List<CampaignAffinityScore> digestScores, Guid emailId)
@@ -386,7 +395,12 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             _ => DigestEmailStatus.Unknown
         };
 
-        await repository.UpdateDigestEntryStatusAsync(emailId, status, e.Reason);
+        var batchId = await repository.GetDigestBatchIdByEmailIdAsync(emailId);
+        if (batchId.HasValue)
+        {
+            await repository.UpdateDigestEntryStatusAsync(emailId, status, e.Reason);
+            syncPublisher.PublishDetailsSync(batchId.Value);
+        }
     }
 
     #endregion
