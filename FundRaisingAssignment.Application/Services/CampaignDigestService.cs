@@ -122,7 +122,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                             IsBypass = e.Sequence == 0,
                             HasCampaign = e.CampaignId.HasValue,
                             CampaignTitle = e.Campaign?.Title,
-                            DisplayAffinityScore = e.Sequence > 0 ? "0.00" : "-"
+                            DisplayAffinityScore = e.Sequence > 0 ? e.AffinityScore.ToString("F2") : "-"
                         }).ToList()
                     };
                 }).ToList()
