@@ -87,4 +87,6 @@ public interface ICampaignService
     #region PM06 – Leaderboard (Ho Dan Ze; partial — surfaced inline on CampaignPage)
     Task<IReadOnlyList<Donation>> GetTopDonationsAsync(Guid campaignId, int topCount);
     #endregion
+    Task TrackUserViewAsync(Campaign campaign, ApplicationUser user);
+
 }

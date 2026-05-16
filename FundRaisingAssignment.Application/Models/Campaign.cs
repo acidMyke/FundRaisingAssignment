@@ -68,6 +68,8 @@ namespace FundRaisingAssignment.Application.Models
         public DateTime? EndDate { get; set; }   // nullable for Karthik DB compat
 
         // ── Status ────────────────────────────────────────────────────────────
+        public DateTime? LastDigestSent { get; set; }
+
         public CampaignStatus Status { get; set; } = CampaignStatus.Draft;
 
         [StringLength(500)]
@@ -239,6 +241,13 @@ namespace FundRaisingAssignment.Application.Models
                 Status = CampaignStatus.Flagged;
                 FlagReason = $"Auto-flagged: low review ({stars} stars) from {reviewerEmail}.";
             }
+        }
+
+
+        public decimal GetProgressPercentage()
+        {
+            if (FundingGoal <= 0) return 0;
+            return Math.Min(100, Math.Round(CurrentAmount / FundingGoal * 100));
         }
         #endregion
     }

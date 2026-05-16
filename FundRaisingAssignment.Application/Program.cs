@@ -1,13 +1,15 @@
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Data.Seeding;
+using FundRaisingAssignment.Application.Interfaces;
+using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Repositories;
 using FundRaisingAssignment.Application.Security;
 using FundRaisingAssignment.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-using FundRaisingAssignment.Application.Interfaces;
 using OfficeOpenXml;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,18 +38,29 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();        // Cross-cutt
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>    // UA01 — user accounts
-    options.SignIn.RequireConfirmedAccount = true)
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequiredLength = 6;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequiredUniqueChars = 2;
+    })
     .AddRoles<ApplicationRole>()                                   // UA01 — role assignment
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName)); // FR03 — email settings
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName)); // Cross-cutting — email settings
 
 var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
 
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
-    builder.Services.AddTransient<IEmailService, MailjetEmailService>();           // FR03 — Send Thank-You Message (Nicholas)
-    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>()); // FR03 — Identity adapter for the same transport
+    builder.Services.AddTransient<IEmailService, MailjetEmailService>(); // Cross-cutting — Email Service
+    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>()); // Cross-cutting — Identity adapter for the same transport
+}
+else
+{
+    builder.Services.AddTransient<IEmailService, LoggerEmailService>(); // Cross-cutting — Email Service
 }
 
 // ── Authorization ─────────────────────────────────────────────────────────────
@@ -63,9 +76,13 @@ builder.Services.AddScoped<AnalyticsService>();   // PM05 — Platform Analytics
 builder.Services.AddScoped<BadgeService>();       // Register BadgeService for DI
 
 
+builder.Services.AddScoped<ICampaignDigestRepository, CampaignDigestRepository>();
+builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
+builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEmailTemplateService>();
+
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
-builder.Services.AddHttpClient();             // FR03 — Mailjet HTTP client
+builder.Services.AddHttpClient();             // Cross-cutting — Mailjet HTTP client
 builder.Services.AddRazorPages();             // Cross-cutting — Razor Pages host
 
 // ── EPPlus license (UA02) ─────────────────────────────────────────────────────

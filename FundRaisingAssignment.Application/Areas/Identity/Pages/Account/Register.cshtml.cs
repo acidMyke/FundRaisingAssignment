@@ -100,6 +100,9 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account
 
             [Display(Name = "Register as Fundraiser")]
             public bool IsFundraiser { get; set; }
+
+            [Display(Name = "Receive updates about campaign")]
+            public bool ReceiveCampaignUpdates { get; set; } = true;
         }
 
 
@@ -116,6 +119,7 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account
             if (ModelState.IsValid)
             {
                 var user = CreateUser();
+                user.ReceiveCampaignDigest = Input.ReceiveCampaignUpdates;
                 await _userStore.SetUserNameAsync(user, Input.UserName, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
                 var result = await _userManager.CreateAsync(user, Input.Password);

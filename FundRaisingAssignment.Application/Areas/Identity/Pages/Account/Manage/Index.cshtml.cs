@@ -58,6 +58,9 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account.Manage
             [Phone]
             [Display(Name = "Phone number")]
             public string PhoneNumber { get; set; }
+
+            [Display(Name = "Receive updates about campaign")]
+            public bool ReceiveCampaignUpdates { get; set; } = true;
         }
 
         private async Task LoadAsync(ApplicationUser user)
@@ -70,7 +73,8 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account.Manage
             Input = new InputModel
             {
                 UserName = userName,
-                PhoneNumber = phoneNumber
+                PhoneNumber = phoneNumber,
+                ReceiveCampaignUpdates = user.ReceiveCampaignDigest
             };
         }
 
@@ -130,6 +134,12 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account.Manage
                     StatusMessage = "Unexpected error when trying to set phone number.";
                     return RedirectToPage();
                 }
+            }
+
+            if (Input.ReceiveCampaignUpdates != user.ReceiveCampaignDigest)
+            {
+                user.ReceiveCampaignDigest = Input.ReceiveCampaignUpdates;
+                await _userManager.UpdateAsync(user);
             }
 
             await _signInManager.RefreshSignInAsync(user);
