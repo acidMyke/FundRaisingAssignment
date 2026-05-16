@@ -68,10 +68,10 @@ namespace FundRaisingAssignment.Application.Services
 
         public async Task ProcessMailjetEventAsync(MailjetEventDto dto)
         {
-            _logger.LogInformation("Processing Mailjet event: {Event} for {Email} (MessageId: {MessageId})", dto.Event, dto.Email, dto.MessageId);
+            _logger.LogInformation("Processing Mailjet event: {Event} for {Email} (MessageId: {MessageId})", dto.Event, dto.Email, dto.CustomID);
             ArgumentNullException.ThrowIfNull(dto);
             ArgumentException.ThrowIfNullOrEmpty(dto.Email);
-            if (!dto.MessageId.HasValue)
+            if (!dto.CustomID.HasValue)
             {
                 throw new ArgumentNullException(nameof(dto), "MessageId cannot be null");
             }
@@ -89,7 +89,7 @@ namespace FundRaisingAssignment.Application.Services
             var emailEvent = new EmailEvent(dto.Email, status, "Mailjet")
             {
                 Timestamp = DateTimeOffset.FromUnixTimeSeconds(dto.Time).UtcDateTime,
-                MessageId = dto.MessageId.ToString(),
+                MessageId = dto.CustomID.ToString(),
                 Reason = dto.Error
             };
 

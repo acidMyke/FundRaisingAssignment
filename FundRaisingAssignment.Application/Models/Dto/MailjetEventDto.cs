@@ -13,8 +13,8 @@ public class MailjetEventDto
     [JsonPropertyName("email")]
     public string? Email { get; set; }
 
-    [JsonPropertyName("MessageID")]
-    public long? MessageId { get; set; }
+    [JsonPropertyName("CustomID")]
+    public long? CustomID { get; set; }
 
     [JsonPropertyName("error")]
     public string? Error { get; set; }
