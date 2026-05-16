@@ -56,6 +56,7 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(Email
 var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
 
 builder.Services.AddSingleton<EmailEventHub>();
+builder.Services.AddScoped<IEmailEventListener, UserEmailBounceListener>();
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
     builder.Services.AddTransient<IEmailService, MailjetEmailService>(); // Cross-cutting — Email Service
