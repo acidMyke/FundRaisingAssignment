@@ -81,6 +81,29 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
     }
 
     public Task<DigestBatch?> GetDigestBatchByIdAsync(Guid id) => dbContext.DigestBatches.Where(b => b.Id == id).FirstOrDefaultAsync();
+    
+    public async Task AddDigestEntriesAsync(IEnumerable<DigestEntry> entries)
+    {
+        var entryList = entries.ToList();
+        if (entryList.Count == 0) return;
+
+        bool originalAutoDetect = dbContext.ChangeTracker.AutoDetectChangesEnabled;
+        try
+        {
+            dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+            dbContext.DigestEntries.AddRange(entryList);
+            await dbContext.SaveChangesAsync();
+        }
+        finally
+        {
+            dbContext.ChangeTracker.AutoDetectChangesEnabled = originalAutoDetect;
+        }
+
+        foreach (var entry in entryList)
+        {
+            dbContext.Entry(entry).State = EntityState.Detached;
+        }
+    }
 
     public Task UpdateDigestEntryStatusAsync(Guid emailId, DigestEmailStatus status, string? reason) =>
         dbContext.DigestEntries

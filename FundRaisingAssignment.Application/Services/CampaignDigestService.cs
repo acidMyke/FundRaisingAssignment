@@ -185,7 +185,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             {
                 var userInteractions = visitsGrouped[user.Id].Concat(donationsGrouped[user.Id]);
                 var affinityProfile = BuildProfile(userInteractions, campaignSummaries);
-                var digestCampaigns = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores);
+                var digestCampaigns = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores).ToList();
 
                 var emailId = Guid.NewGuid();
                 await UpdateDigestBatch(digestBatchInfo, user, digestCampaigns, emailId);
@@ -205,9 +205,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
 
     public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, IEnumerable<Campaign> digestCampaigns, Guid emailId)
     {
+        var entries = new List<DigestEntry>();
         if (!digestCampaigns.Any())
         {
-            digestBatchInfo.Entries.Add(new DigestEntry
+            entries.Add(new DigestEntry
             {
                 Id = Guid.NewGuid(),
                 DigestBatchId = digestBatchInfo.Id,
@@ -223,7 +224,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             int seq = 1;
             foreach (var campaign in digestCampaigns)
             {
-                digestBatchInfo.Entries.Add(new DigestEntry
+                entries.Add(new DigestEntry
                 {
                     Id = Guid.NewGuid(),
                     DigestBatchId = digestBatchInfo.Id,
@@ -237,7 +238,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             }
         }
 
-        await repository.SaveChangesAsync();
+        await repository.AddDigestEntriesAsync(entries);
     }
 
 

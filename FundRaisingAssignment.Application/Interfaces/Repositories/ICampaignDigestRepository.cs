@@ -13,6 +13,7 @@ public interface ICampaignDigestRepository
     Task<Dictionary<Guid, CampaignSummaryContext>> GetCampaignSummariesAsync(IEnumerable<Guid> campaignIds);
     void AddDigestBatchRecord(DigestBatch record);
     Task<DigestBatch?> GetDigestBatchByIdAsync(Guid id);
+    Task AddDigestEntriesAsync(IEnumerable<DigestEntry> entries);
     Task UpdateDigestEntryStatusAsync(Guid emailId, DigestEmailStatus status, string? reason);
     Task<DigestBatch?> GetDigestBatchWithDetailsAsync(Guid batchId);
     Task<List<DigestBatch>> GetAllDigestBatchesAsync();

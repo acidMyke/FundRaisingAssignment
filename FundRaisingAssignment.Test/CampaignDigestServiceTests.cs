@@ -540,14 +540,15 @@ public class CampaignDigestServiceTests
         await _service.UpdateDigestBatch(batch, user, campaigns, emailId);
 
         // Assert
-        Assert.Equal(2, batch.Entries.Count);
-        Assert.All(batch.Entries, e => Assert.Equal(batch.Id, e.DigestBatchId));
-        Assert.All(batch.Entries, e => Assert.Equal(user.Id, e.UserId));
-        Assert.All(batch.Entries, e => Assert.Equal(emailId, e.EmailId));
-        Assert.All(batch.Entries, e => Assert.Equal(DigestEmailStatus.Initial, e.EmailStatus));
-        Assert.All(batch.Entries, e => Assert.NotNull(e.EmailId));
-        Assert.Contains(batch.Entries, e => e.CampaignId == campaigns[0].Id);
-        Assert.Contains(batch.Entries, e => e.CampaignId == campaigns[1].Id);
+        _mockRepository.Verify(r => r.AddDigestEntriesAsync(It.Is<IEnumerable<DigestEntry>>(entries =>
+            entries.Count() == 2 &&
+            entries.All(e => e.DigestBatchId == batch.Id) &&
+            entries.All(e => e.UserId == user.Id) &&
+            entries.All(e => e.EmailId == emailId) &&
+            entries.All(e => e.EmailStatus == DigestEmailStatus.Initial) &&
+            entries.Any(e => e.CampaignId == campaigns[0].Id) &&
+            entries.Any(e => e.CampaignId == campaigns[1].Id)
+        )), Times.Once);
     }
 
     [Fact]
@@ -562,14 +563,14 @@ public class CampaignDigestServiceTests
         await _service.UpdateDigestBatch(batch, user, [], emailId);
 
         // Assert
-        Assert.Single(batch.Entries);
-        var entry = batch.Entries[0];
-        Assert.Equal(batch.Id, entry.DigestBatchId);
-        Assert.Equal(user.Id, entry.UserId);
-        Assert.Null(entry.EmailId);
-        Assert.Null(entry.CampaignId);
-        Assert.Null(entry.SentAt);
-        Assert.Equal(DigestEmailStatus.Bypass, entry.EmailStatus);
+        _mockRepository.Verify(r => r.AddDigestEntriesAsync(It.Is<IEnumerable<DigestEntry>>(entries =>
+            entries.Count() == 1 &&
+            entries.First().DigestBatchId == batch.Id &&
+            entries.First().UserId == user.Id &&
+            entries.First().EmailId == null &&
+            entries.First().CampaignId == null &&
+            entries.First().EmailStatus == DigestEmailStatus.Bypass
+        )), Times.Once);
     }
 
     [Theory]
