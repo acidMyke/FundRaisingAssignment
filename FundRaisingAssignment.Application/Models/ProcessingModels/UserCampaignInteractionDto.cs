@@ -6,4 +6,5 @@ public class UserCampaignInteractionDto
     public Guid CampaignId { get; set; }
     public int VisitCount { get; set; }
     public decimal DonationAmount { get; set; }
+    public DateTime InteractionDate { get; set; }
 }

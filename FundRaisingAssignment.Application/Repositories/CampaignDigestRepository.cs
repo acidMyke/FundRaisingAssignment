@@ -35,7 +35,8 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
             {
                 UserId = d.UserId!.Value,
                 CampaignId = d.CampaignId,
-                DonationAmount = d.Amount
+                DonationAmount = d.Amount,
+                InteractionDate = d.CreatedAt
             })
             .ToListAsync();
     }
@@ -49,7 +50,8 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
             {
                 UserId = v.UserId,
                 CampaignId = v.CampaignId,
-                VisitCount = v.VisitCount
+                VisitCount = v.VisitCount,
+                InteractionDate = v.LastVisitDate
             })
             .ToListAsync();
     }
