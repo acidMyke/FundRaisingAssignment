@@ -47,12 +47,14 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account.Manage
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
+
         public class InputModel
         {
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
+            [Required]
+            [StringLength(32, MinimumLength = 3, ErrorMessage = "Username must be 3-32 characters.")]
+            [Display(Name = "Username")]
+            public string UserName { get; set; }
+
             [Phone]
             [Display(Name = "Phone number")]
             public string PhoneNumber { get; set; }
@@ -70,6 +72,7 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account.Manage
 
             Input = new InputModel
             {
+                UserName = userName,
                 PhoneNumber = phoneNumber,
                 ReceiveCampaignUpdates = user.ReceiveCampaignDigest
             };
@@ -99,6 +102,27 @@ namespace FundRaisingAssignment.Application.Areas.Identity.Pages.Account.Manage
             {
                 await LoadAsync(user);
                 return Page();
+            }
+
+            // Username update logic
+            var currentUserName = await _userManager.GetUserNameAsync(user);
+            if (Input.UserName != currentUserName)
+            {
+                // Check if username is taken
+                var existingUser = await _userManager.FindByNameAsync(Input.UserName);
+                if (existingUser != null && existingUser.Id != user.Id)
+                {
+                    ModelState.AddModelError("Input.UserName", "This username is already taken.");
+                    await LoadAsync(user);
+                    return Page();
+                }
+                var setUserNameResult = await _userManager.SetUserNameAsync(user, Input.UserName);
+                if (!setUserNameResult.Succeeded)
+                {
+                    ModelState.AddModelError("Input.UserName", "Unexpected error when trying to set username.");
+                    await LoadAsync(user);
+                    return Page();
+                }
             }
 
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
