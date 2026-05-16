@@ -54,14 +54,79 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         return batchId;
     }
 
-    public Task<List<DigestBatchSummaryViewModel>> GetAllDigestBatchesAsync()
+    private static string GetBatchStatusBadgeClass(DigestBatchStatus status) => status switch
     {
-        throw new NotImplementedException();
+        DigestBatchStatus.Pending => "bg-warning",
+        DigestBatchStatus.Processing => "bg-info",
+        DigestBatchStatus.Processed => "bg-success",
+        DigestBatchStatus.Failed => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string GetEmailStatusBadgeClass(DigestEmailStatus status) => status switch
+    {
+        DigestEmailStatus.Sent => "bg-primary",
+        DigestEmailStatus.Open => "bg-success",
+        DigestEmailStatus.Click => "bg-success",
+        DigestEmailStatus.Bypass => "bg-secondary",
+        DigestEmailStatus.Bounce => "bg-danger",
+        DigestEmailStatus.Spam => "bg-danger",
+        _ => "bg-info text-dark"
+    };
+
+    public async Task<List<DigestBatchSummaryViewModel>> GetAllDigestBatchesAsync()
+    {
+        var batches = await repository.GetAllDigestBatchesAsync();
+        return batches.Select(b => new DigestBatchSummaryViewModel
+        {
+            Id = b.Id,
+            DisplayStatus = b.Status.ToString(),
+            StatusBadgeClass = GetBatchStatusBadgeClass(b.Status),
+            DisplayUserCount = b.UserCount?.ToString() ?? "-",
+            DisplayCampaignCount = b.CampaignCount?.ToString() ?? "-",
+            DisplayTriggeredAt = b.TriggeredAt.ToString("g"),
+            DisplayStatusUpdatedAt = b.StatusUpdatedAt?.ToString("g") ?? "-"
+        }).ToList();
     }
 
-    public Task<DigestBatchDetailsViewModel?> GetDigestBatchDetailsAsync(Guid batchId)
+    public async Task<DigestBatchDetailsViewModel?> GetDigestBatchDetailsAsync(Guid batchId)
     {
-        throw new NotImplementedException();
+        var batch = await repository.GetDigestBatchWithDetailsAsync(batchId);
+        if (batch == null) return null;
+
+        var viewModel = new DigestBatchDetailsViewModel
+        {
+            BatchId = batch.Id,
+            DisplayStatus = batch.Status.ToString(),
+            StatusBadgeClass = GetBatchStatusBadgeClass(batch.Status),
+            DisplayTriggeredAt = batch.TriggeredAt.ToString("g"),
+            UserGroups = batch.Entries
+                .GroupBy(e => e.UserId)
+                .Select(g =>
+                {
+                    var firstEntry = g.First();
+                    return new DigestUserGroupViewModel
+                    {
+                        UserId = g.Key,
+                        UserName = firstEntry.User.UserName ?? string.Empty,
+                        UserEmail = firstEntry.User.Email ?? string.Empty,
+                        DisplayEmailId = firstEntry.EmailId?.ToString() ?? "N/A",
+                        DisplayEmailStatus = firstEntry.EmailStatus.ToString(),
+                        EmailStatusBadgeClass = GetEmailStatusBadgeClass(firstEntry.EmailStatus),
+                        EmailReason = firstEntry.EmailReason,
+                        Entries = g.OrderBy(e => e.Sequence).Select(e => new DigestEntryViewModel
+                        {
+                            EntryId = e.Id,
+                            IsBypass = e.Sequence == 0,
+                            HasCampaign = e.CampaignId.HasValue,
+                            CampaignTitle = e.Campaign?.Title,
+                            DisplayAffinityScore = e.Sequence > 0 ? "0.00" : "-"
+                        }).ToList()
+                    };
+                }).ToList()
+        };
+
+        return viewModel;
     }
 
     #endregion
@@ -319,5 +384,4 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     }
 
     #endregion
-
 }

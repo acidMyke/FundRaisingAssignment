@@ -6,8 +6,9 @@ namespace FundRaisingAssignment.Application.Models.ViewModels;
 public class DigestBatchDetailsViewModel
 {
     public Guid BatchId { get; set; }
-    public DigestBatchStatus BatchStatus { get; set; }
-    public DateTime TriggeredAt { get; set; }
+    public string DisplayStatus { get; set; } = string.Empty;
+    public string StatusBadgeClass { get; set; } = string.Empty;
+    public string DisplayTriggeredAt { get; set; } = string.Empty;
     public List<DigestUserGroupViewModel> UserGroups { get; set; } = new();
 }
 
@@ -16,8 +17,9 @@ public class DigestUserGroupViewModel
     public Guid UserId { get; set; }
     public string UserName { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
-    public Guid? EmailId { get; set; }
-    public DigestEmailStatus EmailStatus { get; set; }
+    public string DisplayEmailId { get; set; } = string.Empty;
+    public string DisplayEmailStatus { get; set; } = string.Empty;
+    public string EmailStatusBadgeClass { get; set; } = string.Empty;
     public string? EmailReason { get; set; }
     public List<DigestEntryViewModel> Entries { get; set; } = new();
 }
@@ -25,8 +27,8 @@ public class DigestUserGroupViewModel
 public class DigestEntryViewModel
 {
     public Guid EntryId { get; set; }
-    public int Sequence { get; set; }
-    public Guid? CampaignId { get; set; }
+    public bool IsBypass { get; set; }
+    public bool HasCampaign { get; set; }
     public string? CampaignTitle { get; set; }
-    public double AffinityScore { get; set; } // Placeholder for future telemetry
+    public string DisplayAffinityScore { get; set; } = string.Empty;
 }
