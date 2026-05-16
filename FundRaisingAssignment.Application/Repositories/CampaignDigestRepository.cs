@@ -86,4 +86,16 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
         dbContext.DigestEntries
                  .Where(e => e.EmailId == emailId)
                  .ExecuteUpdateAsync(s => s.SetProperty(e => e.EmailStatus, status).SetProperty(e => e.EmailReason, reason));
+
+
+    public Task<DigestBatch?> GetDigestBatchWithDetailsAsync(Guid batchId) =>
+        dbContext.DigestBatches
+                 .Include(b => b.Entries).ThenInclude(e => e.User)
+                 .Include(b => b.Entries).ThenInclude(e => e.Campaign)
+                 .AsSplitQuery()
+                 .FirstOrDefaultAsync(b => b.Id == batchId);
+
+    public Task<List<DigestBatch>> GetAllDigestBatchesAsync() =>
+        dbContext.DigestBatches.OrderByDescending(b => b.TriggeredAt).ToListAsync();
+
 }

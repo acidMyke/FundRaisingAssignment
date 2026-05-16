@@ -2,6 +2,7 @@ using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Models.ProcessingModels;
+using FundRaisingAssignment.Application.Models.ViewModels;
 
 namespace FundRaisingAssignment.Application.Services;
 
@@ -27,6 +28,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     private const double DonationBaseWeight = 10.0;
     private const double DonationAmountMultiplier = 0.02;
 
+    #region UI Business Logic
+
     public async Task<Guid> ValidateAndEnqueueAsync()
     {
         var executionTime = DateTime.UtcNow;
@@ -50,6 +53,20 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         digestJobQueue.QueueJob(batchId);
         return batchId;
     }
+
+    public Task<List<DigestBatchSummaryViewModel>> GetAllDigestBatchesAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<DigestBatchDetailsViewModel?> GetDigestBatchDetailsAsync(Guid batchId)
+    {
+        throw new NotImplementedException();
+    }
+
+    #endregion
+
+    #region Batch processing business logic
 
     public async Task ProcessAsync(Guid batchId)
     {
@@ -133,10 +150,12 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 CampaignId = null,
                 EmailId = null,
                 EmailStatus = DigestEmailStatus.Bypass,
+                Sequence = 0
             });
         }
         else
         {
+            int seq = 1;
             foreach (var campaign in digestCampaigns)
             {
                 digestBatchInfo.Entries.Add(new DigestEntry
@@ -147,7 +166,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                     CampaignId = campaign.Id,
                     EmailId = emailId,
                     EmailStatus = DigestEmailStatus.Initial,
-                    SentAt = DateTime.UtcNow
+                    SentAt = DateTime.UtcNow,
+                    Sequence = seq++
                 });
             }
         }
@@ -275,6 +295,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         };
     }
 
+    #endregion
+
+    #region Email event & status updating
+
     public async Task OnEmailReceivedAsync(EmailEvent e)
     {
         if (string.IsNullOrEmpty(e.MessageId) || !Guid.TryParse(e.MessageId, out var emailId))
@@ -293,5 +317,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
 
         await repository.UpdateDigestEntryStatusAsync(emailId, status, e.Reason);
     }
+
+    #endregion
 
 }

@@ -50,10 +50,14 @@ public class DigestEntry
     public DigestEmailStatus EmailStatus { get; set; } = DigestEmailStatus.Initial;
     public string? EmailReason { get; set; }
     public DateTime? SentAt { get; set; }
+    public int Sequence { get; set; }
 
     [ForeignKey(nameof(DigestBatchId))]
     public DigestBatch Batch { get; set; } = null!;
 
     [ForeignKey(nameof(UserId))]
     public ApplicationUser User { get; set; } = null!;
+
+    [ForeignKey(nameof(CampaignId))]
+    public Campaign? Campaign { get; set; }
 }

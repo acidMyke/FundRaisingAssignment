@@ -14,4 +14,6 @@ public interface ICampaignDigestRepository
     void AddDigestBatchRecord(DigestBatch record);
     Task<DigestBatch?> GetDigestBatchByIdAsync(Guid id);
     Task UpdateDigestEntryStatusAsync(Guid emailId, DigestEmailStatus status, string? reason);
+    Task<DigestBatch?> GetDigestBatchWithDetailsAsync(Guid batchId);
+    Task<List<DigestBatch>> GetAllDigestBatchesAsync();
 }
