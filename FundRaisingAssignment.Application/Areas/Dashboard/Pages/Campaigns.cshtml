@@ -34,6 +34,20 @@
   .alert-e{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.9rem}
 </style>
 
+@if (Model.IsPendingFundraiser)
+{
+  <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;">
+    <span style="font-size:1.4rem;line-height:1;">⏳</span>
+    <div>
+      <strong style="color:#92400e;font-size:.95rem;">Your fundraiser account is awaiting approval</strong>
+      <p style="color:#78350f;margin:5px 0 0;font-size:.85rem;line-height:1.5;">
+        An admin will review your application and approve or reject it shortly.
+        You will be able to create campaigns once your account is approved.
+      </p>
+    </div>
+  </div>
+}
+
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
   <div>
     <h1 style="margin:0;font-size:1.65rem;font-weight:700;">My Campaigns</h1>
@@ -41,11 +55,14 @@
       @Model.Campaigns.Count campaign@(Model.Campaigns.Count == 1 ? "" : "s")
     </p>
   </div>
-  <a asp-area="Dashboard" asp-page="/CreateCampaign"
-     style="display:inline-flex;align-items:center;gap:6px;background:#4f46e5;color:#fff;
-            padding:9px 18px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">
-    ✚ New Campaign
-  </a>
+  @if (!Model.IsPendingFundraiser)
+  {
+    <a asp-area="Dashboard" asp-page="/CreateCampaign"
+       style="display:inline-flex;align-items:center;gap:6px;background:#4f46e5;color:#fff;
+              padding:9px 18px;border-radius:8px;font-weight:600;font-size:.88rem;text-decoration:none;">
+      ✚ New Campaign
+    </a>
+  }
 </div>
 
 @if (TempData["Success"] != null)
@@ -65,11 +82,14 @@
       <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/>
     </svg>
     <h3 style="color:#475569;margin-bottom:8px;">No campaigns yet</h3>
-    <a asp-area="Dashboard" asp-page="/CreateCampaign"
-       style="display:inline-block;margin-top:12px;background:#4f46e5;color:#fff;
-              padding:9px 22px;border-radius:8px;font-weight:600;text-decoration:none;">
-      ✚ Create Your First Campaign
-    </a>
+    @if (!Model.IsPendingFundraiser)
+    {
+      <a asp-area="Dashboard" asp-page="/CreateCampaign"
+         style="display:inline-block;margin-top:12px;background:#4f46e5;color:#fff;
+                padding:9px 22px;border-radius:8px;font-weight:600;text-decoration:none;">
+        ✚ Create Your First Campaign
+      </a>
+    }
   </div>
 }
 else
