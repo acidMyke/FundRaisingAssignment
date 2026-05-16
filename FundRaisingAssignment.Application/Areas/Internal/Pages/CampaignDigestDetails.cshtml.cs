@@ -1,4 +1,5 @@
 using FundRaisingAssignment.Application.Interfaces;
+using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FundRaisingAssignment.Application.Areas.Internal.Pages;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = ApplicationRole.Names.Admin)]
 public class CampaignDigestDetailsModel(ICampaignDigestService campaignDigestService) : PageModel
 {
     public DigestBatchDetailsViewModel BatchDetails { get; set; } = null!;
