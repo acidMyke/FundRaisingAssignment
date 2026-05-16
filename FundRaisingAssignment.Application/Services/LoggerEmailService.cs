@@ -29,12 +29,15 @@ namespace FundRaisingAssignment.Application.Services
                 _sentEmails.Add((email, subject, htmlMessage));
             }
 
-            await Task.Delay(5000);
-            await _emailEventHub.PublishAsync(new(email, EmailStatus.Sent, "Logger")
+            _ = Task.Run(async () =>
             {
-                Timestamp = DateTime.UtcNow,
-                MessageId = messageId,
-                Reason = "",
+                await Task.Delay(5000);
+                await _emailEventHub.PublishAsync(new(email, EmailStatus.Sent, "Logger")
+                {
+                    Timestamp = DateTime.UtcNow,
+                    MessageId = messageId,
+                    Reason = "",
+                });
             });
         }
 
