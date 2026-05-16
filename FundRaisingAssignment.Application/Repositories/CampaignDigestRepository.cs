@@ -110,6 +110,11 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
                  .Where(e => e.EmailId == emailId)
                  .ExecuteUpdateAsync(s => s.SetProperty(e => e.EmailStatus, status).SetProperty(e => e.EmailReason, reason));
 
+    public Task<Guid?> GetDigestBatchIdByEmailIdAsync(Guid emailId) =>
+        dbContext.DigestEntries
+                 .Where(e => e.EmailId == emailId)
+                 .Select(e => (Guid?)e.DigestBatchId)
+                 .FirstOrDefaultAsync();
 
     public Task<DigestBatch?> GetDigestBatchWithDetailsAsync(Guid batchId) =>
         dbContext.DigestBatches
