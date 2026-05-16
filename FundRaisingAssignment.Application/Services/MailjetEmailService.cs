@@ -9,11 +9,12 @@ using Microsoft.Extensions.Options;
 
 namespace FundRaisingAssignment.Application.Services
 {
-    public class MailjetEmailService(IOptions<EmailSettings> settings, HttpClient httpClient, EmailEventHub hub) : IEmailService
+    public class MailjetEmailService(IOptions<EmailSettings> settings, HttpClient httpClient, EmailEventHub hub, ILogger<MailjetEmailService> logger) : IEmailService
     {
         private readonly EmailSettings _settings = settings.Value;
         private readonly HttpClient _httpClient = httpClient;
         private readonly EmailEventHub _emailEventHub = hub;
+        private readonly ILogger<MailjetEmailService> _logger = logger;
 
         public Task SendEmailAsync(string email, string subject, string htmlMessage) => SendEmailAsync(email, subject, htmlMessage, Guid.NewGuid().ToString());
 
@@ -67,6 +68,7 @@ namespace FundRaisingAssignment.Application.Services
 
         public async Task ProcessMailjetEventAsync(MailjetEventDto dto)
         {
+            _logger.LogInformation("Processing Mailjet event: {Event} for {Email} (MessageId: {MessageId})", dto.Event, dto.Email, dto.MessageId);
             ArgumentNullException.ThrowIfNull(dto);
             ArgumentException.ThrowIfNullOrEmpty(dto.Email);
             if (!dto.MessageId.HasValue)
@@ -92,6 +94,7 @@ namespace FundRaisingAssignment.Application.Services
             };
 
             await _emailEventHub.PublishAsync(emailEvent);
+            _logger.LogDebug("Published Mailjet email event: {Status} for {Email}", status, dto.Email);
         }
     }
 

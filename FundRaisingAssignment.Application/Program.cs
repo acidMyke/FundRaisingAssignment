@@ -59,8 +59,9 @@ builder.Services.AddSingleton<EmailEventHub>();
 builder.Services.AddScoped<IEmailEventListener, UserEmailBounceListener>();
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
-    builder.Services.AddTransient<IEmailService, MailjetEmailService>(); // Cross-cutting — Email Service
-    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<IEmailService>()); // Cross-cutting — Identity adapter for the same transport
+    builder.Services.AddTransient<MailjetEmailService>();                                              // Cross-cutting — Email Service, handles email webhooks
+    builder.Services.AddTransient<IEmailService>(sp => sp.GetRequiredService<MailjetEmailService>()); // Cross-cutting — handles sending emails
+    builder.Services.AddTransient<IEmailSender>(sp => sp.GetRequiredService<MailjetEmailService>()); // Cross-cutting — Identity adapter for the same transport
 }
 else
 {
