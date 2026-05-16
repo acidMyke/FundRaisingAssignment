@@ -81,7 +81,7 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
     }
 
     public Task<DigestBatch?> GetDigestBatchByIdAsync(Guid id) => dbContext.DigestBatches.Where(b => b.Id == id).FirstOrDefaultAsync();
-    
+
     public async Task AddDigestEntriesAsync(IEnumerable<DigestEntry> entries)
     {
         var entryList = entries.ToList();
