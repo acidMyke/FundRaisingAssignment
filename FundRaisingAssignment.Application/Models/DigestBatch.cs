@@ -51,6 +51,7 @@ public class DigestEntry
     public string? EmailReason { get; set; }
     public DateTime? SentAt { get; set; }
     public int Sequence { get; set; }
+    public double AffinityScore { get; set; }
 
     [ForeignKey(nameof(DigestBatchId))]
     public DigestBatch Batch { get; set; } = null!;

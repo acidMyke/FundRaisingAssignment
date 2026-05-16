@@ -307,9 +307,9 @@ public class CampaignDigestServiceTests
 
         // Assert
         Assert.Equal(3, result.Count);
-        Assert.Equal("C5", result[0].Title); // Score 4
-        Assert.Equal("C4", result[1].Title); // Score 3
-        Assert.Equal("C3", result[2].Title); // Score 2
+        Assert.Equal("C5", result[0].Campaign.Title); // Score 4
+        Assert.Equal("C4", result[1].Campaign.Title); // Score 3
+        Assert.Equal("C3", result[2].Campaign.Title); // Score 2
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class CampaignDigestServiceTests
 
         // Assert
         Assert.Single(result);
-        Assert.Equal("C1", result[0].Title);
+        Assert.Equal("C1", result[0].Campaign.Title);
     }
 
     [Fact]
@@ -536,8 +536,10 @@ public class CampaignDigestServiceTests
             new Campaign { Id = Guid.NewGuid(), Title = "C2", Description = "" }
         };
 
+        var scores = campaigns.Select(c => new CampaignDigestService.CampaignAffinityScore { Campaign = c, AffinityScore = 10, UrgencyScore = 5 }).ToList();
+
         // Act
-        await _service.UpdateDigestBatch(batch, user, campaigns, emailId);
+        await _service.UpdateDigestBatch(batch, user, scores, emailId);
 
         // Assert
         _mockRepository.Verify(r => r.AddDigestEntriesAsync(It.Is<IEnumerable<DigestEntry>>(entries =>

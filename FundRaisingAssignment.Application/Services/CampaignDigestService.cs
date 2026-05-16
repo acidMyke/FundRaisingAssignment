@@ -12,10 +12,12 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                                    IEmailService emailService,
                                    IDigestJobQueue digestJobQueue) : ICampaignDigestService, IEmailEventListener
 {
-    public class CampaignScore
+    public class CampaignAffinityScore
     {
         public Campaign Campaign { get; set; } = null!;
-        public double Score { get; set; }
+        public double AffinityScore { get; set; }
+        public double UrgencyScore { get; set; }
+        public double TotalScore => AffinityScore + UrgencyScore;
     }
 
     public class UserAffinityProfile
@@ -185,10 +187,11 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             {
                 var userInteractions = visitsGrouped[user.Id].Concat(donationsGrouped[user.Id]);
                 var affinityProfile = BuildProfile(userInteractions, campaignSummaries);
-                var digestCampaigns = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores).ToList();
+                var digestScores = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores).ToList();
+                var digestCampaigns = digestScores.Select(ds => ds.Campaign).ToList();
 
                 var emailId = Guid.NewGuid();
-                await UpdateDigestBatch(digestBatchInfo, user, digestCampaigns, emailId);
+                await UpdateDigestBatch(digestBatchInfo, user, digestScores, emailId);
                 await SendDigestEmailAsync(user, digestCampaigns, emailId);
                 await Task.Delay(250);
             }
@@ -203,10 +206,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         await repository.SaveChangesAsync();
     }
 
-    public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, IEnumerable<Campaign> digestCampaigns, Guid emailId)
+    public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, List<CampaignAffinityScore> digestScores, Guid emailId)
     {
         var entries = new List<DigestEntry>();
-        if (!digestCampaigns.Any())
+        if (digestScores.Count == 0)
         {
             entries.Add(new DigestEntry
             {
@@ -216,24 +219,26 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 CampaignId = null,
                 EmailId = null,
                 EmailStatus = DigestEmailStatus.Bypass,
-                Sequence = 0
+                Sequence = 0,
+                AffinityScore = 0
             });
         }
         else
         {
             int seq = 1;
-            foreach (var campaign in digestCampaigns)
+            foreach (var score in digestScores)
             {
                 entries.Add(new DigestEntry
                 {
                     Id = Guid.NewGuid(),
                     DigestBatchId = digestBatchInfo.Id,
                     UserId = user.Id,
-                    CampaignId = campaign.Id,
+                    CampaignId = score.Campaign.Id,
                     EmailId = emailId,
                     EmailStatus = DigestEmailStatus.Initial,
                     SentAt = DateTime.UtcNow,
-                    Sequence = seq++
+                    Sequence = seq++,
+                    AffinityScore = score.AffinityScore
                 });
             }
         }
@@ -242,24 +247,24 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     }
 
 
-    public IEnumerable<Campaign> GetTopCampaignsForUser(UserAffinityProfile affinityProfile,
+    public IEnumerable<CampaignAffinityScore> GetTopCampaignsForUser(UserAffinityProfile affinityProfile,
                                                         List<Campaign> activeCampaigns,
                                                         Dictionary<Guid, double> campaignUrgencyScores)
     {
-        return activeCampaigns.Select(campaign => new CampaignScore
+        return activeCampaigns.Select(campaign => new CampaignAffinityScore
         {
             Campaign = campaign,
-            Score = campaignUrgencyScores[campaign.Id] + CalculateAffinityScore(affinityProfile, campaign)
+            AffinityScore = CalculateAffinityScore(affinityProfile, campaign),
+            UrgencyScore = campaignUrgencyScores[campaign.Id]
         })
-        .OrderByDescending(cs => cs.Score)
-        .Where(cs => cs.Score > 0)
-        .Take(3)
-        .Select(cs => cs.Campaign);
+        .Where(cs => cs.TotalScore > 0)
+        .OrderByDescending(cs => cs.TotalScore)
+        .Take(3);
     }
 
-    public async Task SendDigestEmailAsync(ApplicationUser user, IEnumerable<Campaign> digestCampaigns, Guid emailId)
+    public async Task SendDigestEmailAsync(ApplicationUser user, List<Campaign> digestCampaigns, Guid emailId)
     {
-        if (!digestCampaigns.Any())
+        if (digestCampaigns.Count == 0)
         {
             return;
         }
