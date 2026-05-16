@@ -18,6 +18,12 @@ public class CampaignDigestModel(ICampaignDigestService campaignDigestService) :
         Batches = await campaignDigestService.GetAllDigestBatchesAsync();
     }
 
+    public async Task<PartialViewResult> OnGetTablePartialAsync()
+    {
+        Batches = await campaignDigestService.GetAllDigestBatchesAsync();
+        return Partial("_DigestBatchTablePartial", Batches);
+    }
+
     public async Task<IActionResult> OnPostTriggerAsync()
     {
         try

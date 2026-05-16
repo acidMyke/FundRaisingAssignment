@@ -51,3 +51,24 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/hubs/campaign-digest")
+        .build();
+
+        connection.on("digest-batch-sync", function (data) {
+        fetch('?handler=TablePartial')
+        .then(response => response.text())
+        .then(html => document.getElementById('digestBatchTableContainer').innerHTML = html)
+        .catch(err => console.error('Error fetching table partial:', err));
+        });
+
+        connection.start()
+        .then(() => connection.invoke("JoinDigestGroup"))
+        .catch(err => console.error('SignalR connection error:', err.toString());
+        });
+    </script>
+}

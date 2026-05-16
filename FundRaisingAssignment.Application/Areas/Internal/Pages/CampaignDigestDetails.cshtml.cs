@@ -23,4 +23,10 @@ public class CampaignDigestDetailsModel(ICampaignDigestService campaignDigestSer
         BatchDetails = details;
         return Page();
     }
+
+    public async Task<PartialViewResult> OnGetDetailsPartialAsync(Guid id)
+    {
+        BatchDetails = await campaignDigestService.GetDigestBatchDetailsAsync(id) ?? new();
+        return Partial("_DigestBatchUserGroupPartial", BatchDetails.UserGroups);
+    }
 }
