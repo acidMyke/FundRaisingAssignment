@@ -4,6 +4,7 @@ using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Models.ProcessingModels;
 using FundRaisingAssignment.Application.Services;
+using FundRaisingAssignment.Application.Hubs;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -15,6 +16,8 @@ public class CampaignDigestServiceTests
     private readonly Mock<ILogger<CampaignDigestService>> _mockLogger;
     private readonly Mock<ICampaignDigestEmailTemplateService> _mockTemplateService;
     private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<IDigestJobQueue> _mockJobQueue;
+    private readonly Mock<IDigestSyncPublisher> _mockSyncPublisher;
     private readonly CampaignDigestService _service;
 
     public CampaignDigestServiceTests()
@@ -23,41 +26,54 @@ public class CampaignDigestServiceTests
         _mockLogger = new Mock<ILogger<CampaignDigestService>>();
         _mockTemplateService = new Mock<ICampaignDigestEmailTemplateService>();
         _mockEmailService = new Mock<IEmailService>();
+        _mockJobQueue = new Mock<IDigestJobQueue>();
+        _mockSyncPublisher = new Mock<IDigestSyncPublisher>();
 
         _service = new CampaignDigestService(
             _mockRepository.Object,
             _mockLogger.Object,
             _mockTemplateService.Object,
-            _mockEmailService.Object
+            _mockEmailService.Object,
+            _mockJobQueue.Object,
+            _mockSyncPublisher.Object
         );
     }
 
     [Fact]
-    public async Task TriggerDigestProcessingAsync_NoUsers_DoesNotFetchCampaigns()
+    public async Task ProcessAsync_NoUsers_UpdatesBatchStatusToFailed()
     {
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Pending };
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10))
             .ReturnsAsync([]);
 
-        await _service.TriggerDigestProcessingAsync();
+        await _service.ProcessAsync(batchId);
 
         _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
-        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+        Assert.Equal(DigestBatchStatus.Failed, batch.Status);
+        Assert.Equal(0, batch.UserCount);
     }
 
     [Fact]
-    public async Task TriggerDigestProcessingAsync_NoCampaigns_DoesNotFetchHistory()
+    public async Task ProcessAsync_NoCampaigns_UpdatesBatchStatusToFailed()
     {
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>()))
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Pending };
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10))
             .ReturnsAsync([new ApplicationUser { Id = Guid.NewGuid() }]);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync())
             .ReturnsAsync([]);
 
-        await _service.TriggerDigestProcessingAsync();
+        await _service.ProcessAsync(batchId);
 
         _mockRepository.Verify(r => r.GetPastVisitsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
-        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        Assert.Equal(DigestBatchStatus.Failed, batch.Status);
     }
 
     [Theory]
@@ -295,9 +311,9 @@ public class CampaignDigestServiceTests
 
         // Assert
         Assert.Equal(3, result.Count);
-        Assert.Equal("C5", result[0].Title); // Score 4
-        Assert.Equal("C4", result[1].Title); // Score 3
-        Assert.Equal("C3", result[2].Title); // Score 2
+        Assert.Equal("C5", result[0].Campaign.Title); // Score 4
+        Assert.Equal("C4", result[1].Campaign.Title); // Score 3
+        Assert.Equal("C3", result[2].Campaign.Title); // Score 2
     }
 
     [Fact]
@@ -318,26 +334,28 @@ public class CampaignDigestServiceTests
 
         // Assert
         Assert.Single(result);
-        Assert.Equal("C1", result[0].Title);
+        Assert.Equal("C1", result[0].Campaign.Title);
     }
 
     [Fact]
     public async Task SendDigestEmailAsync_EmptyCampaigns_DoesNotSendEmail()
     {
         // Arrange
+        var emailId = Guid.NewGuid();
         var user = new ApplicationUser { Email = "" };
 
         // Act
-        await _service.SendDigestEmailAsync(user, []);
+        await _service.SendDigestEmailAsync(user, [], emailId);
 
         // Assert
-        _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), emailId.ToString()), Times.Never);
     }
 
     [Fact]
     public async Task SendDigestEmailAsync_WithCampaigns_SendsEmailWithCorrectDetails()
     {
         // Arrange
+        var emailId = Guid.NewGuid();
         const string EMAIL = "test@example.com";
         const string SUBJECT = "Test Subject";
         const string BODY = "Test Body";
@@ -348,14 +366,14 @@ public class CampaignDigestServiceTests
         _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
 
         // Act
-        await _service.SendDigestEmailAsync(user, campaigns);
+        await _service.SendDigestEmailAsync(user, campaigns, emailId);
 
         // Assert
-        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, emailId.ToString()), Times.Once);
     }
 
     [Fact]
-    public async Task TriggerDigestProcessingAsync_GoldenFlow_ValidUsersAndCampaigns_SendsEmail()
+    public async Task ProcessAsync_GoldenFlow_UpdatesBatchStatusToProcessingAndSendsEmails()
     {
         // Arrange
         const string EMAIL = "test@example.com";
@@ -364,6 +382,8 @@ public class CampaignDigestServiceTests
         var userId = Guid.NewGuid();
         var campaignId = Guid.NewGuid();
         var now = DateTime.UtcNow;
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Pending };
 
         var users = new List<ApplicationUser>
         {
@@ -388,7 +408,8 @@ public class CampaignDigestServiceTests
         var donations = new List<UserCampaignInteractionDto>();
         var summaries = new Dictionary<Guid, CampaignSummaryContext>();
 
-        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>())).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 10)).ReturnsAsync(users);
         _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
 
         Expression<Func<IEnumerable<Guid>, bool>> containingUserId = ids => ids != null && ids.Contains(userId);
@@ -401,9 +422,192 @@ public class CampaignDigestServiceTests
         _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
 
         // Act
-        await _service.TriggerDigestProcessingAsync();
+        await _service.ProcessAsync(batchId);
 
         // Assert
-        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY), Times.Once);
+        _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, It.IsAny<string>()), Times.Once);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Processed")), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.AtLeastOnce);
+        Assert.Equal(DigestBatchStatus.Processed, batch.Status);
+    }
+
+    [Fact]
+    public async Task ValidateAndEnqueueAsync_Positive_ShouldQueueJobAndReturnJobId()
+    {
+        // Arrange
+        const string EMAIL = "test@example.com";
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var users = new List<ApplicationUser>
+        {
+            new ApplicationUser { Id = userId, Email = EMAIL }
+        };
+
+        var campaigns = new List<Campaign>
+        {
+            new Campaign
+            {
+                Id = campaignId,
+                Title = "",
+                Description = "",
+                FundingGoal = 1000m,
+                CurrentAmount = 500m,
+                TargetAmount = 1000m,
+                EndDate = now.AddHours(10)
+            }
+        };
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 1)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+        _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+
+        // Act
+        var batchId = await _service.ValidateAndEnqueueAsync();
+
+        // Assert
+        _mockRepository.Verify(r => r.AddDigestBatchRecord(It.Is<DigestBatch>(b => b.Id == batchId)), Times.Once);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+        _mockJobQueue.Verify(e => e.QueueJob(batchId), Times.Once);
+    }
+
+    [Fact]
+    public async Task ValidateAndEnqueueAsync_Negative_WhenNoUserFound_ShouldThrowError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        List<ApplicationUser> users = [];
+
+        List<Campaign> campaigns =
+        [
+            new Campaign
+            {
+                Id = campaignId,
+                Title = "",
+                Description = "",
+                FundingGoal = 1000m,
+                CurrentAmount = 500m,
+                TargetAmount = 1000m,
+                EndDate = now.AddHours(10)
+            }
+        ];
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 1)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+        _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+        // Act
+        var exception = await Assert.ThrowsAsync<DomainException>(() => _service.ValidateAndEnqueueAsync());
+        // Assert
+        _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(r => r.AddDigestBatchRecord(It.IsAny<DigestBatch>()), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+        Assert.Equal("No users eligible for digest processing at this time.", exception.Message);
+    }
+
+    [Fact]
+    public async Task ValidateAndEnqueueAsync_Negative_WhenNoCampaignFound_ShouldThrowError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        List<ApplicationUser> users = [new ApplicationUser() { Id = userId, Email = "" }];
+        List<Campaign> campaigns = [];
+
+        _mockRepository.Setup(r => r.GetUsersEligibleForDigestAsync(It.IsAny<DateTime>(), 1)).ReturnsAsync(users);
+        _mockRepository.Setup(r => r.GetActiveCampaignsAsync()).ReturnsAsync(campaigns);
+        _mockJobQueue.Setup(t => t.QueueJob(It.IsAny<Guid>())).Returns(true);
+        // Act
+        var exception = await Assert.ThrowsAsync<DomainException>(() => _service.ValidateAndEnqueueAsync());
+        // Assert
+        _mockJobQueue.Verify(e => e.QueueJob(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(r => r.AddDigestBatchRecord(It.IsAny<DigestBatch>()), Times.Never);
+        _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+        Assert.Equal("No active campaigns to include in digest.", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateDigestBatch_WithCampaigns_AddsCorrectEntries()
+    {
+        // Arrange
+        var batch = new DigestBatch { Id = Guid.NewGuid() };
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        var emailId = Guid.NewGuid();
+        var campaigns = new List<Campaign>
+        {
+            new Campaign { Id = Guid.NewGuid(), Title = "C1", Description = "" },
+            new Campaign { Id = Guid.NewGuid(), Title = "C2", Description = "" }
+        };
+
+        var scores = campaigns.Select(c => new CampaignDigestService.CampaignAffinityScore { Campaign = c, AffinityScore = 10, UrgencyScore = 5 }).ToList();
+
+        // Act
+        await _service.UpdateDigestBatch(batch, user, scores, emailId);
+
+        // Assert
+        _mockRepository.Verify(r => r.AddDigestEntriesAsync(It.Is<IEnumerable<DigestEntry>>(entries =>
+            entries.Count() == 2 &&
+            entries.All(e => e.DigestBatchId == batch.Id) &&
+            entries.All(e => e.UserId == user.Id) &&
+            entries.All(e => e.EmailId == emailId) &&
+            entries.All(e => e.EmailStatus == DigestEmailStatus.Initial) &&
+            entries.Any(e => e.CampaignId == campaigns[0].Id) &&
+            entries.Any(e => e.CampaignId == campaigns[1].Id)
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateDigestBatch_NoCampaigns_AddsBypassEntry()
+    {
+        // Arrange
+        var batch = new DigestBatch { Id = Guid.NewGuid() };
+        var user = new ApplicationUser { Id = Guid.NewGuid() };
+        var emailId = Guid.NewGuid();
+
+        // Act
+        await _service.UpdateDigestBatch(batch, user, [], emailId);
+
+        // Assert
+        _mockRepository.Verify(r => r.AddDigestEntriesAsync(It.Is<IEnumerable<DigestEntry>>(entries =>
+            entries.Count() == 1 &&
+            entries.First().DigestBatchId == batch.Id &&
+            entries.First().UserId == user.Id &&
+            entries.First().EmailId == null &&
+            entries.First().CampaignId == null &&
+            entries.First().EmailStatus == DigestEmailStatus.Bypass
+        )), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(EmailStatus.Sent, DigestEmailStatus.Sent)]
+    [InlineData(EmailStatus.Delivered, DigestEmailStatus.Sent)]
+    [InlineData(EmailStatus.Opened, DigestEmailStatus.Open)]
+    [InlineData(EmailStatus.Clicked, DigestEmailStatus.Click)]
+    [InlineData(EmailStatus.Bounced, DigestEmailStatus.Bounce)]
+    [InlineData(EmailStatus.Spam, DigestEmailStatus.Spam)]
+    [InlineData(EmailStatus.Unknown, DigestEmailStatus.Unknown)]
+    public async Task OnEmailReceivedAsync_StatusMapping_CallsRepositoryWithCorrectStatus(EmailStatus inputStatus, DigestEmailStatus expectedStatus)
+    {
+        // Arrange
+        var emailId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+        var batch = new DigestBatch { Id = batchId, Status = DigestBatchStatus.Processing };
+        var emailEvent = new EmailEvent("test@example.com", inputStatus, "Mailjet")
+        {
+            MessageId = emailId.ToString()
+        };
+
+        _mockRepository.Setup(r => r.GetDigestBatchIdByEmailIdAsync(emailId)).ReturnsAsync(batchId);
+        _mockRepository.Setup(r => r.GetDigestBatchByIdAsync(batchId)).ReturnsAsync(batch);
+
+        // Act
+        await _service.OnEmailReceivedAsync(emailEvent);
+
+        // Assert
+        _mockRepository.Verify(r => r.UpdateDigestEntryStatusAsync(emailId, expectedStatus, It.IsAny<string>()), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.Once);
     }
 }

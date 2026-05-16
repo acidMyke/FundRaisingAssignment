@@ -3,16 +3,21 @@ using System.Text;
 using System.Text.Json;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Models;
+using FundRaisingAssignment.Application.Models.Dto;
+using FundRaisingAssignment.Application.Models.ProcessingModels;
 using Microsoft.Extensions.Options;
 
 namespace FundRaisingAssignment.Application.Services
 {
-    public class MailjetEmailService(IOptions<EmailSettings> settings, HttpClient httpClient) : IEmailService
+    public class MailjetEmailService(IOptions<EmailSettings> settings, HttpClient httpClient, EmailEventHub hub) : IEmailService
     {
         private readonly EmailSettings _settings = settings.Value;
         private readonly HttpClient _httpClient = httpClient;
+        private readonly EmailEventHub _emailEventHub = hub;
 
-        public async Task SendEmailAsync(string email, string subject, string htmlMessage)
+        public Task SendEmailAsync(string email, string subject, string htmlMessage) => SendEmailAsync(email, subject, htmlMessage, Guid.NewGuid().ToString());
+
+        public async Task SendEmailAsync(string email, string subject, string htmlMessage, string messageId)
         {
             if (string.IsNullOrEmpty(_settings.ApiKey) || string.IsNullOrEmpty(_settings.ApiSecret))
             {
@@ -39,7 +44,8 @@ namespace FundRaisingAssignment.Application.Services
                             }
                         },
                         Subject = subject,
-                        HTMLPart = htmlMessage
+                        HTMLPart = htmlMessage,
+                        CustomId = messageId,
                     }
                 }
             };
@@ -57,6 +63,59 @@ namespace FundRaisingAssignment.Application.Services
                 var error = await response.Content.ReadAsStringAsync();
                 throw new Exception($"Failed to send email via Mailjet: {response.StatusCode} - {error}");
             }
+        }
+
+        public async Task ProcessMailjetEventAsync(MailjetEventDto dto)
+        {
+            ArgumentNullException.ThrowIfNull(dto);
+            ArgumentException.ThrowIfNullOrEmpty(dto.Email);
+            if (!dto.MessageId.HasValue)
+            {
+                throw new ArgumentNullException(nameof(dto), "MessageId cannot be null");
+            }
+
+            var status = dto.Event?.ToLower() switch
+            {
+                "sent" => EmailStatus.Sent,
+                "open" => EmailStatus.Opened,
+                "click" => EmailStatus.Clicked,
+                "bounce" => EmailStatus.Bounced,
+                "spam" => EmailStatus.Spam,
+                _ => EmailStatus.Unknown
+            };
+
+            var emailEvent = new EmailEvent(dto.Email, status, "Mailjet")
+            {
+                Timestamp = DateTimeOffset.FromUnixTimeSeconds(dto.Time).UtcDateTime,
+                MessageId = dto.MessageId.ToString(),
+                Reason = dto.Error
+            };
+
+            await _emailEventHub.PublishAsync(emailEvent);
+        }
+    }
+
+    public static class MailjetWebhookExtensions
+    {
+        public static IEndpointRouteBuilder MapMailjetWebhookIfRegistered(this IEndpointRouteBuilder app)
+        {
+            using var scope = app.ServiceProvider.CreateScope();
+            var emailService = scope.ServiceProvider.GetService<IEmailService>();
+            if (emailService is MailjetEmailService)
+            {
+                app.MapPost("/webhooks/mailjet", (IServiceProvider serviceProvider, HttpContext context, MailjetEventDto dto) =>
+                {
+                    context.Response.OnCompleted(async () =>
+                    {
+                        using var innerScope = serviceProvider.CreateScope();
+                        var svc = innerScope.ServiceProvider.GetRequiredService<MailjetEmailService>();
+                        await svc.ProcessMailjetEventAsync(dto);
+                    });
+                    return Results.Ok();
+                });
+            }
+
+            return app;
         }
     }
 }

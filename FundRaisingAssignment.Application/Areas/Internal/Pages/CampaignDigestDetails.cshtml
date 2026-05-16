@@ -1,0 +1,58 @@
+@page "{id:Guid}"
+@model FundRaisingAssignment.Application.Areas.Internal.Pages.CampaignDigestDetailsModel
+@{
+    ViewData["Title"] = "Campaign Digest Details";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <small class="text-uppercase text-muted fw-semibold">
+                <a asp-page="CampaignDigest" class="text-decoration-none text-muted"><i class="bi bi-arrow-left"></i>
+                    Back to Digest</a>
+                </small>
+                <h2 class="mt-2 mb-1">Batch Details</h2>
+                <p class="text-muted mb-0">
+                    Triggered at: <strong>@Model.BatchDetails.DisplayTriggeredAt</strong> |
+                    Status: <span id="batchStatusBadge"
+                                  class="badge @Model.BatchDetails.StatusBadgeClass">@Model.BatchDetails.DisplayStatus</span>
+                </p>
+            </div>
+        </div>
+
+        <div id="digestBatchDetailsContainer">
+            <partial name="_DigestBatchUserGroupPartial" model="Model.BatchDetails.UserGroups" />
+        </div>
+    </div>
+
+    @section Scripts {
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+        <script>
+            const batchId = '@Model.BatchDetails.BatchId';
+            const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/campaign-digest")
+            .build();
+
+            connection.on("digest-batch-sync", function (data) {
+            if (!data || data.batchId !== batchId) return;
+            const badge = document.getElementById('batchStatusBadge');
+            if (!badge) return;
+            badge.innerText = data.displayStatus;
+            badge.className = 'badge ' + data.statusBadgeClass;
+            });
+
+            connection.on("digest-details-sync", function () {
+            fetch(`?handler=DetailsPartial&id=${batchId}`)
+            .then(response => response.text())
+            .then(html => document.getElementById('digestBatchDetailsContainer').innerHTML = html)
+            .catch(err => console.error('Error fetching details partial:', err));
+            });
+
+            connection.start()
+            .then(() => {
+            connection.invoke("JoinDigestGroup");
+            connection.invoke("JoinBatchGroup", batchId);
+            })
+            .catch(err => console.error('SignalR connection error:', err.toString())});
+        </script>
+    }

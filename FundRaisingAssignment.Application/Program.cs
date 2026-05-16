@@ -1,11 +1,13 @@
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Data.Seeding;
+using FundRaisingAssignment.Application.Hubs;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
 using FundRaisingAssignment.Application.Repositories;
 using FundRaisingAssignment.Application.Security;
 using FundRaisingAssignment.Application.Services;
+using FundRaisingAssignment.Application.Services.BackgroundServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -53,6 +55,8 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(Email
 
 var emailSettings = builder.Configuration.GetSection(EmailSettings.SectionName).Get<EmailSettings>();
 
+builder.Services.AddSingleton<EmailEventHub>();
+builder.Services.AddScoped<IEmailEventListener, UserEmailBounceListener>();
 if (emailSettings != null && !string.IsNullOrEmpty(emailSettings.ApiKey) && !string.IsNullOrEmpty(emailSettings.ApiSecret))
 {
     builder.Services.AddTransient<IEmailService, MailjetEmailService>(); // Cross-cutting — Email Service
@@ -78,12 +82,19 @@ builder.Services.AddScoped<BadgeService>();       // Register BadgeService for D
 
 builder.Services.AddScoped<ICampaignDigestRepository, CampaignDigestRepository>();
 builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
+builder.Services.AddScoped<IEmailEventListener, CampaignDigestService>();
 builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEmailTemplateService>();
+
+// Campaign digest background queue & worker
+builder.Services.AddSingleton<IDigestJobQueue, DigestJobQueue>();
+builder.Services.AddHostedService<DigestBackgroundWorker>();
+builder.Services.AddSingleton<IDigestSyncPublisher, DigestSyncPublisher>();
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
 builder.Services.AddHttpClient();             // Cross-cutting — Mailjet HTTP client
 builder.Services.AddRazorPages();             // Cross-cutting — Razor Pages host
+builder.Services.AddSignalR();                // SignalR for live updates
 
 // ── EPPlus license (UA02) ─────────────────────────────────────────────────────
 ExcelPackage.License.SetNonCommercialPersonal("Karthik");          // UA02 — Excel exports (Karthik)
@@ -117,6 +128,11 @@ app.MapControllers();
 
 app.MapRazorPages()
    .WithStaticAssets();
+
+app.MapHub<CampaignDigestHub>("/hubs/campaign-digest");
+
+// Mailjet Webhook
+app.MapMailjetWebhookIfRegistered();
 
 // ── Database initialisation & role seeding ────────────────────────────────────
 using (var scope = app.Services.CreateScope())
