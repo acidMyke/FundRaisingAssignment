@@ -1,0 +1,107 @@
+@page
+@model FundRaisingAssignment.Application.Areas.Internal.Pages.CampaignDigestModel
+@{
+    ViewData["Title"] = "Campaign Digest";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <small class="text-uppercase text-muted fw-semibold">Internal</small>
+            <h2 class="mt-2 mb-1">Campaign Digest</h2>
+            <p class="text-muted mb-0">Manage and trigger campaign digest batches.</p>
+        </div>
+        <div>
+            <form method="post" asp-page-handler="Trigger">
+                <button type="submit" class="btn btn-primary shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         class="lucide lucide-refresh-ccw-icon lucide-refresh-ccw">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                        <path d="M16 16h5v5" />
+                    </svg>
+                    &nbsp;
+                    Run Campaign Digest
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0" id="digestBatchTableContainer">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Id</th>
+                            <th>Status</th>
+                            <th>User Count</th>
+                            <th>Eligible Campaigns</th>
+                            <th>Triggered At</th>
+                            <th>Status Updated At</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Batches.Any())
+                        {
+                            foreach (var batch in Model.Batches)
+                            {
+                                <tr>
+                                    <td><small class="text-muted">@batch.Id</small></td>
+                                    <td>
+                                        <span class="badge @(batch.Status switch
+                                        {
+                                            DigestBatchStatus.Pending => "bg-warning",
+                                            DigestBatchStatus.Processing => "bg-info",
+                                            DigestBatchStatus.Processed => "bg-success",
+                                            DigestBatchStatus.Failed => "bg-danger",
+                                            _ => "bg-secondary"
+                                        })">@batch.Status</span>
+                                    </td>
+                                    <td>@(batch.UserCount?.ToString() ?? "-")</td>
+                                    <td>@(batch.CampaignCount?.ToString() ?? "-")</td>
+                                    <td>@batch.TriggeredAt.ToString("g")</td>
+                                    <td>@(batch.StatusUpdatedAt?.ToString("g") ?? "-")</td>
+                                    <td class="text-end">
+                                        <a asp-page="CampaignDigestDetails" asp-route-id="@batch.Id"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            Next Page <i class="bi bi-arrow-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    No digest batches found.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
