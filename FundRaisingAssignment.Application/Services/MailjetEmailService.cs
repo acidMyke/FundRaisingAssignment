@@ -47,6 +47,8 @@ namespace FundRaisingAssignment.Application.Services
                         Subject = subject,
                         HTMLPart = htmlMessage,
                         CustomId = messageId,
+                        TrackOpens = "enabled",
+                        TrackClicks = "enabled",
                     }
                 }
             };

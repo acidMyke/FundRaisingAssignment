@@ -28,9 +28,11 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         public Dictionary<Guid, double> OwnerAffinities { get; } = [];
     }
 
-    private const double VisitWeight = 1.0;
-    private const double DonationBaseWeight = 10.0;
-    private const double DonationAmountMultiplier = 0.02;
+    private const double MaxVisitScore = 10.0;
+    private const double MaxDonationScore = 40.0;
+    private const double DonationBaseScore = 15.0;
+    private const double DonationMultiplier = 0.05;
+    private const double VisitPointValue = 2.0;
 
     #region UI Business Logic
 
@@ -289,6 +291,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                                             Dictionary<Guid, CampaignSummaryContext> campaignSummaries)
     {
         var profile = new UserAffinityProfile();
+        var now = DateTime.UtcNow;
 
         foreach (var interaction in interactions)
         {
@@ -298,17 +301,19 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
 
                 if (interaction.VisitCount > 0)
                 {
-                    score += interaction.VisitCount * VisitWeight;
+                    score += Math.Min(MaxVisitScore, interaction.VisitCount * VisitPointValue);
                 }
 
                 if (interaction.DonationAmount > 0)
                 {
-                    double amountScore = Convert.ToDouble(interaction.DonationAmount) * DonationAmountMultiplier;
-                    score += DonationBaseWeight + amountScore;
+                    double donationScore = DonationBaseScore + (double)interaction.DonationAmount * DonationMultiplier;
+                    score += Math.Min(MaxDonationScore, donationScore);
                 }
 
                 if (score > 0)
                 {
+                    score *= CalculateTimeFactor(interaction.InteractionDate, now);
+
                     AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
                     AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
                 }
@@ -316,6 +321,14 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         }
 
         return profile;
+    }
+
+    private static double CalculateTimeFactor(DateTime interactionDate, DateTime now)
+    {
+        var age = now - interactionDate;
+        if (age.TotalDays <= 7) return 1.0;
+        if (age.TotalDays <= 28) return 0.5;
+        return 0.1;
     }
 
     public double CalculateAffinityScore(UserAffinityProfile profile, Campaign candidateCampaign)
@@ -346,18 +359,21 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     public double CalculateCampaignUrgencyScore(Campaign campaign, DateTime now)
     {
         double score = 0;
+
+        if ((now - campaign.CreatedAt).TotalDays <= 7) score += 20;
+
         if (campaign.EndDate.HasValue)
         {
             var timeRemaining = campaign.EndDate.Value - now;
-            if (timeRemaining.TotalHours <= 24 && timeRemaining.TotalHours > 0) score += 50;
-            else if (timeRemaining.TotalHours <= 72 && timeRemaining.TotalHours > 0) score += 30;
-            else if (timeRemaining.TotalDays <= 7 && timeRemaining.TotalHours > 0) score += 10;
+            if (timeRemaining.TotalHours > 0 && timeRemaining.TotalDays <= 3) score += 20;
         }
-        if (campaign.TargetAmount > 0)
+
+        if (campaign.FundingGoal > 0)
         {
-            var percent = campaign.CurrentAmount / campaign.TargetAmount;
-            if (percent >= 0.75m && percent < 1.0m) score += 35;
+            var percent = campaign.CurrentAmount / campaign.FundingGoal;
+            if (percent >= 0.75m && percent < 1.0m) score += 15;
         }
+
         return score;
     }
 

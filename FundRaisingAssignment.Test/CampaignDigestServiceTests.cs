@@ -77,25 +77,43 @@ public class CampaignDigestServiceTests
     }
 
     [Theory]
-    [InlineData(12, 0, 1000, 50)]
-    [InlineData(48, 0, 1000, 30)]
-    [InlineData(120, 0, 1000, 10)]
+    [InlineData(12, 0, 1000, 20)]
+    [InlineData(48, 0, 1000, 20)]
+    [InlineData(120, 0, 1000, 0)]
     [InlineData(-1, 0, 1000, 0)]
-    [InlineData(200, 800, 1000, 35)]
-    [InlineData(12, 800, 1000, 85)]
+    [InlineData(200, 800, 1000, 15)]
+    [InlineData(12, 800, 1000, 35)]
     public void CalculateCampaignUrgencyScore_ReturnsExpectedScore(int hoursRemaining, decimal currentAmount, decimal targetAmount, double expectedScore)
     {
         var now = DateTime.UtcNow;
         var campaign = new Campaign
         {
+            CreatedAt = now.AddDays(-10),
             EndDate = now.AddHours(hoursRemaining),
             CurrentAmount = currentAmount,
-            TargetAmount = targetAmount
+            FundingGoal = targetAmount
         };
 
         var score = _service.CalculateCampaignUrgencyScore(campaign, now);
 
         Assert.Equal(expectedScore, score);
+    }
+
+    [Fact]
+    public void CalculateCampaignUrgencyScore_NewCampaign_ReturnsBoost()
+    {
+        var now = DateTime.UtcNow;
+        var campaign = new Campaign
+        {
+            CreatedAt = now.AddDays(-2),
+            EndDate = now.AddDays(10),
+            CurrentAmount = 0,
+            FundingGoal = 1000
+        };
+
+        var score = _service.CalculateCampaignUrgencyScore(campaign, now);
+
+        Assert.Equal(20.0, score);
     }
 
     [Fact]
@@ -176,14 +194,14 @@ public class CampaignDigestServiceTests
         {
             { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
         };
-        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3 } };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3, InteractionDate = DateTime.UtcNow } };
 
         var profile = _service.BuildProfile(interactions, summaries);
 
         Assert.Contains(CampaignCategory.Education, profile.CategoryAffinities);
         Assert.Contains(ownerId, profile.OwnerAffinities);
-        Assert.Equal(3.0, profile.CategoryAffinities[CampaignCategory.Education]);
-        Assert.Equal(3.0, profile.OwnerAffinities[ownerId]);
+        Assert.Equal(6.0, profile.CategoryAffinities[CampaignCategory.Education]);
+        Assert.Equal(6.0, profile.OwnerAffinities[ownerId]);
     }
 
     [Fact]
@@ -196,14 +214,14 @@ public class CampaignDigestServiceTests
         {
             { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Medical, OwnerId = ownerId } }
         };
-        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, DonationAmount = 100m } };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, DonationAmount = 100m, InteractionDate = DateTime.UtcNow } };
 
         var profile = _service.BuildProfile(interactions, summaries);
 
         Assert.Contains(CampaignCategory.Medical, profile.CategoryAffinities);
         Assert.Contains(ownerId, profile.OwnerAffinities);
-        Assert.Equal(12.0, profile.CategoryAffinities[CampaignCategory.Medical]);
-        Assert.Equal(12.0, profile.OwnerAffinities[ownerId]);
+        Assert.Equal(20.0, profile.CategoryAffinities[CampaignCategory.Medical]);
+        Assert.Equal(20.0, profile.OwnerAffinities[ownerId]);
     }
 
     [Fact]
@@ -222,8 +240,8 @@ public class CampaignDigestServiceTests
 
         var interactions = new List<UserCampaignInteractionDto>
         {
-            new() { CampaignId = campaign1Id, VisitCount = 2 },
-            new() { CampaignId = campaign2Id, DonationAmount = 50m }
+            new() { CampaignId = campaign1Id, VisitCount = 2, InteractionDate = DateTime.UtcNow },
+            new() { CampaignId = campaign2Id, DonationAmount = 50m, InteractionDate = DateTime.UtcNow }
         };
 
         var profile = _service.BuildProfile(interactions, summaries);
@@ -232,9 +250,40 @@ public class CampaignDigestServiceTests
         Assert.Contains(owner1Id, profile.OwnerAffinities);
         Assert.Contains(owner2Id, profile.OwnerAffinities);
 
-        Assert.Equal(13.0, profile.CategoryAffinities[CampaignCategory.Environment]);
-        Assert.Equal(2.0, profile.OwnerAffinities[owner1Id]);
-        Assert.Equal(11.0, profile.OwnerAffinities[owner2Id]);
+        Assert.Equal(21.5, profile.CategoryAffinities[CampaignCategory.Environment]);
+        Assert.Equal(4.0, profile.OwnerAffinities[owner1Id]);
+        Assert.Equal(17.5, profile.OwnerAffinities[owner2Id]);
+    }
+
+    [Fact]
+    public void BuildProfile_WithOldInteractions_AppliesTimeFactor()
+    {
+        var campaignId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var summaries = new Dictionary<Guid, CampaignSummaryContext>
+        {
+            { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
+        };
+
+        var interactions = new List<UserCampaignInteractionDto>
+        {
+            new() { CampaignId = campaignId, VisitCount = 3, InteractionDate = now.AddDays(-10) }
+        };
+
+        var profile = _service.BuildProfile(interactions, summaries);
+
+        Assert.Equal(3.0, profile.CategoryAffinities[CampaignCategory.Education]);
+
+        var interactionsOld = new List<UserCampaignInteractionDto>
+        {
+            new() { CampaignId = campaignId, VisitCount = 3, InteractionDate = now.AddDays(-40) }
+        };
+
+        var profileOld = _service.BuildProfile(interactionsOld, summaries);
+
+        Assert.Equal(0.6, profileOld.CategoryAffinities[CampaignCategory.Education], 5);
     }
 
     [Fact]
@@ -262,7 +311,7 @@ public class CampaignDigestServiceTests
         {
             { campaignId, new CampaignSummaryContext { Id = campaignId, Category = CampaignCategory.Education, OwnerId = ownerId } }
         };
-        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3 } };
+        var interactions = new List<UserCampaignInteractionDto> { new() { CampaignId = campaignId, VisitCount = 3, InteractionDate = DateTime.UtcNow } };
 
         var profile = _service.BuildProfile(interactions, summaries);
 
@@ -274,7 +323,7 @@ public class CampaignDigestServiceTests
 
         var score = _service.CalculateAffinityScore(profile, candidateCampaign);
 
-        Assert.Equal(6.0, score);
+        Assert.Equal(12.0, score);
     }
 
     [Fact]
