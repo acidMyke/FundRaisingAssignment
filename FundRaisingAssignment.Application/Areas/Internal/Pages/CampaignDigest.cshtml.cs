@@ -28,8 +28,9 @@ public class CampaignDigestModel(ICampaignDigestService campaignDigestService) :
     {
         try
         {
-            await campaignDigestService.ValidateAndEnqueueAsync();
+            var batchId = await campaignDigestService.ValidateAndEnqueueAsync();
             TempData["SuccessMessage"] = "Campaign digest processing triggered successfully.";
+            return RedirectToPage("CampaignDigestDetails", new { id = batchId });
         }
         catch (DomainException ex)
         {
