@@ -185,7 +185,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         var sgtZone = TimeZoneInfo.FindSystemTimeZoneById("Singapore Standard Time");
         var dtConverter = new ValueConverter<DateTime, DateTime>(
-            v => TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(v, DateTimeKind.Unspecified), sgtZone),
+            v => v.Kind == DateTimeKind.Utc ? v : TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(v, DateTimeKind.Unspecified), sgtZone),
             v => DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(v, sgtZone), DateTimeKind.Local));
         var dtoConverter = new ValueConverter<DateTimeOffset, DateTimeOffset>(
             v => v.ToUniversalTime(),
