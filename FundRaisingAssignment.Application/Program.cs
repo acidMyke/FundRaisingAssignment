@@ -80,6 +80,7 @@ builder.Services.AddScoped<BadgeService>();       // Register BadgeService for D
 
 builder.Services.AddScoped<ICampaignDigestRepository, CampaignDigestRepository>();
 builder.Services.AddScoped<ICampaignDigestService, CampaignDigestService>();
+builder.Services.AddScoped<IEmailEventListener, CampaignDigestService>();
 builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEmailTemplateService>();
 
 // Campaign digest background queue & worker
