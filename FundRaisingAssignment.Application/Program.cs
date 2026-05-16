@@ -1,5 +1,6 @@
 using FundRaisingAssignment.Application.Data;
 using FundRaisingAssignment.Application.Data.Seeding;
+using FundRaisingAssignment.Application.Hubs;
 using FundRaisingAssignment.Application.Interfaces;
 using FundRaisingAssignment.Application.Interfaces.Repositories;
 using FundRaisingAssignment.Application.Models;
@@ -86,11 +87,13 @@ builder.Services.AddScoped<ICampaignDigestEmailTemplateService, CampaignDigestEm
 // Campaign digest background queue & worker
 builder.Services.AddSingleton<IDigestJobQueue, DigestJobQueue>();
 builder.Services.AddHostedService<DigestBackgroundWorker>();
+builder.Services.AddSingleton<IDigestSyncPublisher, DigestSyncPublisher>();
 
 // ── MVC / Razor ────────────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();   // DN03 — Web API (DonationsController)
 builder.Services.AddHttpClient();             // Cross-cutting — Mailjet HTTP client
 builder.Services.AddRazorPages();             // Cross-cutting — Razor Pages host
+builder.Services.AddSignalR();                // SignalR for live updates
 
 // ── EPPlus license (UA02) ─────────────────────────────────────────────────────
 ExcelPackage.License.SetNonCommercialPersonal("Karthik");          // UA02 — Excel exports (Karthik)
@@ -124,6 +127,8 @@ app.MapControllers();
 
 app.MapRazorPages()
    .WithStaticAssets();
+
+app.MapHub<CampaignDigestHub>("/hubs/campaign-digest");
 
 // Mailjet Webhook
 app.MapMailjetWebhookIfRegistered();
