@@ -83,7 +83,7 @@ public class CampaignDigestServiceTests
     [InlineData(-1, 0, 1000, 0)]
     [InlineData(200, 800, 1000, 15)]
     [InlineData(12, 800, 1000, 35)]
-    public void CalculateCampaignUrgencyScore_ReturnsExpectedScore(int hoursRemaining, decimal currentAmount, decimal targetAmount, double expectedScore)
+    public void CalculateCampaignBoostPoints_ReturnsExpectedPoints(int hoursRemaining, decimal currentAmount, decimal targetAmount, double expectedPoints)
     {
         var now = DateTime.UtcNow;
         var campaign = new Campaign
@@ -94,13 +94,13 @@ public class CampaignDigestServiceTests
             FundingGoal = targetAmount
         };
 
-        var score = _service.CalculateCampaignUrgencyScore(campaign, now);
+        var points = _service.CalculateCampaignBoostPoints(campaign, now);
 
-        Assert.Equal(expectedScore, score);
+        Assert.Equal(expectedPoints, points);
     }
 
     [Fact]
-    public void CalculateCampaignUrgencyScore_NewCampaign_ReturnsBoost()
+    public void CalculateCampaignBoostPoints_NewCampaign_ReturnsBoost()
     {
         var now = DateTime.UtcNow;
         var campaign = new Campaign
@@ -111,9 +111,9 @@ public class CampaignDigestServiceTests
             FundingGoal = 1000
         };
 
-        var score = _service.CalculateCampaignUrgencyScore(campaign, now);
+        var points = _service.CalculateCampaignBoostPoints(campaign, now);
 
-        Assert.Equal(20.0, score);
+        Assert.Equal(20.0, points);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class CampaignDigestServiceTests
     }
 
     [Fact]
-    public void BuildProfile_WithVisits_CalculatesScoresCorrectly()
+    public void BuildProfile_WithVisits_CalculatesPointsCorrectly()
     {
         var campaignId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
@@ -205,7 +205,7 @@ public class CampaignDigestServiceTests
     }
 
     [Fact]
-    public void BuildProfile_WithDonations_CalculatesScoresCorrectly()
+    public void BuildProfile_WithDonations_CalculatesPointsCorrectly()
     {
         var campaignId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
@@ -225,7 +225,7 @@ public class CampaignDigestServiceTests
     }
 
     [Fact]
-    public void BuildProfile_AccumulatesScoresCorrectly()
+    public void BuildProfile_AccumulatesPointsCorrectly()
     {
         var campaign1Id = Guid.NewGuid();
         var campaign2Id = Guid.NewGuid();
@@ -274,16 +274,25 @@ public class CampaignDigestServiceTests
 
         var profile = _service.BuildProfile(interactions, summaries);
 
-        Assert.Equal(3.0, profile.CategoryAffinities[CampaignCategory.Education]);
+        Assert.Equal(6.0, profile.CategoryAffinities[CampaignCategory.Education]);
 
-        var interactionsOld = new List<UserCampaignInteractionDto>
+        var interactionsMed = new List<UserCampaignInteractionDto>
         {
             new() { CampaignId = campaignId, VisitCount = 3, InteractionDate = now.AddDays(-40) }
         };
 
+        var profileMed = _service.BuildProfile(interactionsMed, summaries);
+
+        Assert.Equal(3.0, profileMed.CategoryAffinities[CampaignCategory.Education]);
+
+        var interactionsOld = new List<UserCampaignInteractionDto>
+        {
+            new() { CampaignId = campaignId, VisitCount = 3, InteractionDate = now.AddDays(-200) }
+        };
+
         var profileOld = _service.BuildProfile(interactionsOld, summaries);
 
-        Assert.Equal(0.6, profileOld.CategoryAffinities[CampaignCategory.Education], 5);
+        Assert.Equal(0.3, profileOld.CategoryAffinities[CampaignCategory.Education], 5);
     }
 
     [Fact]
@@ -353,10 +362,10 @@ public class CampaignDigestServiceTests
             Category = (CampaignCategory)(i % 3)
         }).ToList();
 
-        var urgencyScores = campaigns.ToDictionary(c => c.Id, c => (double)campaigns.IndexOf(c));
+        var boostPoints = campaigns.ToDictionary(c => c.Id, c => (double)campaigns.IndexOf(c));
 
         // Act
-        var result = _service.GetTopCampaignsForUser(profile, campaigns, urgencyScores).ToList();
+        var result = _service.GetTopCampaignsForUser(profile, campaigns, boostPoints).ToList();
 
         // Assert
         Assert.Equal(3, result.Count);
@@ -371,7 +380,7 @@ public class CampaignDigestServiceTests
         // Arrange
         var profile = new CampaignDigestService.UserAffinityProfile();
         var campaigns = Enumerable.Range(1, 3).Select(i => new Campaign { Id = Guid.NewGuid(), Title = $"C{i}" }).ToList();
-        var urgencyScores = new Dictionary<Guid, double>
+        var boostPoints = new Dictionary<Guid, double>
         {
             { campaigns[0].Id, 10.0 },
             { campaigns[1].Id, 0.0 },
@@ -379,7 +388,7 @@ public class CampaignDigestServiceTests
         };
 
         // Act
-        var result = _service.GetTopCampaignsForUser(profile, campaigns, urgencyScores).ToList();
+        var result = _service.GetTopCampaignsForUser(profile, campaigns, boostPoints).ToList();
 
         // Assert
         Assert.Single(result);
@@ -479,6 +488,7 @@ public class CampaignDigestServiceTests
         _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Processed")), Times.Once);
         _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.AtLeastOnce);
         Assert.Equal(DigestBatchStatus.Processed, batch.Status);
+        Assert.NotNull(users[0].LastCampaignUpdateSent);
     }
 
     [Fact]
@@ -591,10 +601,10 @@ public class CampaignDigestServiceTests
             new Campaign { Id = Guid.NewGuid(), Title = "C2", Description = "" }
         };
 
-        var scores = campaigns.Select(c => new CampaignDigestService.CampaignAffinityScore { Campaign = c, AffinityScore = 10, UrgencyScore = 5 }).ToList();
+        var results = campaigns.Select(c => new CampaignDigestService.CampaignAffinityScore { Campaign = c, AffinityPoints = 10, BoostPoints = 5 }).ToList();
 
         // Act
-        await _service.UpdateDigestBatch(batch, user, scores, emailId);
+        await _service.UpdateDigestBatch(batch, user, results, emailId);
 
         // Assert
         _mockRepository.Verify(r => r.AddDigestEntriesAsync(It.Is<IEnumerable<DigestEntry>>(entries =>

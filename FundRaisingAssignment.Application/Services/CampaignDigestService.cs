@@ -17,9 +17,9 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     public class CampaignAffinityScore
     {
         public Campaign Campaign { get; set; } = null!;
-        public double AffinityScore { get; set; }
-        public double UrgencyScore { get; set; }
-        public double TotalScore => AffinityScore + UrgencyScore;
+        public double AffinityPoints { get; set; }
+        public double BoostPoints { get; set; }
+        public double TotalScore => AffinityPoints + BoostPoints;
     }
 
     public class UserAffinityProfile
@@ -28,9 +28,9 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         public Dictionary<Guid, double> OwnerAffinities { get; } = [];
     }
 
-    private const double MaxVisitScore = 10.0;
-    private const double MaxDonationScore = 40.0;
-    private const double DonationBaseScore = 15.0;
+    private const double MaxVisitPoints = 10.0;
+    private const double MaxDonationPoints = 40.0;
+    private const double DonationBasePoints = 15.0;
     private const double DonationMultiplier = 0.05;
     private const double VisitPointValue = 2.0;
 
@@ -183,7 +183,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             .Concat(allPastDonations.Select(d => d.CampaignId))
         );
         var campaignSummaries = await repository.GetCampaignSummariesAsync(relevantCampaignIds);
-        var campaignUrgencyScores = activeCampaigns.ToDictionary(c => c.Id, c => CalculateCampaignUrgencyScore(c, executionTime));
+        var campaignBoostPoints = activeCampaigns.ToDictionary(c => c.Id, c => CalculateCampaignBoostPoints(c, executionTime));
 
         var visitsGrouped = allPastVisits.ToLookup(v => v.UserId);
         var donationsGrouped = allPastDonations.ToLookup(d => d.UserId);
@@ -194,14 +194,15 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             {
                 var userInteractions = visitsGrouped[user.Id].Concat(donationsGrouped[user.Id]);
                 var affinityProfile = BuildProfile(userInteractions, campaignSummaries);
-                var digestScores = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignUrgencyScores).ToList();
-                var digestCampaigns = digestScores.Select(ds => ds.Campaign).ToList();
+                var digestResults = GetTopCampaignsForUser(affinityProfile, activeCampaigns, campaignBoostPoints).ToList();
+                var digestCampaigns = digestResults.Select(dr => dr.Campaign).ToList();
 
                 var emailId = Guid.NewGuid();
-                await UpdateDigestBatch(digestBatchInfo, user, digestScores, emailId);
+                await UpdateDigestBatch(digestBatchInfo, user, digestResults, emailId);
                 syncPublisher.PublishDetailsSync(batchId);
 
                 await SendDigestEmailAsync(user, digestCampaigns, emailId);
+                user.LastCampaignUpdateSent = executionTime;
                 await Task.Delay(250);
 
             }
@@ -218,10 +219,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
     }
 
-    public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, List<CampaignAffinityScore> digestScores, Guid emailId)
+    public async Task UpdateDigestBatch(DigestBatch digestBatchInfo, ApplicationUser user, List<CampaignAffinityScore> digestResults, Guid emailId)
     {
         var entries = new List<DigestEntry>();
-        if (digestScores.Count == 0)
+        if (digestResults.Count == 0)
         {
             entries.Add(new DigestEntry
             {
@@ -238,19 +239,19 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         else
         {
             int seq = 1;
-            foreach (var score in digestScores)
+            foreach (var result in digestResults)
             {
                 entries.Add(new DigestEntry
                 {
                     Id = Guid.NewGuid(),
                     DigestBatchId = digestBatchInfo.Id,
                     UserId = user.Id,
-                    CampaignId = score.Campaign.Id,
+                    CampaignId = result.Campaign.Id,
                     EmailId = emailId,
                     EmailStatus = DigestEmailStatus.Initial,
                     SentAt = DateTime.UtcNow,
                     Sequence = seq++,
-                    AffinityScore = score.AffinityScore
+                    AffinityScore = result.AffinityPoints
                 });
             }
         }
@@ -259,15 +260,15 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
     }
 
 
-    public IEnumerable<CampaignAffinityScore> GetTopCampaignsForUser(UserAffinityProfile affinityProfile,
+    public IEnumerable<CampaignAffinityScore> GetTopCampaignsForUser(UserAffinityProfile profile,
                                                         List<Campaign> activeCampaigns,
-                                                        Dictionary<Guid, double> campaignUrgencyScores)
+                                                        Dictionary<Guid, double> campaignBoostPoints)
     {
         return activeCampaigns.Select(campaign => new CampaignAffinityScore
         {
             Campaign = campaign,
-            AffinityScore = CalculateAffinityScore(affinityProfile, campaign),
-            UrgencyScore = campaignUrgencyScores[campaign.Id]
+            AffinityPoints = CalculateAffinityScore(profile, campaign),
+            BoostPoints = campaignBoostPoints[campaign.Id]
         })
         .Where(cs => cs.TotalScore > 0)
         .OrderByDescending(cs => cs.TotalScore)
@@ -297,25 +298,25 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         {
             if (campaignSummaries.TryGetValue(interaction.CampaignId, out var campaignInfo))
             {
-                double score = 0;
+                double basePoints = 0;
 
                 if (interaction.VisitCount > 0)
                 {
-                    score += Math.Min(MaxVisitScore, interaction.VisitCount * VisitPointValue);
+                    basePoints += Math.Min(MaxVisitPoints, interaction.VisitCount * VisitPointValue);
                 }
 
                 if (interaction.DonationAmount > 0)
                 {
-                    double donationScore = DonationBaseScore + (double)interaction.DonationAmount * DonationMultiplier;
-                    score += Math.Min(MaxDonationScore, donationScore);
+                    double donationPoints = DonationBasePoints + (double)interaction.DonationAmount * DonationMultiplier;
+                    basePoints += Math.Min(MaxDonationPoints, donationPoints);
                 }
 
-                if (score > 0)
+                if (basePoints > 0)
                 {
-                    score *= CalculateTimeFactor(interaction.InteractionDate, now);
+                    var decayedPoints = basePoints * CalculateTimeFactor(interaction.InteractionDate, now);
 
-                    AddScore(profile.CategoryAffinities, campaignInfo.Category, score);
-                    AddScore(profile.OwnerAffinities, campaignInfo.OwnerId, score);
+                    AddPoints(profile.CategoryAffinities, campaignInfo.Category, decayedPoints);
+                    AddPoints(profile.OwnerAffinities, campaignInfo.OwnerId, decayedPoints);
                 }
             }
         }
@@ -325,56 +326,57 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
 
     private static double CalculateTimeFactor(DateTime interactionDate, DateTime now)
     {
-        var age = now - interactionDate;
-        if (age.TotalDays <= 7) return 1.0;
-        if (age.TotalDays <= 28) return 0.5;
-        return 0.1;
+        var age = (now - interactionDate).TotalDays;
+        if (age <= 14) return 1.0;
+        if (age <= 60) return 0.5;
+        if (age <= 180) return 0.1;
+        return 0.05;
     }
 
     public double CalculateAffinityScore(UserAffinityProfile profile, Campaign candidateCampaign)
     {
         double totalScore = 0;
 
-        if (profile.CategoryAffinities.TryGetValue(candidateCampaign.Category, out double categoryScore))
+        if (profile.CategoryAffinities.TryGetValue(candidateCampaign.Category, out double categoryPoints))
         {
-            totalScore += categoryScore;
+            totalScore += categoryPoints;
         }
 
-        if (profile.OwnerAffinities.TryGetValue(candidateCampaign.OwnerId, out double ownerScore))
+        if (profile.OwnerAffinities.TryGetValue(candidateCampaign.OwnerId, out double ownerPoints))
         {
-            totalScore += ownerScore;
+            totalScore += ownerPoints;
         }
 
         return totalScore;
     }
 
-    private static void AddScore<TKey>(Dictionary<TKey, double> dictionary, TKey key, double scoreToAdd) where TKey : notnull
+    private static void AddPoints<TKey>(Dictionary<TKey, double> dictionary, TKey key, double pointsToAdd) where TKey : notnull
     {
         if (dictionary.ContainsKey(key))
-            dictionary[key] += scoreToAdd;
+            dictionary[key] += pointsToAdd;
         else
-            dictionary[key] = scoreToAdd;
+            dictionary[key] = pointsToAdd;
     }
 
-    public double CalculateCampaignUrgencyScore(Campaign campaign, DateTime now)
+    public double CalculateCampaignBoostPoints(Campaign campaign, DateTime now)
     {
-        double score = 0;
+        double points = 0;
 
-        if ((now - campaign.CreatedAt).TotalDays <= 7) score += 20;
+        if ((now - campaign.CreatedAt).TotalDays <= 7) points += 20;
 
         if (campaign.EndDate.HasValue)
         {
             var timeRemaining = campaign.EndDate.Value - now;
-            if (timeRemaining.TotalHours > 0 && timeRemaining.TotalDays <= 3) score += 20;
+            if (timeRemaining.TotalHours > 0 && timeRemaining.TotalDays <= 3) points += 20;
         }
 
         if (campaign.FundingGoal > 0)
         {
             var percent = campaign.CurrentAmount / campaign.FundingGoal;
-            if (percent >= 0.75m && percent < 1.0m) score += 15;
+            if (percent >= 0.75m && percent < 1.0m) points += 15;
         }
 
-        return score;
+        return points;
     }
 
     public CampaignDisplayItem MapCampaignToDisplayItem(Campaign campaign)
