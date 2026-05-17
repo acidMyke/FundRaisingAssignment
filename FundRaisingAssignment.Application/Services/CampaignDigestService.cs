@@ -201,7 +201,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 await UpdateDigestBatch(digestBatchInfo, user, digestResults, emailId);
                 syncPublisher.PublishDetailsSync(batchId);
 
-                await SendDigestEmailAsync(user, digestCampaigns, emailId);
+                await SendDigestEmailAsync(user, digestCampaigns, emailId, batchId);
                 user.LastCampaignUpdateSent = executionTime;
                 await Task.Delay(250);
 
@@ -275,7 +275,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         .Take(3);
     }
 
-    public async Task SendDigestEmailAsync(ApplicationUser user, List<Campaign> digestCampaigns, Guid emailId)
+    public async Task SendDigestEmailAsync(ApplicationUser user, List<Campaign> digestCampaigns, Guid emailId, Guid batchId)
     {
         if (digestCampaigns.Count == 0)
         {

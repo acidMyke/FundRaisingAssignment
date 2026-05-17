@@ -403,7 +403,7 @@ public class CampaignDigestServiceTests
         var user = new ApplicationUser { Email = "" };
 
         // Act
-        await _service.SendDigestEmailAsync(user, [], emailId);
+        await _service.SendDigestEmailAsync(user, [], emailId, Guid.NewGuid());
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), emailId.ToString()), Times.Never);
@@ -419,12 +419,12 @@ public class CampaignDigestServiceTests
         const string BODY = "Test Body";
         var user = new ApplicationUser { Email = EMAIL };
         var campaigns = new List<Campaign> { new() { Id = Guid.NewGuid(), Title = "", Description = "" } };
-
-        _mockTemplateService.Setup(t => t.GenerateSubject(It.IsAny<CampaignDigestEmailViewModel>())).Returns(SUBJECT);
-        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
+        var batchId = Guid.NewGuid();
+        _mockTemplateService.Setup(t => t.GenerateSubject(It.Is<CampaignDigestEmailViewModel>(m => m.BatchId == batchId))).Returns(SUBJECT);
+        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.Is<CampaignDigestEmailViewModel>(m => m.BatchId == batchId))).Returns(BODY);
 
         // Act
-        await _service.SendDigestEmailAsync(user, campaigns, emailId);
+        await _service.SendDigestEmailAsync(user, campaigns, emailId, batchId);
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, emailId.ToString()), Times.Once);

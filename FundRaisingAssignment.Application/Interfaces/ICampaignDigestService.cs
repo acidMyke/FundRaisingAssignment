@@ -8,4 +8,5 @@ public interface ICampaignDigestService
     Task ProcessAsync(Guid batchId);
     Task<List<DigestBatchSummaryViewModel>> GetAllDigestBatchesAsync();
     Task<DigestBatchDetailsViewModel?> GetDigestBatchDetailsAsync(Guid batchId);
+    Task RegisterCampaignClickAsync(Guid batchId, Guid campaignId);
 }
