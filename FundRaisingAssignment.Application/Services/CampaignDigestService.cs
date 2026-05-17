@@ -428,7 +428,8 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
 
     public async Task RegisterCampaignClickAsync(Guid batchId, Guid campaignId)
     {
-        throw new NotImplementedException();
+        await repository.UpdateDigestEntryClickAsync(batchId, campaignId);
+        syncPublisher.PublishDetailsSync(batchId);
     }
 
     #endregion
