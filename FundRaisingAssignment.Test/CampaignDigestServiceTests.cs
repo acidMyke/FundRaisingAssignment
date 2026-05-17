@@ -669,4 +669,19 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.UpdateDigestEntryStatusAsync(emailId, expectedStatus, It.IsAny<string>()), Times.Once);
         _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.Once);
     }
+
+    [Fact]
+    public async Task RegisterCampaignClickAsync_UpdatesRepositoryAndPublishesSync()
+    {
+        // Arrange
+        var batchId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+
+        // Act
+        await _service.RegisterCampaignClickAsync(batchId, campaignId);
+
+        // Assert
+        _mockRepository.Verify(r => r.UpdateDigestEntryClickAsync(batchId, campaignId), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.Once);
+    }
 }

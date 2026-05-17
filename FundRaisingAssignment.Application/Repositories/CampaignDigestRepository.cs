@@ -128,4 +128,8 @@ public class CampaignDigestRepository(ApplicationDbContext dbContext) : ICampaig
     public Task<List<DigestBatch>> GetAllDigestBatchesAsync() =>
         dbContext.DigestBatches.OrderByDescending(b => b.TriggeredAt).ToListAsync();
 
+    public Task UpdateDigestEntryClickAsync(Guid batchId, Guid campaignId) =>
+        dbContext.DigestEntries
+                 .Where(e => e.DigestBatchId == batchId && e.CampaignId == campaignId)
+                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.EmailStatus, DigestEmailStatus.Click));
 }

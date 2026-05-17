@@ -282,7 +282,11 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             return;
         }
 
-        var viewModel = new CampaignDigestEmailViewModel { Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem) };
+        var viewModel = new CampaignDigestEmailViewModel 
+        { 
+            BatchId = batchId,
+            Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem) 
+        };
         var subject = templateService.GenerateSubject(viewModel);
         var htmlBody = templateService.RenderHtmlBody(viewModel);
         await emailService.SendEmailAsync(user.Email!, subject, htmlBody, emailId.ToString());
@@ -420,6 +424,11 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             await repository.UpdateDigestEntryStatusAsync(emailId, status, e.Reason);
             syncPublisher.PublishDetailsSync(batchId.Value);
         }
+    }
+
+    public async Task RegisterCampaignClickAsync(Guid batchId, Guid campaignId)
+    {
+        throw new NotImplementedException();
     }
 
     #endregion
