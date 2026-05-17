@@ -11,7 +11,7 @@ public class CampaignDigestController(ICampaignDigestService digestService) : Co
     public async Task<IActionResult> TrackClick(Guid batchId, Guid campaignId)
     {
         await digestService.RegisterCampaignClickAsync(batchId, campaignId);
-        
+
         return Redirect($"/Dashboard/CampaignPage/{campaignId}");
     }
 }
