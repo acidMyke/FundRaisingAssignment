@@ -52,6 +52,7 @@ public class CampaignDigestServiceTests
 
         _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Failed")), Times.Once);
         Assert.Equal(DigestBatchStatus.Failed, batch.Status);
         Assert.Equal(0, batch.UserCount);
     }
@@ -73,6 +74,7 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Failed")), Times.Once);
         Assert.Equal(DigestBatchStatus.Failed, batch.Status);
     }
 

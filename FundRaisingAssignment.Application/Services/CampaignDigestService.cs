@@ -155,6 +155,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             digestBatchInfo.Status = DigestBatchStatus.Failed;
             digestBatchInfo.StatusUpdatedAt = executionTime;
             await repository.SaveChangesAsync();
+            syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
             return;
         }
 
@@ -166,6 +167,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             digestBatchInfo.Status = DigestBatchStatus.Failed;
             digestBatchInfo.StatusUpdatedAt = executionTime;
             await repository.SaveChangesAsync();
+            syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
             return;
         }
 
@@ -282,10 +284,10 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             return;
         }
 
-        var viewModel = new CampaignDigestEmailViewModel 
-        { 
+        var viewModel = new CampaignDigestEmailViewModel
+        {
             BatchId = batchId,
-            Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem) 
+            Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem)
         };
         var subject = templateService.GenerateSubject(viewModel);
         var htmlBody = templateService.RenderHtmlBody(viewModel);
