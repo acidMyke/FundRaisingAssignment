@@ -52,6 +52,7 @@ public class CampaignDigestServiceTests
 
         _mockRepository.Verify(r => r.GetActiveCampaignsAsync(), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Failed")), Times.Once);
         Assert.Equal(DigestBatchStatus.Failed, batch.Status);
         Assert.Equal(0, batch.UserCount);
     }
@@ -73,6 +74,7 @@ public class CampaignDigestServiceTests
         _mockRepository.Verify(r => r.GetPastDonationsForUsersAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.GetCampaignSummariesAsync(It.IsAny<IEnumerable<Guid>>()), Times.Never);
         _mockRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        _mockSyncPublisher.Verify(s => s.PublishBatchSync(It.Is<DigestSyncData>(d => d.BatchId == batchId && d.DisplayStatus == "Failed")), Times.Once);
         Assert.Equal(DigestBatchStatus.Failed, batch.Status);
     }
 
@@ -403,7 +405,7 @@ public class CampaignDigestServiceTests
         var user = new ApplicationUser { Email = "" };
 
         // Act
-        await _service.SendDigestEmailAsync(user, [], emailId);
+        await _service.SendDigestEmailAsync(user, [], emailId, Guid.NewGuid());
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), emailId.ToString()), Times.Never);
@@ -419,12 +421,12 @@ public class CampaignDigestServiceTests
         const string BODY = "Test Body";
         var user = new ApplicationUser { Email = EMAIL };
         var campaigns = new List<Campaign> { new() { Id = Guid.NewGuid(), Title = "", Description = "" } };
-
-        _mockTemplateService.Setup(t => t.GenerateSubject(It.IsAny<CampaignDigestEmailViewModel>())).Returns(SUBJECT);
-        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.IsAny<CampaignDigestEmailViewModel>())).Returns(BODY);
+        var batchId = Guid.NewGuid();
+        _mockTemplateService.Setup(t => t.GenerateSubject(It.Is<CampaignDigestEmailViewModel>(m => m.BatchId == batchId))).Returns(SUBJECT);
+        _mockTemplateService.Setup(t => t.RenderHtmlBody(It.Is<CampaignDigestEmailViewModel>(m => m.BatchId == batchId))).Returns(BODY);
 
         // Act
-        await _service.SendDigestEmailAsync(user, campaigns, emailId);
+        await _service.SendDigestEmailAsync(user, campaigns, emailId, batchId);
 
         // Assert
         _mockEmailService.Verify(e => e.SendEmailAsync(EMAIL, SUBJECT, BODY, emailId.ToString()), Times.Once);
@@ -667,6 +669,21 @@ public class CampaignDigestServiceTests
 
         // Assert
         _mockRepository.Verify(r => r.UpdateDigestEntryStatusAsync(emailId, expectedStatus, It.IsAny<string>()), Times.Once);
+        _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterCampaignClickAsync_UpdatesRepositoryAndPublishesSync()
+    {
+        // Arrange
+        var batchId = Guid.NewGuid();
+        var campaignId = Guid.NewGuid();
+
+        // Act
+        await _service.RegisterCampaignClickAsync(batchId, campaignId);
+
+        // Assert
+        _mockRepository.Verify(r => r.UpdateDigestEntryClickAsync(batchId, campaignId), Times.Once);
         _mockSyncPublisher.Verify(s => s.PublishDetailsSync(batchId), Times.Once);
     }
 }

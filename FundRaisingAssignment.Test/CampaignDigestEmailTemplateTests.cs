@@ -22,7 +22,7 @@ public class CampaignEmailDigestTemplateServiceTests
             new() { Id = Guid.NewGuid(), Title = "Save the Wetlands", SummaryText = "", FormattedGoal = "", FormattedRaised = "", ProgressPercentage = 0 },
             new() { Id = Guid.NewGuid(), Title = "Build a Community Library", SummaryText = "", FormattedGoal = "", FormattedRaised = "", ProgressPercentage = 0 }
         };
-        var viewModel = new CampaignDigestEmailViewModel { Campaigns = campaigns };
+        var viewModel = new CampaignDigestEmailViewModel { BatchId = Guid.NewGuid(), Campaigns = campaigns };
 
         // Act
         var result = _service.GenerateSubject(viewModel);
@@ -47,7 +47,7 @@ public class CampaignEmailDigestTemplateServiceTests
                 ProgressPercentage = 50m
             }
         };
-        var viewModel = new CampaignDigestEmailViewModel { Campaigns = campaigns };
+        var viewModel = new CampaignDigestEmailViewModel { BatchId = Guid.NewGuid(), Campaigns = campaigns };
 
         // Act
         var html = _service.RenderHtmlBody(viewModel);
@@ -67,12 +67,13 @@ public class CampaignEmailDigestTemplateServiceTests
         {
             new() { Id = campaignId, Title = "Link Test", SummaryText = "", FormattedGoal = "", FormattedRaised = "", ProgressPercentage = 0 }
         };
-        var viewModel = new CampaignDigestEmailViewModel { Campaigns = campaigns };
+        var batchId = Guid.NewGuid();
+        var viewModel = new CampaignDigestEmailViewModel { BatchId = batchId, Campaigns = campaigns };
 
         // Act
         var html = _service.RenderHtmlBody(viewModel);
 
         // Assert
-        Assert.Contains($"https://givehive.acidmyke.link//Dashboard/CampaignPage/{campaignId}", html);
+        Assert.Contains($"https://givehive.acidmyke.link/digest/{batchId}/{campaignId}", html);
     }
 }

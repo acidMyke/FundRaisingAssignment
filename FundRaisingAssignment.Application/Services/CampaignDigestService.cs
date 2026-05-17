@@ -155,6 +155,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             digestBatchInfo.Status = DigestBatchStatus.Failed;
             digestBatchInfo.StatusUpdatedAt = executionTime;
             await repository.SaveChangesAsync();
+            syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
             return;
         }
 
@@ -166,6 +167,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             digestBatchInfo.Status = DigestBatchStatus.Failed;
             digestBatchInfo.StatusUpdatedAt = executionTime;
             await repository.SaveChangesAsync();
+            syncPublisher.PublishBatchSync(PrepareSyncData(digestBatchInfo));
             return;
         }
 
@@ -201,7 +203,7 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
                 await UpdateDigestBatch(digestBatchInfo, user, digestResults, emailId);
                 syncPublisher.PublishDetailsSync(batchId);
 
-                await SendDigestEmailAsync(user, digestCampaigns, emailId);
+                await SendDigestEmailAsync(user, digestCampaigns, emailId, batchId);
                 user.LastCampaignUpdateSent = executionTime;
                 await Task.Delay(250);
 
@@ -275,14 +277,18 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
         .Take(3);
     }
 
-    public async Task SendDigestEmailAsync(ApplicationUser user, List<Campaign> digestCampaigns, Guid emailId)
+    public async Task SendDigestEmailAsync(ApplicationUser user, List<Campaign> digestCampaigns, Guid emailId, Guid batchId)
     {
         if (digestCampaigns.Count == 0)
         {
             return;
         }
 
-        var viewModel = new CampaignDigestEmailViewModel { Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem) };
+        var viewModel = new CampaignDigestEmailViewModel
+        {
+            BatchId = batchId,
+            Campaigns = digestCampaigns.Select(MapCampaignToDisplayItem)
+        };
         var subject = templateService.GenerateSubject(viewModel);
         var htmlBody = templateService.RenderHtmlBody(viewModel);
         await emailService.SendEmailAsync(user.Email!, subject, htmlBody, emailId.ToString());
@@ -420,6 +426,12 @@ public class CampaignDigestService(ICampaignDigestRepository repository,
             await repository.UpdateDigestEntryStatusAsync(emailId, status, e.Reason);
             syncPublisher.PublishDetailsSync(batchId.Value);
         }
+    }
+
+    public async Task RegisterCampaignClickAsync(Guid batchId, Guid campaignId)
+    {
+        await repository.UpdateDigestEntryClickAsync(batchId, campaignId);
+        syncPublisher.PublishDetailsSync(batchId);
     }
 
     #endregion

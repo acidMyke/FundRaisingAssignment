@@ -18,4 +18,5 @@ public interface ICampaignDigestRepository
     Task<Guid?> GetDigestBatchIdByEmailIdAsync(Guid emailId);
     Task<DigestBatch?> GetDigestBatchWithDetailsAsync(Guid batchId);
     Task<List<DigestBatch>> GetAllDigestBatchesAsync();
+    Task UpdateDigestEntryClickAsync(Guid batchId, Guid campaignId);
 }

@@ -29,11 +29,11 @@ public class CampaignDigestEmailTemplateService : ICampaignDigestEmailTemplateSe
             sb.AppendLine($"<h2>{campaign.Title}</h2>");
             sb.AppendLine($"<p>{campaign.SummaryText}</p>");
             sb.AppendLine($"<p>Goal: {campaign.FormattedGoal} | Raised: {campaign.FormattedRaised} ({campaign.ProgressPercentage}%)</p>");
-            sb.AppendLine($"<p><a href=\"https://givehive.acidmyke.link//Dashboard/CampaignPage/{campaign.Id}\">View Campaign</a></p>");
+            sb.AppendLine($"<p><a href=\"https://givehive.acidmyke.link/digest/{viewModel.BatchId}/{campaign.Id}\">View Campaign</a></p>");
         }
 
         sb.AppendLine("<hr />");
-        sb.AppendLine("<p>Want to stop receiving updates? <a href=\"https://givehive.acidmyke.link//digest/unsubscribe\">Unsubscribe</a></p>");
+        sb.AppendLine("<p>Want to stop receiving updates? <a href=\"https://givehive.acidmyke.link/digest/unsubscribe\">Unsubscribe</a></p>");
         sb.AppendLine("</body>");
         sb.AppendLine("</html>");
 
